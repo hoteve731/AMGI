@@ -1,6 +1,5 @@
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
-import { notFound } from 'next/navigation'
 import ContentDetail from '@/components/ContentDetail'
 
 // Next.js 14의 정확한 타입 정의
