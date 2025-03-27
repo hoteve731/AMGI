@@ -2,6 +2,7 @@
 'use server'
 
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
+import { PostgrestError } from '@supabase/supabase-js' // <-- Import the specific error type
 import { cookies } from 'next/headers'
 import ContentDetail from '@/components/ContentDetail' // <-- Verify this path is correct
 import { notFound } from 'next/navigation'
@@ -17,104 +18,91 @@ type MaskedChunk = {
 }
 
 type Content = {
-    id: string // Ensure type matches DB (e.g., string for UUID, number for integer ID)
+    id: string
     title: string
     original_text: string
-    chunks: Chunk[] // Assumes 'chunks' is a JSON/JSONB array of objects
-    masked_chunks: MaskedChunk[] // Assumes 'masked_chunks' is a JSON/JSONB array of objects
-    created_at: string // Or Date if you parse it
+    chunks: Chunk[]
+    masked_chunks: MaskedChunk[]
+    created_at: string
 }
 
-// REMOVED: The unused SupabaseError type definition
-// type SupabaseError = { ... }
-
-// generateMetadata function with explicit param typing
+// generateMetadata function (keeping it concise, add fetch if needed)
 export async function generateMetadata(
     { params }: { params: { id: string } }
 ): Promise<Metadata> {
-    // NOTE: For accurate metadata, you might fetch the specific content title here.
-    // Requires another Supabase call, ensure env vars are available.
-    // Example:
-    // try {
-    //   const supabase = createServerComponentClient({ cookies });
-    //   const { data: metaContent } = await supabase.from('contents').select('title').eq('id', params.id).single();
-    //   return { title: metaContent?.title || `Content ${params.id}` };
-    // } catch (error) {
-    //   console.error("Metadata fetch error:", error);
-    //   return { title: `Content ${params.id}` }; // Fallback title
-    // }
-
-    // Using placeholder for simplicity:
+     // Consider fetching the actual title here for better SEO
     return {
         title: `Content ${params.id}`,
-        // description: `Details for content ${params.id}` // Add description if desired
     }
 }
 
-// Page component with explicit param typing
+// Page component
 export default async function Page(
     { params }: { params: { id: string } }
 ) {
     // Basic validation for the ID parameter
     if (!params || typeof params.id !== 'string' || params.id.trim() === '') {
         console.error("Invalid or missing ID parameter:", params);
-        notFound(); // ID is required and must be a non-empty string
+        notFound();
     }
     const { id } = params;
 
-    // IMPORTANT: Ensure Supabase environment variables are set in Vercel!
-    // (NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY / SUPABASE_ANON_KEY)
+    // Ensure Supabase environment variables are set in Vercel
     const supabase = createServerComponentClient({ cookies })
 
     let content: Content | null = null;
-    let fetchError: any = null; // Use 'any' or PostgrestError from '@supabase/supabase-js' if installed directly
+    // Use the specific PostgrestError type from Supabase
+    let fetchError: PostgrestError | null = null; // <-- Use PostgrestError instead of any
 
     try {
+        // Fetch data using Supabase client
         const { data, error } = await supabase
             .from('contents')
-            .select('*') // Select only necessary columns if possible for performance
+            .select('*')
             .eq('id', id)
-            .returns<Content>() // Ensures data matches the Content type
-            .single();          // Expects exactly one row or null
+            .returns<Content>()
+            .single();
 
         content = data;
-        fetchError = error;
+        fetchError = error; // Assign the error (which is PostgrestError | null)
 
-    } catch (error) {
-        // Catch unexpected errors during the fetch process itself
+    } catch (error: unknown) { // <-- Catch generic errors as 'unknown'
+        // Handle totally unexpected errors during the fetch/network process
         console.error(`Unexpected error fetching content with ID ${id}:`, error);
-        // Depending on policy, you might show a generic error page instead of 404
-        // throw new Error("Failed to load content due to an unexpected issue.");
-        notFound(); // Or trigger notFound for any fetch failure
+
+        // Optionally, provide more context if it's an Error instance
+        if (error instanceof Error) {
+             throw new Error(`Failed to load content due to an unexpected issue: ${error.message}`);
+        } else {
+             // Throw a generic error if it's not an Error instance
+             throw new Error("Failed to load content due to an unexpected non-error value.");
+        }
+        // Alternatively, could just call notFound() here for any unexpected error
+        // notFound();
     }
 
-
-    // Handle Supabase specific errors (like item not found)
+    // Handle known Supabase errors (like item not found)
     if (fetchError) {
         console.error(`Supabase error fetching content ID ${id}:`, fetchError.message);
-        // PostgREST error code 'PGRST116: Row Not Found'
+        // PostgREST error code 'PGRST116: Row Not Found' from .single()
         if (fetchError.code === 'PGRST116') {
              console.log(`Content with ID ${id} not found in database.`);
-             notFound(); // Standard way to show 404
+             notFound(); // Show 404 page
         } else {
-             // For other database/Supabase errors, throwing might be better
-             // to let Next.js Error Boundary handle it (if you have one)
-             // Or display a generic error message component.
-             // For now, we'll treat other DB errors as "not found" for simplicity,
-             // but you might want a different behavior.
-             console.warn(`Unhandled Supabase error code: ${fetchError.code}. Treating as Not Found.`);
-             notFound();
-             // Alternatively: throw new Error(`Database error: ${fetchError.message}`);
+             // For other database/Supabase errors, throwing allows Error Boundaries to catch
+             console.error(`Unhandled Supabase error: Code=${fetchError.code}, Message=${fetchError.message}`);
+             throw new Error(`Database error occurred while fetching content: ${fetchError.message} (Code: ${fetchError.code})`);
+             // Or if you prefer to show 404 for all DB errors:
+             // notFound();
         }
     }
 
-    // Handle case where query succeeded but returned no data (should be caught by single() error PGRST116)
+    // Double-check: If no error occurred but content is still null (shouldn't happen with .single())
     if (!content) {
-        console.log(`Content with ID ${id} was not found (data is null).`);
+        console.warn(`Content with ID ${id} resulted in null data without a corresponding error.`);
         notFound();
     }
 
-    // If we reach here, content should be valid
-    // Ensure ContentDetail can handle the 'content' prop correctly
+    // Render the component if content is successfully fetched
     return <ContentDetail content={content} />
 }
