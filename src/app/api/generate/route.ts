@@ -49,8 +49,9 @@ export async function POST(req: Request) {
             console.log('Title generated:', title)
         } catch (error) {
             console.error('Title generation error:', error)
+            const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.'
             return NextResponse.json(
-                { error: `제목 생성 중 오류: ${error.message}` },
+                { error: `제목 생성 중 오류: ${errorMessage}` },
                 { status: 500 }
             )
         }
@@ -79,12 +80,17 @@ export async function POST(req: Request) {
                 temperature: 0.7,
                 max_tokens: 1000
             })
-            chunks = JSON.parse(chunkCompletion.choices[0].message.content)
+            const content = chunkCompletion.choices[0].message.content
+            if (!content) {
+                throw new Error('No content generated')
+            }
+            chunks = JSON.parse(content)
             console.log('Chunks generated:', chunks)
         } catch (error) {
             console.error('Chunk generation error:', error)
+            const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.'
             return NextResponse.json(
-                { error: `청크 생성 중 오류: ${error.message}` },
+                { error: `청크 생성 중 오류: ${errorMessage}` },
                 { status: 500 }
             )
         }
@@ -113,12 +119,17 @@ export async function POST(req: Request) {
                 temperature: 0.7,
                 max_tokens: 1000
             })
-            maskedChunks = JSON.parse(maskingCompletion.choices[0].message.content)
+            const maskedContent = maskingCompletion.choices[0].message.content
+            if (!maskedContent) {
+                throw new Error('No masked content generated')
+            }
+            maskedChunks = JSON.parse(maskedContent)
             console.log('Masked chunks generated:', maskedChunks)
         } catch (error) {
             console.error('Masking error:', error)
+            const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.'
             return NextResponse.json(
-                { error: `마스킹 처리 중 오류: ${error.message}` },
+                { error: `마스킹 처리 중 오류: ${errorMessage}` },
                 { status: 500 }
             )
         }
@@ -143,16 +154,18 @@ export async function POST(req: Request) {
             return NextResponse.json({ content: data[0] })
         } catch (error) {
             console.error('Database error:', error)
+            const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.'
             return NextResponse.json(
-                { error: `데이터베이스 저장 중 오류: ${error.message}` },
+                { error: `데이터베이스 저장 중 오류: ${errorMessage}` },
                 { status: 500 }
             )
         }
 
     } catch (error) {
         console.error('General error:', error)
+        const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.'
         return NextResponse.json(
-            { error: `서버 처리 중 오류: ${error.message}` },
+            { error: `서버 처리 중 오류: ${errorMessage}` },
             { status: 500 }
         )
     }

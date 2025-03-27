@@ -20,8 +20,11 @@ export async function generateMetadata({ params }: GeneratePageProps) {
 }
 
 // 페이지 컴포넌트
-export default async function Page(props: GeneratePageProps) {
-    const { params } = props
+export default async function Page({
+    params,
+}: {
+    params: { id: string }
+}) {
     const supabase = createServerComponentClient({ cookies })
 
     const { data: content, error } = await supabase
@@ -32,6 +35,10 @@ export default async function Page(props: GeneratePageProps) {
 
     if (error) {
         throw new Error(error.message)
+    }
+
+    if (!content) {
+        throw new Error('Content not found')
     }
 
     return <ContentDetail content={content} />
