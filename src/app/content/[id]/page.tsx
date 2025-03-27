@@ -45,8 +45,12 @@ type SupabaseError = {
     code: string
 }
 
-// 페이지 컴포넌트
-export default async function Page({ params }: { params: { id: string } }) {
+// 페이지 컴포넌트를 더 단순하게 정의
+export default async function Page({
+    params,
+}: {
+    params: { id: string }
+}) {
     const supabase = createServerComponentClient({ cookies })
 
     const { data: content, error } = await supabase
