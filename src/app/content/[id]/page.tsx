@@ -4,17 +4,20 @@ import { notFound } from 'next/navigation'
 import ContentDetail from '@/components/ContentDetail'
 import { Metadata } from 'next'
 
-// 타입 정의
-type PageParams = {
-    id: string
+// 타입 정의 방식 변경
+interface PageProps {
+    params: { id: string }
 }
 
-type Props = {
-    params: PageParams
-    searchParams: { [key: string]: string | string[] | undefined }
+// generateMetadata 함수 추가 (필요한 경우)
+export async function generateMetadata({ params }: PageProps) {
+    return {
+        title: `Content ${params.id}`,
+    }
 }
 
-export default async function Page({ params }: Props) {
+// 페이지 컴포넌트
+const Page = async ({ params }: PageProps) => {
     const supabase = createServerComponentClient({ cookies })
 
     const { data: content } = await supabase
@@ -30,8 +33,4 @@ export default async function Page({ params }: Props) {
     return <ContentDetail content={content} />
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-    return {
-        title: `Content ${params.id}`,
-    }
-} 
+export default Page 
