@@ -3,7 +3,7 @@ import { cookies } from 'next/headers'
 import { notFound } from 'next/navigation'
 import ContentDetail from '@/components/ContentDetail'
 
-export default function Page({ params }: { params: { id: string } }) {
+export default async function Page({ params }: { params: { id: string } }) {
     const supabase = createServerComponentClient({ cookies })
 
     const { data: content } = await supabase
