@@ -1,3 +1,5 @@
+'use server'
+
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import ContentDetail from '@/components/ContentDetail'
@@ -29,9 +31,6 @@ type Content = {
     masked_chunks: any[] // 구체적인 타입으로 변경하는 것이 좋습니다
     created_at: string
 }
-
-// 명시적으로 서버 컴포넌트임을 표시
-'use server'
 
 // 페이지 컴포넌트
 export default async function Page({ params }: { params: { id: string } }) {
