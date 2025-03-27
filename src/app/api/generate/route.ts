@@ -34,11 +34,11 @@ export async function POST(req: Request) {
         try {
             console.log('Attempting to generate title...')
             const titleCompletion = await openai.chat.completions.create({
-                model: "gpt-4-0125-preview",
+                model: "gpt-4o-mini-2024-07-18",
                 messages: [
                     {
                         role: "system",
-                        content: "주어진 텍스트를 읽고 간단하고 명확한 제목을 생성해주세요. 제목만 출력하세요."
+                        content: "주어진 텍스트를 읽고 핵심적이고 명확한 제목을 생성해주세요. 제목만 출력하세요."
                     },
                     { role: "user", content: text }
                 ],
@@ -60,11 +60,11 @@ export async function POST(req: Request) {
         try {
             console.log('Attempting to generate chunks...')
             const chunkCompletion = await openai.chat.completions.create({
-                model: "gpt-4-0125-preview",
+                model: "gpt-4o-mini-2024-07-18",
                 messages: [
                     {
                         role: "system",
-                        content: `주어진 텍스트를 의미 단위로 3개의 청크로 나누고 각각을 요약해주세요. 
+                        content: `주어진 텍스트를 핵심적인 의미 단위로 3개의 청크로 나누고 각각을 요약해주세요. 한 청크당 150~200 글자 정도가 좋습니다. 원본의 말투를 유지하세요. 
               다음 JSON 형식으로 출력해주세요:
               {
                 "chunks": [
@@ -94,7 +94,7 @@ export async function POST(req: Request) {
         try {
             console.log('Attempting to generate masked chunks...')
             const maskingCompletion = await openai.chat.completions.create({
-                model: "gpt-4-0125-preview",
+                model: "gpt-4o-mini-2024-07-18",
                 messages: [
                     {
                         role: "system",
