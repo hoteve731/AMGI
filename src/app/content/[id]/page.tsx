@@ -23,13 +23,26 @@ export async function generateMetadata({ params }: GeneratePageProps) {
 }
 
 // content 타입 정의 추가
+type Chunk = {
+    summary: string
+}
+
+type MaskedChunk = {
+    masked_text: string
+}
+
 type Content = {
     id: string
     title: string
     original_text: string
-    chunks: any[] // 구체적인 타입으로 변경하는 것이 좋습니다
-    masked_chunks: any[] // 구체적인 타입으로 변경하는 것이 좋습니다
+    chunks: Chunk[]
+    masked_chunks: MaskedChunk[]
     created_at: string
+}
+
+type SupabaseError = {
+    message: string
+    code: string
 }
 
 // 페이지 컴포넌트
@@ -41,7 +54,7 @@ export default async function Page({ params }: { params: { id: string } }) {
         .select('*')
         .eq('id', params.id)
         .single()
-        .then(result => result as { data: Content | null, error: any })
+        .then(result => result as { data: Content | null, error: SupabaseError | null })
 
     if (error) {
         console.error('Error fetching content:', error)
