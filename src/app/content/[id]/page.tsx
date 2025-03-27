@@ -1,6 +1,7 @@
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import ContentDetail from '@/components/ContentDetail'
+import { notFound } from 'next/navigation'
 
 // Next.js 14의 정확한 타입 정의
 type GeneratePageParams = {
@@ -19,12 +20,21 @@ export async function generateMetadata({ params }: GeneratePageProps) {
     }
 }
 
+// content 타입 정의 추가
+type Content = {
+    id: string
+    title: string
+    original_text: string
+    chunks: any[] // 구체적인 타입으로 변경하는 것이 좋습니다
+    masked_chunks: any[] // 구체적인 타입으로 변경하는 것이 좋습니다
+    created_at: string
+}
+
+// 명시적으로 서버 컴포넌트임을 표시
+'use server'
+
 // 페이지 컴포넌트
-export default async function Page({
-    params,
-}: {
-    params: { id: string }
-}) {
+export default async function Page({ params }: { params: { id: string } }) {
     const supabase = createServerComponentClient({ cookies })
 
     const { data: content, error } = await supabase
@@ -32,13 +42,15 @@ export default async function Page({
         .select('*')
         .eq('id', params.id)
         .single()
+        .then(result => result as { data: Content | null, error: any })
 
     if (error) {
-        throw new Error(error.message)
+        console.error('Error fetching content:', error)
+        throw error
     }
 
     if (!content) {
-        throw new Error('Content not found')
+        notFound()
     }
 
     return <ContentDetail content={content} />
