@@ -2,7 +2,6 @@ import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import { notFound } from 'next/navigation'
 import ContentDetail from '@/components/ContentDetail'
-import { Metadata } from 'next'
 
 // 타입 정의 방식 변경
 interface PageProps {
