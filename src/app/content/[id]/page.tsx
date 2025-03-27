@@ -2,8 +2,16 @@ import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import { notFound } from 'next/navigation'
 import ContentDetail from '@/components/ContentDetail'
+import { Metadata } from 'next'
 
-export default async function Page({ params }: { params: { id: string } }) {
+interface PageProps {
+    params: {
+        id: string
+    }
+    searchParams?: { [key: string]: string | string[] | undefined }
+}
+
+export default async function Page({ params }: PageProps) {
     const supabase = createServerComponentClient({ cookies })
 
     const { data: content } = await supabase
@@ -17,4 +25,10 @@ export default async function Page({ params }: { params: { id: string } }) {
     }
 
     return <ContentDetail content={content} />
+}
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+    return {
+        title: `Content ${params.id}`,
+    }
 } 
