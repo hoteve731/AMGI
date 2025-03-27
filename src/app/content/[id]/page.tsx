@@ -1,28 +1,20 @@
+// src/app/content/[id]/page.tsx
 'use server'
 
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import ContentDetail from '@/components/ContentDetail'
 import { notFound } from 'next/navigation'
+import type { Metadata } from 'next' // Import Metadata type from next
 
-// Next.js 14의 정확한 타입 정의
-type GeneratePageParams = {
-    id: string;
-}
-
-type GeneratePageProps<T = GeneratePageParams> = {
-    params: T;
+// Define the props type directly for the page and metadata function
+// This is the standard approach for the App Router
+type PageProps = {
+    params: { id: string };
     searchParams?: { [key: string]: string | string[] | undefined };
 }
 
-// generateMetadata 함수 추가 (필요한 경우)
-export async function generateMetadata({ params }: GeneratePageProps) {
-    return {
-        title: `Content ${params.id}`,
-    }
-}
-
-// content 타입 정의 추가
+// content 타입 정의 (기존과 동일)
 type Chunk = {
     summary: string
 }
@@ -45,37 +37,57 @@ type SupabaseError = {
     code: string
 }
 
-// 페이지 컴포넌트를 더 단순하게 정의
-export default async function Page({
-    params,
-}: {
-    params: { id: string }
-}) {
+// generateMetadata 함수: Props 타입을 직접 사용
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+    // Fetch data needed for metadata if necessary, or use params directly
+    // Example: Fetch content title
+    // const supabase = createServerComponentClient({ cookies })
+    // const { data: contentTitle } = await supabase.from('contents').select('title').eq('id', params.id).single()
+
+    return {
+        title: `Content ${params.id}`, // Use a default or fetched title
+        // description: `Details for content item ${params.id}`, // Add description if needed
+    }
+}
+
+// 페이지 컴포넌트: Props 타입을 직접 사용
+export default async function Page({ params }: PageProps) {
     const supabase = createServerComponentClient({ cookies })
 
+    // Use .then() approach correctly or await directly
     const { data: content, error } = await supabase
         .from('contents')
         .select('*')
         .eq('id', params.id)
-        .single()
-        .then(result => result as { data: Content | null, error: SupabaseError | null })
+        .single<{ data: Content | null, error: SupabaseError | null }>(); // Type assertion for the promise result if needed, but often better inferred
 
+    // Handle potential Supabase errors
     if (error) {
-        console.error('Error fetching content:', error)
-        throw error
+        console.error('Error fetching content:', error.message)
+        // Decide how to handle the error - show an error page or throw
+        // For a server component, throwing might trigger an error boundary
+        throw new Error(`Failed to fetch content: ${error.message}`);
+        // Or you could use notFound() for specific error codes like 'PGRST116' (resource not found)
+        // if (error.code === 'PGRST116') {
+        //   notFound();
+        // }
     }
 
+    // Handle case where content is not found (but no error occurred)
     if (!content) {
         notFound()
     }
 
+    // Render the detail component with the fetched content
     return <ContentDetail content={content} />
 }
 
-// Next.js의 정적 타입 체크를 위한 타입 선언
+// REMOVED: The problematic global type declaration
+/*
 declare module 'next' {
     export interface PageProps {
-        params: GeneratePageParams;
+        params: GeneratePageParams; // This was likely causing the conflict
         searchParams?: { [key: string]: string | string[] | undefined };
     }
-} 
+}
+*/
