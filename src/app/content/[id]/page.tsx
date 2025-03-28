@@ -8,7 +8,7 @@ import ContentDetail from '@/components/ContentDetail'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 
-// Define content types
+// Content 타입 정의
 type Chunk = {
   summary: string
 }
@@ -26,30 +26,22 @@ type Content = {
   created_at: string
 }
 
-// Define params type for Next.js App Router
-type PageParams = {
-  params: {
-    id: string
-  }
-}
-
-// SEO metadata generator
-export async function generateMetadata(
-  { params }: PageParams
-): Promise<Metadata> {
+// ✅ generateMetadata — 타입 명시하지 말고 그냥 구조 분해
+export async function generateMetadata({ params }: any): Promise<Metadata> {
   return {
     title: `Content ${params.id}`,
   }
 }
 
-// Page component
-export default async function Page({ params }: PageParams) {
-  if (!params || typeof params.id !== 'string' || params.id.trim() === '') {
-    console.error("Invalid or missing ID parameter:", params)
+// ✅ Page 컴포넌트 — 타입은 any 또는 제거, 구조 분해만 사용
+export default async function Page({ params }: any) {
+  const { id } = params
+
+  if (!id || typeof id !== 'string' || id.trim() === '') {
+    console.error('Invalid ID param:', id)
     notFound()
   }
 
-  const { id } = params
   const supabase = createServerComponentClient({ cookies })
 
   let content: Content | null = null
@@ -66,27 +58,24 @@ export default async function Page({ params }: PageParams) {
     content = data
     fetchError = error
   } catch (error: unknown) {
-    console.error(`Unexpected error fetching content with ID ${id}:`, error)
+    console.error('Unexpected fetch error:', error)
 
     if (error instanceof Error) {
-      throw new Error(`Failed to load content: ${error.message}`)
+      throw new Error(`Fetch failed: ${error.message}`)
     } else {
-      throw new Error("Unexpected non-error thrown")
+      throw new Error('Unknown fetch error')
     }
   }
 
   if (fetchError) {
-    console.error(`Supabase error for ID ${id}:`, fetchError.message)
-
     if (fetchError.code === 'PGRST116') {
       notFound()
     } else {
-      throw new Error(`Database error: ${fetchError.message} (Code: ${fetchError.code})`)
+      throw new Error(`Supabase error: ${fetchError.message}`)
     }
   }
 
   if (!content) {
-    console.warn(`Content with ID ${id} resulted in null without error`)
     notFound()
   }
 
