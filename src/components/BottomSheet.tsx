@@ -8,7 +8,11 @@ export default function BottomSheet() {
     const [text, setText] = useState('')
     const [isLoading, setIsLoading] = useState(false)
     const [isOpen, setIsOpen] = useState(false)
-    const [preview, setPreview] = useState(null)
+    const [preview, setPreview] = useState<{
+        title: string
+        chunks: { summary: string }[]
+      } | null>(null)
+      
     const router = useRouter()
 
     const handleSubmit = async (e: React.FormEvent) => {
