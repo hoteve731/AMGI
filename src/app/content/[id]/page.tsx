@@ -8,7 +8,7 @@ import ContentDetail from '@/components/ContentDetail'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 
-// Content 타입 정의
+// 타입 정의
 type Chunk = {
   summary: string
 }
@@ -26,15 +26,22 @@ type Content = {
   created_at: string
 }
 
-// ✅ generateMetadata — 타입 명시하지 말고 그냥 구조 분해
-export async function generateMetadata({ params }: any): Promise<Metadata> {
+// ✅ 타입 명시: 정확하고 ESLint도 만족시킴
+interface PageProps {
+  params: {
+    id: string
+  }
+}
+
+// ✅ generateMetadata
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   return {
     title: `Content ${params.id}`,
   }
 }
 
-// ✅ Page 컴포넌트 — 타입은 any 또는 제거, 구조 분해만 사용
-export default async function Page({ params }: any) {
+// ✅ Page
+export default async function Page({ params }: PageProps) {
   const { id } = params
 
   if (!id || typeof id !== 'string' || id.trim() === '') {
