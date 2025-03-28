@@ -6,7 +6,6 @@ import { PostgrestError } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import ContentDetail from '@/components/ContentDetail'
 import { notFound } from 'next/navigation'
-import type { Metadata } from 'next'
 
 type Chunk = {
   summary: string
@@ -25,20 +24,12 @@ type Content = {
   created_at: string
 }
 
-// ✅ generateMetadata — 타입 제거
-export async function generateMetadata({ params }): Promise<Metadata> {
-  const id = typeof params?.id === 'string' ? params.id : ''
-  return {
-    title: `Content ${id}`,
-  }
-}
-
-// ✅ Page — 타입은 허용되는 최소한만 사용
-export default async function Page({ params }: { params: { id: string } }) {
-  const id = typeof params?.id === 'string' ? params.id : ''
+// ✅ 여기서 힌트 타입만 살짝 줌!
+export default async function Page(props: { params: Record<string, string> }) {
+  const id = typeof props.params?.id === 'string' ? props.params.id : ''
 
   if (!id) {
-    console.error('Invalid ID param:', params)
+    console.error('Invalid ID param:', props.params)
     notFound()
   }
 
@@ -59,6 +50,7 @@ export default async function Page({ params }: { params: { id: string } }) {
     fetchError = error
   } catch (error: unknown) {
     console.error('Unexpected fetch error:', error)
+
     if (error instanceof Error) {
       throw new Error(`Fetch failed: ${error.message}`)
     } else {
