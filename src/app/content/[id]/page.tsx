@@ -27,16 +27,14 @@ type Content = {
 }
 
 // ✅ generateMetadata: 타입 선언 전혀 없이 처리
-export async function generateMetadata(context): Promise<Metadata> {
-  const id = context?.params?.id
-  return {
-    title: `Content ${id}`,
+export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
+    return {
+      title: `Content ${params.id}`,
+    }
   }
-}
-
-// ✅ Page: 타입 없이 받고 내부에서 안전하게 사용
-export default async function Page(context) {
-  const id = context?.params?.id
+  
+  export default async function Page({ params }: { params: { id: string } }) {
+    const { id } = params;
 
   if (!id || typeof id !== 'string' || id.trim() === '') {
     console.error('Invalid ID param:', id)
