@@ -24,12 +24,14 @@ type Content = {
   created_at: string
 }
 
-// ✅ 여기서 힌트 타입만 살짝 줌!
-export default async function Page(props: { params: Record<string, string> }) {
-  const id = typeof props.params?.id === 'string' ? props.params.id : ''
+// ✅ 핵심: Vercel 타입 충돌 피하기 위해 any 사용
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export default async function Page(props: any) {
+  const params = props?.params as { id?: string }
+  const id = typeof params?.id === 'string' ? params.id : ''
 
   if (!id) {
-    console.error('Invalid ID param:', props.params)
+    console.error('Invalid ID param:', params)
     notFound()
   }
 
