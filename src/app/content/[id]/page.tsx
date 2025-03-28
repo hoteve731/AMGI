@@ -26,15 +26,17 @@ type Content = {
   created_at: string
 }
 
-// ✅ Page props 타입 직접 쓰지 말고, 구조 분해 후 내부에서 id 타입 확인만!
-export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
+// ✅ generateMetadata: 타입 선언 전혀 없이 처리
+export async function generateMetadata(context): Promise<Metadata> {
+  const id = context?.params?.id
   return {
-    title: `Content ${params.id}`,
+    title: `Content ${id}`,
   }
 }
 
-export default async function Page({ params }: { params: { id: string } }) {
-  const { id } = params
+// ✅ Page: 타입 없이 받고 내부에서 안전하게 사용
+export default async function Page(context) {
+  const id = context?.params?.id
 
   if (!id || typeof id !== 'string' || id.trim() === '') {
     console.error('Invalid ID param:', id)
