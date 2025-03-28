@@ -8,7 +8,6 @@ import ContentDetail from '@/components/ContentDetail'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 
-// DB 관련 타입들
 type Chunk = {
   summary: string
 }
@@ -26,18 +25,20 @@ type Content = {
   created_at: string
 }
 
-// ✅ generateMetadata: 타입 선언 전혀 없이 처리
-export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
-    return {
-      title: `Content ${params.id}`,
-    }
+// ✅ generateMetadata — 타입 제거
+export async function generateMetadata({ params }): Promise<Metadata> {
+  const id = typeof params?.id === 'string' ? params.id : ''
+  return {
+    title: `Content ${id}`,
   }
-  
-  export default async function Page({ params }: { params: { id: string } }) {
-    const { id } = params;
+}
 
-  if (!id || typeof id !== 'string' || id.trim() === '') {
-    console.error('Invalid ID param:', id)
+// ✅ Page — 타입은 허용되는 최소한만 사용
+export default async function Page({ params }: { params: { id: string } }) {
+  const id = typeof params?.id === 'string' ? params.id : ''
+
+  if (!id) {
+    console.error('Invalid ID param:', params)
     notFound()
   }
 
@@ -58,7 +59,6 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
     fetchError = error
   } catch (error: unknown) {
     console.error('Unexpected fetch error:', error)
-
     if (error instanceof Error) {
       throw new Error(`Fetch failed: ${error.message}`)
     } else {
