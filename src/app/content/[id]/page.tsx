@@ -8,7 +8,7 @@ import ContentDetail from '@/components/ContentDetail'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 
-// Content 타입 정의
+// DB 관련 타입들
 type Chunk = {
   summary: string
 }
@@ -26,16 +26,15 @@ type Content = {
   created_at: string
 }
 
-// ✅ generateMetadata - 절대로 타입 명시 X
-export async function generateMetadata({ params }: any): Promise<Metadata> {
+// ✅ Page props 타입 직접 쓰지 말고, 구조 분해 후 내부에서 id 타입 확인만!
+export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
   return {
-    title: `Content ${params?.id}`,
+    title: `Content ${params.id}`,
   }
 }
 
-// ✅ Page 함수 - 타입 생략! 내부에서 타입 체크만
-export default async function Page({ params }: any) {
-  const id = params?.id
+export default async function Page({ params }: { params: { id: string } }) {
+  const { id } = params
 
   if (!id || typeof id !== 'string' || id.trim() === '') {
     console.error('Invalid ID param:', id)
