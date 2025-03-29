@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import ConfirmModal from './ConfirmModal'
+import Link from 'next/link'
 
 type Content = {
     id: string
@@ -89,15 +90,21 @@ export default function ContentDetail({ content }: { content: Content }) {
                         </div>
                     ))}
                 </div>
+                <button
+                    onClick={() => setShowOriginal(true)}
+                    className="mt-4 text-sm text-gray-500 hover:text-gray-700"
+                >
+                    원본 텍스트 보기 →
+                </button>
             </div>
 
             <div className="sticky bottom-0 p-4 bg-white border-t">
-                <button
-                    onClick={() => setShowOriginal(true)}
-                    className="w-full py-3 bg-black text-white rounded-full"
+                <Link
+                    href={`/content/${content.id}/learning`}
+                    className="block w-full py-4 bg-black text-white text-center rounded-full font-medium hover:bg-gray-900 transition-colors"
                 >
-                    원본 텍스트 보기
-                </button>
+                    지금 암기하기
+                </Link>
             </div>
 
             {showOriginal && (
