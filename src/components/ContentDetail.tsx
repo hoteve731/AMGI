@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import ConfirmModal from './ConfirmModal'
 
 type Content = {
     id: string
@@ -13,7 +15,49 @@ type Content = {
 
 export default function ContentDetail({ content }: { content: Content }) {
     const [showOriginal, setShowOriginal] = useState(false)
+    const [showDeleteModal, setShowDeleteModal] = useState(false)
+    const [isDeleting, setIsDeleting] = useState(false)
     const router = useRouter()
+    const supabase = createClientComponentClient()
+
+    const handleDelete = async () => {
+        if (isDeleting) return
+
+        try {
+            setIsDeleting(true)
+
+            // 현재 인증된 사용자 확인
+            const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+            if (authError || !user) {
+                throw new Error('인증되지 않은 사용자입니다.')
+            }
+
+            // 삭제 요청
+            const { error: deleteError } = await supabase
+                .from('contents')
+                .delete()
+                .match({
+                    id: content.id,
+                    user_id: user.id  // 현재 사용자의 콘텐츠만 삭제 가능
+                })
+
+            if (deleteError) {
+                throw deleteError
+            }
+
+            setShowDeleteModal(false)
+            alert('콘텐츠가 삭제되었습니다.')
+
+            router.push('/')
+            router.refresh()
+        } catch (error) {
+            console.error('삭제 중 오류 발생:', error)
+            alert(error instanceof Error ? error.message : '콘텐츠 삭제 중 오류가 발생했습니다.')
+        } finally {
+            setIsDeleting(false)
+        }
+    }
 
     return (
         <main className="flex min-h-screen flex-col">
@@ -25,6 +69,13 @@ export default function ContentDetail({ content }: { content: Content }) {
                     ←
                 </button>
                 <h1 className="text-center text-lg font-bold">{content.title}</h1>
+                <button
+                    onClick={() => setShowDeleteModal(true)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-red-500 hover:text-red-600"
+                    disabled={isDeleting}
+                >
+                    {isDeleting ? '삭제중...' : '🗑️'}
+                </button>
             </div>
 
             <div className="flex-1 max-w-2xl mx-auto w-full p-4">
@@ -60,6 +111,16 @@ export default function ContentDetail({ content }: { content: Content }) {
                     </div>
                 </div>
             )}
+
+            <ConfirmModal
+                isOpen={showDeleteModal}
+                onClose={() => setShowDeleteModal(false)}
+                onConfirm={handleDelete}
+                title="콘텐츠 삭제"
+                message="정말로 이 콘텐츠를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다."
+                confirmText={isDeleting ? "삭제중..." : "삭제"}
+                cancelText="취소"
+            />
         </main>
     )
 } 

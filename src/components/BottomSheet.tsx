@@ -8,11 +8,12 @@ export default function BottomSheet() {
     const [text, setText] = useState('')
     const [isLoading, setIsLoading] = useState(false)
     const [isOpen, setIsOpen] = useState(false)
+    const [isClosing, setIsClosing] = useState(false)
     const [preview, setPreview] = useState<{
         title: string
         chunks: { summary: string }[]
-      } | null>(null)
-      
+    } | null>(null)
+
     const router = useRouter()
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -51,6 +52,14 @@ export default function BottomSheet() {
         router.refresh()
     }
 
+    const closeSheet = () => {
+        setIsClosing(true)
+        setTimeout(() => {
+            setIsOpen(false)
+            setIsClosing(false)
+        }, 200)
+    }
+
     if (isLoading) {
         return <LoadingScreen />
     }
@@ -87,24 +96,33 @@ export default function BottomSheet() {
                 머릿속에 넣고 싶은 아이디어를 붙여넣으세요.
             </button>
 
-            {isOpen && (
-                <div className="fixed inset-0 bg-black bg-opacity-50">
-                    <div className="fixed bottom-0 left-0 right-0 bg-white rounded-t-2xl p-4">
-                        <form onSubmit={handleSubmit}>
+            {(isOpen || isClosing) && (
+                <div
+                    className={`fixed inset-0 transition-all duration-200 ease-out ${isClosing ? 'bg-black/0' : 'bg-black/50'
+                        }`}
+                >
+                    <div
+                        className="fixed inset-0"
+                        onClick={closeSheet}
+                    />
+                    <div
+                        className={`fixed bottom-0 left-0 right-0 bg-white rounded-t-2xl p-6 transition-all duration-200 ease-out ${isClosing ? 'translate-y-full' : 'translate-y-0'
+                            }`}
+                        style={{ minHeight: '60vh' }}
+                    >
+                        <form onSubmit={handleSubmit} className="h-full">
                             <textarea
                                 value={text}
                                 onChange={(e) => setText(e.target.value)}
                                 placeholder="텍스트를 붙여넣으세요..."
-                                className="w-full h-40 p-2 border rounded resize-none"
+                                className="w-full h-[calc(60vh-120px)] p-4 border rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                                 disabled={isLoading}
                             />
-                            <div className="flex justify-end mt-4">
+                            <div className="flex justify-end mt-4 gap-2">
                                 <button
                                     type="button"
-                                    onClick={() => {
-                                        setIsOpen(false)
-                                    }}
-                                    className="px-4 py-2 mr-2 text-gray-600"
+                                    onClick={closeSheet}
+                                    className="px-6 py-2.5 text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
                                     disabled={isLoading}
                                 >
                                     취소
@@ -112,7 +130,7 @@ export default function BottomSheet() {
                                 <button
                                     type="submit"
                                     disabled={isLoading || !text.trim()}
-                                    className="px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-300"
+                                    className="px-6 py-2.5 bg-purple-500 text-white rounded-full hover:bg-purple-600 transition-colors disabled:bg-gray-300 disabled:hover:bg-gray-300"
                                 >
                                     {isLoading ? '변환 중...' : '변환하기'}
                                 </button>
