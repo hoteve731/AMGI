@@ -42,7 +42,7 @@ export async function POST(req: Request) {
                     },
                     { role: "user", content: text }
                 ],
-                temperature: 0.7,
+                temperature: 0,
                 max_tokens: 50
             })
             title = titleCompletion.choices[0].message.content
@@ -65,19 +65,27 @@ export async function POST(req: Request) {
                 messages: [
                     {
                         role: "system",
-                        content: `주어진 텍스트를 핵심적인 의미 단위로 3개의 청크로 나누고 각각을 요약해주세요. 한 청크당 150~200 글자 정도가 좋습니다. 원본의 말투를 유지하세요. 
-              다음 JSON 형식으로 출력해주세요:
-              {
-                "chunks": [
-                  {"summary": "첫 번째 청크 요약"},
-                  {"summary": "두 번째 청크 요약"},
-                  {"summary": "세 번째 청크 요약"}
-                ]
-              }`
+                        content: `주어진 텍스트를 읽고, 그 안에 담긴 아이디어/주장/통찰이 각각 한 문장씩 담길 수 있도록 청크로 나눠주세요.
+
+각 청크는 서로 다른 아이디어를 담고 있어야 하며, 하나의 청크에는 하나의 핵심 메시지만 들어 있어야 합니다.
+
+청크 개수는 고정되어 있지 않으며, 텍스트가 가진 실제 의미 단위 수에 따라 달라질 수 있습니다. (예: 1~6개)
+
+각 청크는 원문 스타일과 톤을 유지하며, 150~200자 내외로 작성해주세요.
+
+다음 JSON 형식으로 출력해주세요:
+{
+  "chunks": [
+    {"summary": "첫 번째 청크 요약"},
+    {"summary": "두 번째 청크 요약"},
+    ...
+  ]
+}
+`
                     },
                     { role: "user", content: text }
                 ],
-                temperature: 0.7,
+                temperature: 0,
                 max_tokens: 1000
             })
             const content = chunkCompletion.choices[0].message.content
@@ -104,19 +112,22 @@ export async function POST(req: Request) {
                 messages: [
                     {
                         role: "system",
-                        content: `각 청크에서 핵심 단어를 찾아 마스킹 처리해주세요. 
-              다음 JSON 형식으로 출력해주세요:
-              {
-                "masked_chunks": [
-                  {"masked_text": "첫 번째 청크 마스킹된 텍스트"},
-                  {"masked_text": "두 번째 청크 마스킹된 텍스트"},
-                  {"masked_text": "세 번째 청크 마스킹된 텍스트"}
-                ]
-              }`
+                        content: `다음은 여러 개의 문장 청크입니다. 각 청크에서 핵심 단어 하나 또는 두 개를 마스킹 처리해주세요. 
+중요한 키워드를 자연스럽게 빈칸으로 바꾸되, 문장의 리듬이나 문맥이 어색하지 않도록 해주세요. 핵심단어는 **로 감싸서 출력하세요. 예시: **핵심단어**
+
+다음 JSON 형식으로 출력하세요:
+{
+  "masked_chunks": [
+    {"masked_text": "첫 번째 청크 마스킹된 텍스트"},
+    {"masked_text": "두 번째 청크 마스킹된 텍스트"},
+    ...
+  ]
+}
+`
                     },
                     { role: "user", content: JSON.stringify(chunks) }
                 ],
-                temperature: 0.7,
+                temperature: 0,
                 max_tokens: 1000
             })
             const maskedContent = maskingCompletion.choices[0].message.content
