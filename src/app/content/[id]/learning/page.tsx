@@ -3,7 +3,7 @@
 import { useEffect, useState, use } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import { Dialog } from '@headlessui/react'  // 알림 권한 요청 모달용
+import { Dialog } from '@headlessui/react'
 import { subscribeUserToPush } from '@/utils/pushNotification'
 
 type ChunkProgress = {
@@ -97,25 +97,25 @@ function formatTimeRemaining(date: Date): string {
     return `${minutes}분 후 알림`;
 }
 
-export default function LearningPage({ params }: { params: { id: string } }) {
+export default function LearningPage({ params }: { params: Promise<{ id: string }> }) {
+    const id = use(params).id  // params를 use로 unwrap
     const [content, setContent] = useState<Content | null>(null)
     const [currentIndex, setCurrentIndex] = useState(0)
     const [isFlipped, setIsFlipped] = useState(false)
     const router = useRouter()
     const supabase = createClientComponentClient()
-    const contentId = params.id
     const [currentTime, setCurrentTime] = useState(new Date());
     const [showNotificationRequest, setShowNotificationRequest] = useState(false);
     const [serviceWorkerRegistration, setServiceWorkerRegistration] = useState<ServiceWorkerRegistration | null>(null);
 
     useEffect(() => {
-        if (!contentId) return
+        if (!id) return
 
         const fetchContent = async () => {
             const { data, error } = await supabase
                 .from('contents')
                 .select('*')
-                .eq('id', contentId)
+                .eq('id', id)
                 .single()
 
             if (error) {
@@ -128,7 +128,7 @@ export default function LearningPage({ params }: { params: { id: string } }) {
         }
 
         fetchContent()
-    }, [contentId, router, supabase])
+    }, [id, router, supabase])
 
     // Service Worker 등록 및 푸시 구독
     useEffect(() => {
@@ -187,27 +187,54 @@ export default function LearningPage({ params }: { params: { id: string } }) {
     // 알림 권한 요청 및 구독 처리
     const requestNotificationPermission = async () => {
         try {
+            console.log('알림 권한 요청 시작');
+
             if (!('Notification' in window)) {
+                console.error('이 브라우저는 알림을 지원하지 않습니다.');
                 alert('이 브라우저는 알림을 지원하지 않습니다.');
                 return;
             }
 
+            console.log('현재 알림 권한 상태:', Notification.permission);
+
+            // 이미 거부된 상태라면 안내 메시지 표시
+            if (Notification.permission === 'denied') {
+                alert('알림이 차단되어 있습니다. 브라우저 설정에서 알림을 허용해주세요.\n\nChrome: 설정 > 개인정보 및 보안 > 사이트 설정 > 알림');
+                return;
+            }
+
             const permission = await Notification.requestPermission();
+            console.log('알림 권한 요청 결과:', permission);
+
             if (permission === 'granted') {
+                console.log('알림 권한이 허용되었습니다.');
                 setShowNotificationRequest(false);
 
                 if (serviceWorkerRegistration) {
+                    console.log('Service Worker 등록 상태:', serviceWorkerRegistration);
                     const subscription = await subscribeUserToPush(serviceWorkerRegistration);
+                    console.log('푸시 구독 결과:', subscription);
+
                     if (subscription) {
                         await saveSubscriptionToSupabase(subscription);
+                        console.log('구독 정보가 Supabase에 저장되었습니다.');
+
+                        // 테스트 알림 발송
                         new Notification('알림 설정 완료', {
-                            body: '이제 복습 알림을 받을 수 있습니다.'
+                            body: '이제 복습 알림을 받을 수 있습니다.',
+                            icon: '/icon.png'
                         });
                     }
+                } else {
+                    console.error('Service Worker가 등록되지 않았습니다.');
                 }
+            } else {
+                console.log('알림 권한이 거부되었습니다:', permission);
+                alert('알림이 차단되었습니다. 브라우저 설정에서 알림을 허용해주세요.\n\nChrome: 설정 > 개인정보 및 보안 > 사이트 설정 > 알림');
             }
         } catch (error) {
-            console.error('알림 권한 요청 실패:', error);
+            console.error('알림 권한 요청 중 오류 발생:', error);
+            alert('알림 설정 중 오류가 발생했습니다. 브라우저 설정을 확인해주세요.');
         }
     };
 
@@ -255,21 +282,39 @@ export default function LearningPage({ params }: { params: { id: string } }) {
             [currentIndex]: newProgress
         };
 
-        // Supabase에 진행 상황 저장
+        // id 사용
         await supabase
             .from('contents')
             .update({ progress: updatedProgress })
-            .eq('id', params.id);
+            .eq('id', id);
 
         setContent(prev => prev ? { ...prev, progress: updatedProgress } : null);
 
-        // 알림 스케줄링
-        scheduleNotification(
-            newProgress.nextReviewDate,
-            `${content.title}의 ${currentIndex + 1}번째 카드를 복습할 시간입니다!`,
-            content.id,
-            currentIndex
-        );
+        // scheduleNotification 함수 호출
+        if (serviceWorkerRegistration) {
+            const notificationData = {
+                title: 'ANKI 복습의 시간이에요',
+                body: `${content.title}의 ${currentIndex + 1}번째 카드를 복습할 시간입니다!`,
+                data: {
+                    contentId: content.id,
+                    chunkIndex: currentIndex
+                }
+            };
+
+            const delay = newProgress.nextReviewDate.getTime() - Date.now();
+            if (delay > 0) {
+                setTimeout(() => {
+                    if (Notification.permission === 'granted') {
+                        serviceWorkerRegistration.showNotification(notificationData.title, {
+                            ...notificationData,
+                            icon: '/icon.png',
+                            badge: '/badge.png',
+                            requireInteraction: true
+                        });
+                    }
+                }, delay);
+            }
+        }
 
         handleNext();
     };
@@ -387,12 +432,12 @@ export default function LearningPage({ params }: { params: { id: string } }) {
             <Dialog
                 open={showNotificationRequest}
                 onClose={() => setShowNotificationRequest(false)}
-                className="fixed inset-0 z-50 overflow-y-auto"
+                className="relative z-50"
             >
-                <div className="flex items-center justify-center min-h-screen">
-                    <Dialog.Overlay className="fixed inset-0 bg-black opacity-30" />
+                <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
 
-                    <div className="relative bg-white rounded-lg p-6 max-w-sm mx-auto">
+                <div className="fixed inset-0 flex items-center justify-center p-4">
+                    <Dialog.Panel className="w-full max-w-sm rounded bg-white p-6">
                         <Dialog.Title className="text-lg font-medium mb-4">
                             복습 알림 설정
                         </Dialog.Title>
@@ -415,7 +460,7 @@ export default function LearningPage({ params }: { params: { id: string } }) {
                                 알림 허용하기
                             </button>
                         </div>
-                    </div>
+                    </Dialog.Panel>
                 </div>
             </Dialog>
         </>
