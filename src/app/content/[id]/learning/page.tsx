@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, use } from 'react'
+import { useEffect, useState, use, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { Dialog } from '@headlessui/react'
@@ -19,10 +19,6 @@ type Content = {
     chunks: Array<{ summary: string }>
     masked_chunks: Array<{ masked_text: string }>
     progress?: { [chunkIndex: number]: ChunkProgress }
-}
-
-function isMaskedChunk(chunk: { summary: string } | { masked_text: string }): chunk is { masked_text: string } {
-    return 'masked_text' in chunk
 }
 
 function maskText(text: string | undefined, isFlipped: boolean) {
@@ -98,15 +94,39 @@ function formatTimeRemaining(date: Date): string {
 }
 
 export default function LearningPage({ params }: { params: Promise<{ id: string }> }) {
-    const id = use(params).id  // params를 use로 unwrap
+    const id = use(params).id
     const [content, setContent] = useState<Content | null>(null)
     const [currentIndex, setCurrentIndex] = useState(0)
     const [isFlipped, setIsFlipped] = useState(false)
     const router = useRouter()
     const supabase = createClientComponentClient()
-    const [currentTime, setCurrentTime] = useState(new Date());
     const [showNotificationRequest, setShowNotificationRequest] = useState(false);
     const [serviceWorkerRegistration, setServiceWorkerRegistration] = useState<ServiceWorkerRegistration | null>(null);
+
+    // Supabase에 구독 정보 저장
+    const saveSubscriptionToSupabase = useCallback(async (subscription: PushSubscription) => {
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error('로그인이 필요합니다.');
+
+            const { error } = await supabase
+                .from('push_subscriptions')
+                .upsert({
+                    user_id: user.id,
+                    endpoint: subscription.endpoint,
+                    p256dh_key: subscription.toJSON().keys?.p256dh,
+                    auth_key: subscription.toJSON().keys?.auth,
+                    updated_at: new Date().toISOString()
+                }, {
+                    onConflict: 'endpoint'
+                });
+
+            if (error) throw error;
+            console.log('푸시 구독 정보가 저장되었습니다.');
+        } catch (error) {
+            console.error('구독 정보 저장 실패:', error);
+        }
+    }, [supabase]);
 
     useEffect(() => {
         if (!id) return
@@ -155,7 +175,7 @@ export default function LearningPage({ params }: { params: Promise<{ id: string 
         }
 
         setupPushNotification();
-    }, []);
+    }, [saveSubscriptionToSupabase]);
 
     // 알림 권한 상태 확인 및 요청
     useEffect(() => {
@@ -238,31 +258,6 @@ export default function LearningPage({ params }: { params: Promise<{ id: string 
         }
     };
 
-    // Supabase에 구독 정보 저장
-    const saveSubscriptionToSupabase = async (subscription: PushSubscription) => {
-        try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) throw new Error('로그인이 필요합니다.');
-
-            const { error } = await supabase
-                .from('push_subscriptions')
-                .upsert({
-                    user_id: user.id,
-                    endpoint: subscription.endpoint,
-                    p256dh_key: subscription.toJSON().keys?.p256dh,
-                    auth_key: subscription.toJSON().keys?.auth,
-                    updated_at: new Date().toISOString()
-                }, {
-                    onConflict: 'endpoint'
-                });
-
-            if (error) throw error;
-            console.log('푸시 구독 정보가 저장되었습니다.');
-        } catch (error) {
-            console.error('구독 정보 저장 실패:', error);
-        }
-    };
-
     // URL에서 chunk 파라미터 가져오기
     useEffect(() => {
         const searchParams = new URLSearchParams(window.location.search);
@@ -319,28 +314,20 @@ export default function LearningPage({ params }: { params: Promise<{ id: string 
         handleNext();
     };
 
-    // 1초마다 현재 시간 업데이트
-    useEffect(() => {
-        const timer = setInterval(() => {
-            setCurrentTime(new Date());
-        }, 1000);
-
-        return () => clearInterval(timer);
-    }, []);
-
-    if (!content) return null
-
-    const totalCards = content.chunks.length
-    const currentChunk = isFlipped ? content.chunks[currentIndex] : content.masked_chunks[currentIndex]
-
     const handleNext = () => {
-        if (currentIndex === totalCards - 1) {
+        if (!content) return;
+
+        if (currentIndex === content.chunks.length - 1) {
             setCurrentIndex(0)
         } else {
             setCurrentIndex(prev => prev + 1)
         }
         setIsFlipped(false)
     }
+
+    if (!content) return null
+
+    const totalCards = content.chunks.length
 
     return (
         <>
