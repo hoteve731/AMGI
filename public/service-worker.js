@@ -1,40 +1,65 @@
-// 캐시 이름
-const CACHE_NAME = 'loopa-cache-v1';
+const APP_CACHE_NAME = 'loopa-app-v1';
+const DYNAMIC_CACHE_NAME = 'loopa-dynamic-v1';
+let currentVersion = null;
 
-// 캐시할 파일
-const urlsToCache = [
-    '/',
-    '/manifest.json',
-    '/icons/icon-192x192.png',
-    '/icons/icon-512x512.png'
-];
+// 버전 체크
+async function checkVersion() {
+    try {
+        const response = await fetch('/api/version');
+        const { version } = await response.json();
+
+        if (currentVersion && currentVersion !== version) {
+            self.clients.matchAll().then(clients => {
+                clients.forEach(client => client.postMessage({ type: 'UPDATE_AVAILABLE' }));
+            });
+        }
+        currentVersion = version;
+    } catch (error) {
+        console.error('Version check failed:', error);
+    }
+}
+
+// 주기적으로 버전 체크 (1시간마다)
+setInterval(checkVersion, 60 * 60 * 1000);
 
 // 서비스 워커 설치
-self.addEventListener('install', (event) => {
+self.addEventListener('install', event => {
     event.waitUntil(
-        caches.open(CACHE_NAME)
-            .then((cache) => {
-                return cache.addAll(urlsToCache);
-            })
+        caches.open(APP_CACHE_NAME).then(cache => {
+            return cache.addAll([
+                '/',
+                '/manifest.json',
+                '/icons/icon-192x192.png',
+                '/icons/icon-512x512.png',
+                '/splash/apple-splash-2048-2732.png',
+                '/splash/apple-splash-1290-2796.png',
+                '/splash/apple-splash-1080-1920.png'
+            ]);
+        })
     );
 });
 
 // 네트워크 요청 처리
-self.addEventListener('fetch', (event) => {
+self.addEventListener('fetch', event => {
+    if (event.request.url.includes('/api/version')) {
+        event.respondWith(fetch(event.request));
+        return;
+    }
+
     event.respondWith(
-        caches.match(event.request)
-            .then((response) => {
-                // 캐시에 있으면 캐시된 응답 반환
-                if (response) {
-                    return response;
-                }
-                return fetch(event.request);
-            })
+        caches.match(event.request).then(response => {
+            return response || fetch(event.request).then(fetchResponse => {
+                return caches.open(DYNAMIC_CACHE_NAME).then(cache => {
+                    cache.put(event.request, fetchResponse.clone());
+                    return fetchResponse;
+                });
+            });
+        })
     );
 });
 
 // 푸시 알림 처리
-self.addEventListener('push', (event) => {
+self.addEventListener('push', event => {
     const options = {
         body: event.data.text(),
         icon: '/icons/icon-192x192.png',
