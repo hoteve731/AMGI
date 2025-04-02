@@ -27,7 +27,21 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: "LOOPA"
+    title: "LOOPA",
+    startupImage: [
+      {
+        url: '/splash/apple-splash-2048-2732.png',
+        media: '(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2)'
+      },
+      {
+        url: '/splash/apple-splash-1290-2796.png',
+        media: '(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3)'
+      },
+      {
+        url: '/splash/apple-splash-1080-1920.png',
+        media: '(device-width: 360px) and (device-height: 640px) and (-webkit-device-pixel-ratio: 3)'
+      }
+    ]
   },
   icons: [
     { rel: "icon", url: "/icons/icon-192x192.png", sizes: "192x192" },
