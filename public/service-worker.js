@@ -1,26 +1,5 @@
 const APP_CACHE_NAME = 'loopa-app-v1';
 const DYNAMIC_CACHE_NAME = 'loopa-dynamic-v1';
-let currentVersion = null;
-
-// 버전 체크
-async function checkVersion() {
-    try {
-        const response = await fetch('/api/version');
-        const { version } = await response.json();
-
-        if (currentVersion && currentVersion !== version) {
-            self.clients.matchAll().then(clients => {
-                clients.forEach(client => client.postMessage({ type: 'UPDATE_AVAILABLE' }));
-            });
-        }
-        currentVersion = version;
-    } catch (error) {
-        console.error('Version check failed:', error);
-    }
-}
-
-// 주기적으로 버전 체크 (1시간마다)
-setInterval(checkVersion, 60 * 60 * 1000);
 
 // 서비스 워커 설치
 self.addEventListener('install', event => {
@@ -39,20 +18,51 @@ self.addEventListener('install', event => {
     );
 });
 
+// 서비스 워커 활성화 시 이전 캐시 정리
+self.addEventListener('activate', event => {
+    event.waitUntil(
+        caches.keys().then(cacheNames => {
+            return Promise.all(
+                cacheNames
+                    .filter(cacheName => cacheName !== APP_CACHE_NAME && cacheName !== DYNAMIC_CACHE_NAME)
+                    .map(cacheName => caches.delete(cacheName))
+            );
+        })
+    );
+});
+
 // 네트워크 요청 처리
 self.addEventListener('fetch', event => {
-    if (event.request.url.includes('/api/version')) {
-        event.respondWith(fetch(event.request));
-        return;
-    }
-
     event.respondWith(
         caches.match(event.request).then(response => {
-            return response || fetch(event.request).then(fetchResponse => {
-                return caches.open(DYNAMIC_CACHE_NAME).then(cache => {
-                    cache.put(event.request, fetchResponse.clone());
-                    return fetchResponse;
+            // 캐시에 있으면 캐시된 응답 반환
+            if (response) {
+                // 백그라운드에서 새로운 버전 확인
+                fetch(event.request).then(fetchResponse => {
+                    // 응답이 다르면 캐시 업데이트
+                    if (fetchResponse && fetchResponse.status === 200) {
+                        caches.open(DYNAMIC_CACHE_NAME).then(cache => {
+                            cache.put(event.request, fetchResponse);
+                        });
+                    }
                 });
+                return response;
+            }
+
+            // 캐시에 없으면 네트워크 요청
+            return fetch(event.request).then(fetchResponse => {
+                // 유효한 응답이 아니면 그대로 반환
+                if (!fetchResponse || fetchResponse.status !== 200) {
+                    return fetchResponse;
+                }
+
+                // 응답을 복제해서 캐시에 저장
+                const responseToCache = fetchResponse.clone();
+                caches.open(DYNAMIC_CACHE_NAME).then(cache => {
+                    cache.put(event.request, responseToCache);
+                });
+
+                return fetchResponse;
             });
         })
     );
