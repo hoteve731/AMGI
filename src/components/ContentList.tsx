@@ -106,7 +106,7 @@ export default function ContentList({ contents: initialContents }: { contents: C
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 relative">
-                <div className="space-y-1 relative perspective-1000">
+                <div className="space-y-5 relative perspective-1000">
                     {filteredContents.map((content, index) => (
                         <div
                             key={content.id}
@@ -120,7 +120,19 @@ export default function ContentList({ contents: initialContents }: { contents: C
                                 zIndex: filteredContents.length - index,
                             }}
                         >
-                            <div className="p-4 bg-white backdrop-blur-md rounded-lg shadow-lg border border-gray-100 hover:bg-white/95 transition-colors">
+                            <div className="
+                                p-4 
+                                bg-white/60
+                                backdrop-blur-md 
+                                rounded-xl
+                                shadow-lg
+                                border
+                                border-white/20
+                                hover:bg-white/70
+                                transition-colors
+                                [-webkit-backdrop-filter:blur(20px)]
+                                [backdrop-filter:blur(20px)]
+                            ">
                                 <div className="flex items-center justify-between">
                                     <Link
                                         href={`/content/${content.id}`}
@@ -170,8 +182,26 @@ export default function ContentList({ contents: initialContents }: { contents: C
                                         />
                                     </div>
                                 </div>
-                                <div className="text-sm text-gray-500 mt-1">
-                                    {new Date(content.created_at).toLocaleDateString('ko-KR')} 암기 시작
+                                <div className="flex items-center gap-3 text-sm text-gray-500 mt-1">
+                                    <div className="flex items-center gap-1">
+                                        <svg
+                                            className="w-4 h-4"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                strokeWidth={2}
+                                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                            />
+                                        </svg>
+                                        <span className="text-gray-600 font-medium">12</span>
+                                    </div>
+                                    <div>
+                                        {new Date(content.created_at).toLocaleDateString('ko-KR')} 암기 시작
+                                    </div>
                                 </div>
                             </div>
                         </div>
