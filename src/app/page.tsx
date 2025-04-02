@@ -24,7 +24,7 @@ export default async function Home() {
     <main className="flex min-h-screen flex-col">
       <header className="flex justify-between items-center p-4 border-b">
         <div>
-          <h1 className="text-2xl font-bold">AMGI</h1>
+          <h1 className="text-2xl font-bold">LOOPA</h1>
           <p className="text-sm text-gray-600">
             {user.user_metadata.full_name || user.email}
           </p>
