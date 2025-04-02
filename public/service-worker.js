@@ -1,6 +1,18 @@
 const APP_CACHE_NAME = 'loopa-app-v1';
 const DYNAMIC_CACHE_NAME = 'loopa-dynamic-v1';
 
+// 캐시하지 않을 URL 패턴들
+const EXCLUDED_URLS = [
+    '/auth',
+    '/api/auth',
+    'supabase.co'
+];
+
+// URL이 캐시 제외 대상인지 확인
+function shouldHandleRequest(url) {
+    return !EXCLUDED_URLS.some(excluded => url.includes(excluded));
+}
+
 // 서비스 워커 설치
 self.addEventListener('install', event => {
     event.waitUntil(
@@ -18,7 +30,7 @@ self.addEventListener('install', event => {
     );
 });
 
-// 서비스 워커 활성화 시 이전 캐시 정리
+// 서비스 워커 활성화
 self.addEventListener('activate', event => {
     event.waitUntil(
         caches.keys().then(cacheNames => {
@@ -33,13 +45,16 @@ self.addEventListener('activate', event => {
 
 // 네트워크 요청 처리
 self.addEventListener('fetch', event => {
+    // 인증 관련 요청은 항상 네트워크로 처리
+    if (!shouldHandleRequest(event.request.url)) {
+        event.respondWith(fetch(event.request));
+        return;
+    }
+
     event.respondWith(
         caches.match(event.request).then(response => {
-            // 캐시에 있으면 캐시된 응답 반환
             if (response) {
-                // 백그라운드에서 새로운 버전 확인
                 fetch(event.request).then(fetchResponse => {
-                    // 응답이 다르면 캐시 업데이트
                     if (fetchResponse && fetchResponse.status === 200) {
                         caches.open(DYNAMIC_CACHE_NAME).then(cache => {
                             cache.put(event.request, fetchResponse);
@@ -49,14 +64,11 @@ self.addEventListener('fetch', event => {
                 return response;
             }
 
-            // 캐시에 없으면 네트워크 요청
             return fetch(event.request).then(fetchResponse => {
-                // 유효한 응답이 아니면 그대로 반환
                 if (!fetchResponse || fetchResponse.status !== 200) {
                     return fetchResponse;
                 }
 
-                // 응답을 복제해서 캐시에 저장
                 const responseToCache = fetchResponse.clone();
                 caches.open(DYNAMIC_CACHE_NAME).then(cache => {
                     cache.put(event.request, responseToCache);
