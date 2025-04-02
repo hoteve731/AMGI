@@ -1,46 +1,55 @@
-self.addEventListener('push', event => {
-    console.log('[Service Worker] 푸시알림 수신:', event);
+// 캐시 이름
+const CACHE_NAME = 'loopa-cache-v1';
 
-    let notificationData = {
-        title: 'ANKI 복습의 시간이에요',
-        body: '복습할 내용이 있습니다.',
-        icon: '/icon.png',
-        badge: '/badge.png'
-    };
+// 캐시할 파일
+const urlsToCache = [
+    '/',
+    '/manifest.json',
+    '/icons/icon-192x192.png',
+    '/icons/icon-512x512.png'
+];
 
-    if (event.data) {
-        try {
-            const dataJson = event.data.json();
-            notificationData = { ...notificationData, ...dataJson };
-        } catch (e) {
-            notificationData.body = event.data.text();
-        }
-    }
-
+// 서비스 워커 설치
+self.addEventListener('install', (event) => {
     event.waitUntil(
-        self.registration.showNotification(notificationData.title, {
-            ...notificationData,
-            data: notificationData.data,
-            requireInteraction: true
-        })
+        caches.open(CACHE_NAME)
+            .then((cache) => {
+                return cache.addAll(urlsToCache);
+            })
     );
 });
 
-self.addEventListener('notificationclick', event => {
-    console.log('[Service Worker] 알림 클릭:', event);
-    event.notification.close();
+// 네트워크 요청 처리
+self.addEventListener('fetch', (event) => {
+    event.respondWith(
+        caches.match(event.request)
+            .then((response) => {
+                // 캐시에 있으면 캐시된 응답 반환
+                if (response) {
+                    return response;
+                }
+                return fetch(event.request);
+            })
+    );
+});
 
-    const urlToOpen = event.notification.data?.url || '/';
+// 푸시 알림 처리
+self.addEventListener('push', (event) => {
+    const options = {
+        body: event.data.text(),
+        icon: '/icons/icon-192x192.png',
+        badge: '/icons/icon-192x192.png'
+    };
 
     event.waitUntil(
-        clients.matchAll({ type: 'window', includeUncontrolled: true })
-            .then(clientList => {
-                for (const client of clientList) {
-                    if (client.url === urlToOpen && 'focus' in client) {
-                        return client.focus();
-                    }
-                }
-                return clients.openWindow(urlToOpen);
-            })
+        self.registration.showNotification('LOOPA', options)
+    );
+});
+
+// 알림 클릭 처리
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+    event.waitUntil(
+        clients.openWindow('/')
     );
 }); 

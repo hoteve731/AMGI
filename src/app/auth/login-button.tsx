@@ -1,4 +1,4 @@
- 'use client'
+'use client'
 
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { useState } from 'react'
@@ -8,21 +8,22 @@ export default function LoginButton() {
     const [isLoading, setIsLoading] = useState(false)
 
     const handleLogin = async () => {
+        setIsLoading(true)
         try {
-            setIsLoading(true)
+            // 현재 URL을 기반으로 redirectTo 설정
+            const redirectTo = `${window.location.origin}/auth/callback`
+
             const { error } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
-                    redirectTo: `${window.location.origin}/auth/callback`,
-                },
+                    redirectTo: redirectTo,
+                }
             })
 
-            if (error) {
-                console.error('Error logging in:', error.message)
-                throw error
-            }
+            if (error) throw error
         } catch (error) {
-            console.error('Failed to log in:', error)
+            console.error('Error:', error)
+            alert('로그인 중 오류가 발생했습니다.')
         } finally {
             setIsLoading(false)
         }
