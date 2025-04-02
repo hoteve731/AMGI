@@ -288,8 +288,8 @@ export default function LearningPage({ params }: { params: Promise<{ id: string 
         // scheduleNotification 함수 호출
         if (serviceWorkerRegistration) {
             const notificationData = {
-                title: 'ANKI 복습의 시간이에요',
-                body: `${content.title}의 ${currentIndex + 1}번째 카드를 복습할 시간입니다!`,
+                title: '기억을 꺼낼 시간이에요 🧠',
+                body: `${content.title}의 ${currentIndex + 1}번째 카드, 지금이 기억할 타이밍이에요.`,
                 data: {
                     contentId: content.id,
                     chunkIndex: currentIndex
