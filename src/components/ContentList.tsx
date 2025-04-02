@@ -12,10 +12,10 @@ type Content = {
 }
 
 const tabs = [
-    { id: 'all', label: '전체' },
-    { id: 'studying', label: '암기중' },
-    { id: 'completed', label: '암기완료' },
-    { id: 'paused', label: '일시중지' },
+    { id: 'all', label: 'All' },
+    { id: 'studying', label: 'Looping' },
+    { id: 'completed', label: 'Completed' },
+    { id: 'paused', label: 'Paused' },
 ]
 
 export default function ContentList({ contents: initialContents }: { contents: Content[] }) {
