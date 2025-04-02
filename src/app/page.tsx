@@ -22,10 +22,17 @@ export default async function Home() {
 
   return (
     <main className="flex min-h-screen flex-col">
-      <header className="flex justify-between items-center p-4 border-b">
-        <div>
-          <h1 className="text-2xl font-bold">LOOPA</h1>
-          <p className="text-sm text-gray-600">
+      <header className="flex justify-between items-center p-4 border-b bg-[#F8F4EF]">
+        <div className="flex flex-col">
+          <div className="flex items-center">
+            <img
+              src="/icons/translogo.png"
+              alt="Loopa Logo"
+              className="w-8 h-8 mr-2"
+            />
+            <h1 className="text-2xl font-bold text-[#7969F7]">LOOPA</h1>
+          </div>
+          <p className="text-sm text-gray-600 mt-1">
             {user.user_metadata.full_name || user.email}
           </p>
         </div>

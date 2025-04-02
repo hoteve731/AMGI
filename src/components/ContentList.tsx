@@ -18,9 +18,31 @@ const tabs = [
     { id: 'paused', label: 'Paused' },
 ]
 
+const statusStyles = {
+    studying: {
+        bg: 'bg-blue-100',
+        text: 'text-blue-700',
+        dot: 'bg-blue-500',
+        label: '진행 중'
+    },
+    completed: {
+        bg: 'bg-green-100',
+        text: 'text-green-700',
+        dot: 'bg-green-500',
+        label: '완료'
+    },
+    paused: {
+        bg: 'bg-gray-100',
+        text: 'text-gray-700',
+        dot: 'bg-gray-500',
+        label: '시작 전'
+    }
+}
+
 export default function ContentList({ contents: initialContents }: { contents: Content[] }) {
     const [activeTab, setActiveTab] = useState('all')
     const [contents, setContents] = useState(initialContents)
+    const [touchStart, setTouchStart] = useState<number | null>(null)
     const supabase = createClientComponentClient()
 
     const filteredContents = activeTab === 'all'
@@ -68,13 +90,13 @@ export default function ContentList({ contents: initialContents }: { contents: C
 
     return (
         <div className="flex flex-col h-full">
-            <div className="flex overflow-x-auto border-b">
+            <div className="flex overflow-x-auto border-b mb-4">
                 {tabs.map(tab => (
                     <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
                         className={`px-4 py-2 whitespace-nowrap ${activeTab === tab.id
-                            ? 'border-b-2 border-blue-500 text-blue-500'
+                            ? 'text-gray-900 border-b-2 border-gray-900'
                             : 'text-gray-500'
                             }`}
                     >
@@ -83,29 +105,75 @@ export default function ContentList({ contents: initialContents }: { contents: C
                 ))}
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4">
-                <div className="space-y-2">
-                    {filteredContents.map((content) => (
-                        <div key={content.id} className="relative">
-                            <Link
-                                href={`/content/${content.id}`}
-                                className="block p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
-                            >
-                                <h2 className="text-lg font-medium pr-24">{content.title}</h2>
-                                <div className="text-sm text-gray-500">
+            <div className="flex-1 overflow-y-auto p-4 relative">
+                <div className="space-y-1 relative perspective-1000">
+                    {filteredContents.map((content, index) => (
+                        <div
+                            key={content.id}
+                            className="block relative transition-all duration-300 transform-style-preserve-3d hover:scale-[1.02]"
+                            style={{
+                                transform: `
+                                    translateY(${index * -2}px)
+                                    translateZ(${-index * 4}px)
+                                    rotateX(${5 + index * 2}deg)
+                                `,
+                                zIndex: filteredContents.length - index,
+                            }}
+                        >
+                            <div className="p-4 bg-white backdrop-blur-md rounded-lg shadow-lg border border-gray-100 hover:bg-white/95 transition-colors">
+                                <div className="flex items-center justify-between">
+                                    <Link
+                                        href={`/content/${content.id}`}
+                                        className="flex-1"
+                                    >
+                                        <h2 className="text-lg font-medium text-gray-800 hover:text-blue-600 transition-colors">
+                                            {content.title}
+                                        </h2>
+                                    </Link>
+                                    <div className="relative inline-block">
+                                        <select
+                                            data-content-id={content.id}
+                                            value={content.status}
+                                            onChange={(e) => handleStatusChange(content.id, e.target.value as Content['status'])}
+                                            className={`
+                                                appearance-none
+                                                pl-7 pr-4 py-1.5
+                                                rounded-full
+                                                text-sm
+                                                font-medium
+                                                ${statusStyles[content.status].bg}
+                                                ${statusStyles[content.status].text}
+                                                transition-colors
+                                                border-0
+                                                focus:outline-none
+                                                focus:ring-2
+                                                focus:ring-offset-2
+                                                focus:ring-blue-500
+                                                whitespace-nowrap
+                                            `}
+                                        >
+                                            <option value="studying">진행 중</option>
+                                            <option value="completed">완료</option>
+                                            <option value="paused">시작 전</option>
+                                        </select>
+                                        <div
+                                            className={`
+                                                absolute 
+                                                left-3 
+                                                top-1/2 
+                                                -translate-y-1/2 
+                                                w-2 
+                                                h-2 
+                                                rounded-full 
+                                                ${statusStyles[content.status].dot}
+                                            `}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="text-sm text-gray-500 mt-1">
                                     {new Date(content.created_at).toLocaleDateString('ko-KR')} 암기 시작
                                 </div>
-                            </Link>
-                            <select
-                                data-content-id={content.id}
-                                value={content.status}
-                                onChange={(e) => handleStatusChange(content.id, e.target.value as Content['status'])}
-                                className="absolute right-4 top-4 bg-white border rounded px-2 py-1"
-                            >
-                                <option value="studying">암기중</option>
-                                <option value="completed">암기완료</option>
-                                <option value="paused">일시중지</option>
-                            </select>
+                            </div>
                         </div>
                     ))}
                 </div>

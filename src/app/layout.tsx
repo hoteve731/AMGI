@@ -58,7 +58,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko">
+    <html lang="ko" className="bg-[#F8F4EF]">
       <head>
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -78,7 +78,7 @@ export default function RootLayout({
           media="(device-width: 360px) and (device-height: 640px) and (-webkit-device-pixel-ratio: 3)"
         />
       </head>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#F8F4EF]`}>
         {children}
         <UpdatePrompt />
         <PushTest />

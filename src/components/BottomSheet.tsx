@@ -91,14 +91,14 @@ export default function BottomSheet() {
         <>
             <button
                 onClick={() => setIsOpen(true)}
-                className="fixed bottom-4 left-1/2 transform -translate-x-1/2 px-6 py-3 bg-black text-white rounded-full"
+                className="fixed bottom-6 left-1/2 transform -translate-x-1/2 px-6 py-3 bg-[#7969F7] text-white rounded-full shadow-lg hover:bg-[#A99BFF] transition-colors z-[60]"
             >
-                머릿속에 넣고 싶은 아이디어를 붙여넣으세요.
+                머릿속에 넣고 싶은 아이디어를 붙여넣으세요
             </button>
 
             {(isOpen || isClosing) && (
                 <div
-                    className={`fixed inset-0 transition-all duration-200 ease-out ${isClosing ? 'bg-black/0' : 'bg-black/50'
+                    className={`fixed inset-0 transition-all duration-200 ease-out z-[70] ${isClosing ? 'bg-black/0' : 'bg-black/50'
                         }`}
                 >
                     <div
