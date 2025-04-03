@@ -242,7 +242,7 @@ export default function LearningPage({ params }: { params: Promise<{ id: string 
                         // 테스트 알림 발송
                         new Notification('알림 설정 완료', {
                             body: '이제 복습 알림을 받을 수 있습니다.',
-                            icon: '/icon.png'
+                            icon: '/icons/icon-192x192.png'
                         });
                     }
                 } else {
@@ -290,22 +290,40 @@ export default function LearningPage({ params }: { params: Promise<{ id: string 
             const notificationData = {
                 title: '기억을 꺼낼 시간이에요 🧠',
                 body: `${content.title}의 ${currentIndex + 1}번째 카드, 지금이 기억할 타이밍이에요.`,
-                data: {
-                    contentId: content.id,
-                    chunkIndex: currentIndex
-                }
+                contentId: content.id,
+                chunkIndex: currentIndex
             };
 
             const delay = newProgress.nextReviewDate.getTime() - Date.now();
             if (delay > 0) {
-                setTimeout(() => {
+                console.log('알림 예약:', {
+                    title: notificationData.title,
+                    body: notificationData.body,
+                    delay: delay,
+                    scheduledTime: new Date(Date.now() + delay).toISOString()
+                });
+                setTimeout(async () => {
                     if (Notification.permission === 'granted') {
-                        serviceWorkerRegistration.showNotification(notificationData.title, {
-                            ...notificationData,
-                            icon: '/icon.png',
-                            badge: '/badge.png',
-                            requireInteraction: true
-                        });
+                        try {
+                            const existingSubscription = await serviceWorkerRegistration.pushManager.getSubscription();
+                            if (existingSubscription) {
+                                await fetch('/api/push', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                    },
+                                    body: JSON.stringify({
+                                        subscription: existingSubscription,
+                                        notification: notificationData
+                                    }),
+                                });
+                                console.log('푸시 알림 전송 요청 완료');
+                            } else {
+                                console.error('푸시 구독이 없습니다.');
+                            }
+                        } catch (error) {
+                            console.error('푸시 알림 전송 실패:', error);
+                        }
                     }
                 }, delay);
             }

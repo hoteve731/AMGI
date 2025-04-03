@@ -24,4 +24,32 @@ export async function subscribeUserToPush(swRegistration: ServiceWorkerRegistrat
         console.error('푸시 알림 구독 실패:', err);
         return null;
     }
+}
+
+export async function sendNotification(
+    subscription: PushSubscription,
+    contentId: string,
+    chunkIndex: number,
+    title: string,
+    body: string
+) {
+    try {
+        await fetch('/api/push', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                subscription,
+                notification: {
+                    title,
+                    body,
+                    contentId,
+                    chunkIndex,
+                }
+            }),
+        });
+    } catch (err) {
+        console.error('알림 전송 실패:', err);
+    }
 } 

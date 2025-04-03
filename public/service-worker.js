@@ -59,21 +59,37 @@ self.addEventListener('fetch', event => {
 
 // 푸시 알림 처리
 self.addEventListener('push', event => {
+    console.log('푸시 이벤트 수신:', event);
+
+    const data = event.data.json();
+    console.log('푸시 데이터:', data);
+
     const options = {
-        body: event.data.text(),
+        body: data.body,
         icon: '/icons/icon-192x192.png',
-        badge: '/icons/icon-192x192.png'
+        badge: '/icons/icon-192x192.png',
+        data: {
+            contentId: data.contentId,
+            chunkIndex: data.chunkIndex,
+            url: `/content/${data.contentId}/learning?chunk=${data.chunkIndex}`
+        },
+        requireInteraction: true
     };
 
     event.waitUntil(
-        self.registration.showNotification('LOOPA', options)
+        self.registration.showNotification(data.title, options)
+            .then(() => console.log('알림 표시 성공'))
+            .catch(error => console.error('알림 표시 실패:', error))
     );
 });
 
 // 알림 클릭 처리
 self.addEventListener('notificationclick', (event) => {
+    console.log('알림 클릭:', event);
     event.notification.close();
     event.waitUntil(
-        clients.openWindow('/')
+        clients.openWindow(event.notification.data.url)
+            .then(() => console.log('새 창 열기 성공'))
+            .catch(error => console.error('새 창 열기 실패:', error))
     );
 }); 

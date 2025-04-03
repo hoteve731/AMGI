@@ -27,6 +27,18 @@ const withPWA = require('next-pwa')({
                     maxAgeSeconds: 24 * 60 * 60 // 24시간
                 }
             }
+        },
+        {
+            urlPattern: /^https:\/\/loopa\.my\/api\/notifications/,
+            handler: 'NetworkFirst',
+            options: {
+                cacheName: 'notification-cache',
+                networkTimeoutSeconds: 5,
+                expiration: {
+                    maxEntries: 100,
+                    maxAgeSeconds: 60 * 5 // 5분
+                }
+            }
         }
     ],
     // 개발 환경에서 중복 생성 방지
