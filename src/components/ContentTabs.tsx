@@ -7,7 +7,7 @@ export default async function ContentTabs() {
 
     const { data: contents } = await supabase
         .from('contents')
-        .select('*')
+        .select('id, title, created_at, status, chunks')
         .order('created_at', { ascending: false })
 
     return <ContentList contents={contents || []} />

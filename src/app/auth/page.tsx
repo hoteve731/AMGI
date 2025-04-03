@@ -5,11 +5,10 @@ import LoginButton from './login-button'
 import Image from 'next/image'
 
 export default async function AuthPage() {
-    const supabase = createServerComponentClient({ cookies })
+    const cookieStore = cookies()
+    const supabase = createServerComponentClient({ cookies: () => cookieStore })
 
-    const {
-        data: { session },
-    } = await supabase.auth.getSession()
+    const { data: { session } } = await supabase.auth.getSession()
 
     if (session) {
         redirect('/')
@@ -28,7 +27,7 @@ export default async function AuthPage() {
                             className="rounded-2xl"
                         />
                     </div>
-                    <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent">
+                    <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-purple-400 bg-clip-text text-transparent">
                         LOOPA
                     </h1>
                     <p className="mt-2 text-gray-600 text-lg">

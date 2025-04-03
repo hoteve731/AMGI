@@ -21,8 +21,8 @@ export default async function Home() {
   const user = session.user
 
   return (
-    <main className="flex min-h-screen flex-col">
-      <header className="flex justify-between items-center p-4 border-b bg-[#F8F4EF]">
+    <main className="flex min-h-screen flex-col bg-gradient-to-b from-[#F8F4EF] to-[#E8D9C5]">
+      <header className="flex justify-between items-center p-4 border-b border-[#D4C4B7] bg-[#F8F4EF]">
         <div className="flex flex-col">
           <div className="flex items-center">
             <img
