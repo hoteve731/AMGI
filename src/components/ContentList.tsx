@@ -42,7 +42,6 @@ const statusStyles = {
 export default function ContentList({ contents: initialContents }: { contents: Content[] }) {
     const [activeTab, setActiveTab] = useState('all')
     const [contents, setContents] = useState(initialContents)
-    const [touchStart, setTouchStart] = useState<number | null>(null)
     const supabase = createClientComponentClient()
 
     const filteredContents = activeTab === 'all'

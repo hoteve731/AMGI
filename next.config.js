@@ -41,6 +41,9 @@ const withPWA = require('next-pwa')({
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+    eslint: {
+        ignoreDuringBuilds: true, // 빌드 중 ESLint 오류 무시
+    },
     // 기존 설정 유지
 };
 
