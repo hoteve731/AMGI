@@ -33,7 +33,7 @@ export default function LoginButton() {
         <button
             onClick={handleLogin}
             disabled={isLoading}
-            className="w-full flex items-center justify-center gap-3 px-4 py-3 text-gray-700 bg-white rounded-lg border border-gray-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full flex items-center justify-center gap-3 px-6 py-4 text-gray-700 bg-white rounded-xl border border-gray-200 hover:bg-gray-50 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 shadow-sm hover:shadow disabled:opacity-50 disabled:cursor-not-allowed"
         >
             {isLoading ? (
                 <div className="w-6 h-6 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin" />
@@ -57,7 +57,9 @@ export default function LoginButton() {
                     />
                 </svg>
             )}
-            {isLoading ? '로그인 중...' : 'Google로 계속하기'}
+            <span className="font-medium">
+                {isLoading ? '로그인 중...' : 'Google로 계속하기'}
+            </span>
         </button>
     )
 }
