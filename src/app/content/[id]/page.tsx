@@ -24,6 +24,14 @@ type Content = {
   status: string
 }
 
+type ContentGroup = {
+  id: string
+  content_id: string
+  title: string
+  original_text: string
+  chunks: Array<{ summary: string, masked_text: string }>
+}
+
 // ✅ 핵심: Vercel 타입 충돌 피하기 위해 any 사용
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default async function Page(props: any) {
@@ -72,5 +80,34 @@ export default async function Page(props: any) {
     notFound()
   }
 
-  return <ContentDetail content={content} />
+  // Fetch the first group associated with this content
+  let group: ContentGroup | null = null
+  try {
+    const { data, error } = await supabase
+      .from('content_groups')
+      .select('*')
+      .eq('content_id', id)
+      .returns<ContentGroup>()
+      .single()
+
+    if (error) {
+      console.error('Error fetching group:', error)
+      throw new Error(`Group fetch error: ${error.message}`)
+    }
+
+    group = data
+  } catch (error: unknown) {
+    console.error('Unexpected group fetch error:', error)
+    if (error instanceof Error) {
+      throw new Error(`Group fetch failed: ${error.message}`)
+    } else {
+      throw new Error('Unknown group fetch error')
+    }
+  }
+
+  if (!group) {
+    throw new Error(`No group found for content ID: ${id}`)
+  }
+
+  return <ContentDetail group={group} content={content} />
 }
