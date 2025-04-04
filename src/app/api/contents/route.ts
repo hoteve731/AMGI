@@ -207,7 +207,7 @@ export async function PUT(request: Request) {
 export async function DELETE(request: Request) {
   try {
     const { id } = await request.json()
-    
+
     if (!id) {
       return NextResponse.json(
         { error: '콘텐츠 ID가 필요합니다.' },
@@ -217,33 +217,82 @@ export async function DELETE(request: Request) {
 
     const supabase = await createClient()
 
-    // 1. 먼저 콘텐츠에 속한 모든 청크들을 삭제
-    const { error: chunksError } = await supabase
-      .from('content_chunks')
-      .delete()
-      .eq('content_id', id)
-
-    if (chunksError) {
-      throw chunksError
+    // 인증 확인
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) {
+      return NextResponse.json(
+        { error: '인증되지 않은 사용자입니다.' },
+        { status: 401 }
+      )
     }
 
-    // 2. 콘텐츠에 속한 모든 그룹을 삭제
+    // 콘텐츠 소유자 확인
+    const { data: contentData, error: contentCheckError } = await supabase
+      .from('contents')
+      .select('user_id')
+      .eq('id', id)
+      .single()
+
+    if (contentCheckError) {
+      console.error('콘텐츠 확인 중 오류:', contentCheckError)
+      return NextResponse.json(
+        { error: '콘텐츠를 찾을 수 없습니다.' },
+        { status: 404 }
+      )
+    }
+
+    if (contentData.user_id !== session.user.id) {
+      return NextResponse.json(
+        { error: '이 콘텐츠를 삭제할 권한이 없습니다.' },
+        { status: 403 }
+      )
+    }
+
+    // 1. 먼저 콘텐츠에 속한 모든 그룹을 찾습니다
+    const { data: groups, error: groupsFetchError } = await supabase
+      .from('content_groups')
+      .select('id')
+      .eq('content_id', id)
+
+    if (groupsFetchError) {
+      console.error('그룹 조회 중 오류:', groupsFetchError)
+      throw groupsFetchError
+    }
+
+    // 2. 각 그룹에 속한 청크들을 삭제합니다
+    if (groups && groups.length > 0) {
+      for (const group of groups) {
+        const { error: chunksError } = await supabase
+          .from('content_chunks')
+          .delete()
+          .eq('group_id', group.id)
+
+        if (chunksError) {
+          console.error(`그룹 ${group.id}의 청크 삭제 중 오류:`, chunksError)
+          throw chunksError
+        }
+      }
+    }
+
+    // 3. 그룹을 삭제합니다
     const { error: groupsError } = await supabase
       .from('content_groups')
       .delete()
       .eq('content_id', id)
 
     if (groupsError) {
+      console.error('그룹 삭제 중 오류:', groupsError)
       throw groupsError
     }
 
-    // 3. 마지막으로 콘텐츠를 삭제
+    // 4. 마지막으로 콘텐츠를 삭제합니다
     const { error: contentError } = await supabase
       .from('contents')
       .delete()
       .eq('id', id)
 
     if (contentError) {
+      console.error('콘텐츠 삭제 중 오류:', contentError)
       throw contentError
     }
 
