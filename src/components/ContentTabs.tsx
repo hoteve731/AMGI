@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react'
 import useSWR from 'swr'
 import ContentList from '@/components/ContentList'
+import { motion } from 'framer-motion'
 
 // Fetcher function for SWR
 const fetcher = (url: string) => fetch(url).then(res => {
@@ -36,7 +37,7 @@ export default function ContentTabs() {
     // Add event listeners
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('focus', handleFocus);
-    
+
     // Also refresh on initial mount
     mutate();
 
@@ -50,7 +51,38 @@ export default function ContentTabs() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-purple-500"></div>
+        <div className="relative w-10 h-10">
+          {[0, 1, 2, 3, 4].map((i) => (
+            <motion.div
+              key={i}
+              className="absolute w-2 h-2 bg-[#7969F7] rounded-full"
+              style={{
+                left: '50%',
+                top: '50%',
+                transform: 'translate(-50%, -50%)',
+              }}
+              animate={{
+                x: [
+                  '0px',
+                  `${Math.cos(i * (2 * Math.PI / 5)) * 16}px`,
+                  '0px'
+                ],
+                y: [
+                  '0px',
+                  `${Math.sin(i * (2 * Math.PI / 5)) * 16}px`,
+                  '0px'
+                ],
+              }}
+              transition={{
+                duration: 1.2,
+                repeat: Infinity,
+                delay: i * 0.1,
+                ease: [0.4, 0, 0.2, 1],
+                times: [0, 0.5, 1]
+              }}
+            />
+          ))}
+        </div>
       </div>
     )
   }
@@ -59,7 +91,7 @@ export default function ContentTabs() {
     return (
       <div className="text-center p-8 text-red-500">
         <p>데이터를 불러오는 중 오류가 발생했습니다.</p>
-        <button 
+        <button
           onClick={() => window.location.reload()}
           className="mt-4 px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300"
         >

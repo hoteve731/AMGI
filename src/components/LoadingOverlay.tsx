@@ -10,11 +10,11 @@ export default function LoadingOverlay() {
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-white/40 backdrop-blur-sm z-[80] flex items-center justify-center"
         >
-            <div className="relative w-16 h-16">
-                {[0, 1, 2].map((i) => (
+            <div className="relative w-10 h-10">
+                {[0, 1, 2, 3, 4].map((i) => (
                     <motion.div
                         key={i}
-                        className="absolute w-2 h-2 bg-purple-500 rounded-full"
+                        className="absolute w-2 h-2 bg-[#7969F7] rounded-full"
                         style={{
                             left: '50%',
                             top: '50%',
@@ -23,19 +23,19 @@ export default function LoadingOverlay() {
                         animate={{
                             x: [
                                 '0px',
-                                `${Math.cos(i * (2 * Math.PI / 3)) * 20}px`,
+                                `${Math.cos(i * (2 * Math.PI / 5)) * 16}px`,
                                 '0px'
                             ],
                             y: [
                                 '0px',
-                                `${Math.sin(i * (2 * Math.PI / 3)) * 20}px`,
+                                `${Math.sin(i * (2 * Math.PI / 5)) * 16}px`,
                                 '0px'
                             ],
                         }}
                         transition={{
                             duration: 1.2,
                             repeat: Infinity,
-                            delay: i * 0.2,
+                            delay: i * 0.1,
                             ease: [0.4, 0, 0.2, 1],
                             times: [0, 0.5, 1]
                         }}

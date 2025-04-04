@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { useSWRConfig } from 'swr'
 import LoadingOverlay from './LoadingOverlay'
+import { motion } from 'framer-motion'
 
 type ContentGroup = {
     id: string
@@ -102,12 +103,14 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
     return (
         <main className="flex min-h-screen flex-col bg-gradient-to-b from-[#F8F4EF] to-[#E8D9C5]">
             {isLoading && <LoadingOverlay />}
-            <div className="sticky top-0 bg-[#F8F4EF] border-b border-[#D4C4B7] p-4">
+            <div className="sticky top-0 bg-[#F8F4EF] border-b border-[#D4C4B7] h-12">
                 <button
                     onClick={() => router.back()}
                     className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-800"
                 >
-                    ←
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
                 </button>
                 <button
                     onClick={handleDeleteContent}
@@ -115,10 +118,26 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                     className="absolute right-4 top-1/2 -translate-y-1/2 p-2 text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
                 >
                     {isDeletingContent ? (
-                        <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                        </svg>
+                        <div className="flex space-x-1">
+                            {[0, 1, 2, 3, 4].map((i) => (
+                                <motion.div
+                                    key={i}
+                                    className="w-1.5 h-1.5 bg-[#7969F7] rounded-full"
+                                    animate={{
+                                        y: ["0%", "-100%"],
+                                    }}
+                                    transition={{
+                                        type: "spring",
+                                        stiffness: 300,
+                                        damping: 15,
+                                        mass: 0.8,
+                                        repeat: Infinity,
+                                        repeatType: "reverse",
+                                        delay: i * 0.1,
+                                    }}
+                                />
+                            ))}
+                        </div>
                     ) : (
                         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -188,10 +207,38 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                                             className="p-2 text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
                                         >
                                             {isDeleting === group.id ? (
-                                                <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                                                </svg>
+                                                <div className="relative w-6 h-6">
+                                                    {[0, 1, 2, 3, 4].map((i) => (
+                                                        <motion.div
+                                                            key={i}
+                                                            className="absolute w-1.5 h-1.5 bg-[#7969F7] rounded-full"
+                                                            style={{
+                                                                left: '50%',
+                                                                top: '50%',
+                                                                transform: 'translate(-50%, -50%)',
+                                                            }}
+                                                            animate={{
+                                                                x: [
+                                                                    '0px',
+                                                                    `${Math.cos(i * (2 * Math.PI / 5)) * 12}px`,
+                                                                    '0px'
+                                                                ],
+                                                                y: [
+                                                                    '0px',
+                                                                    `${Math.sin(i * (2 * Math.PI / 5)) * 12}px`,
+                                                                    '0px'
+                                                                ],
+                                                            }}
+                                                            transition={{
+                                                                duration: 1.2,
+                                                                repeat: Infinity,
+                                                                delay: i * 0.1,
+                                                                ease: [0.4, 0, 0.2, 1],
+                                                                times: [0, 0.5, 1]
+                                                            }}
+                                                        />
+                                                    ))}
+                                                </div>
                                             ) : (
                                                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />

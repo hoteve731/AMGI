@@ -2,6 +2,7 @@
 
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { useState } from 'react'
+import { motion } from 'framer-motion'
 
 export default function LoginButton() {
     const supabase = createClientComponentClient()
@@ -36,7 +37,38 @@ export default function LoginButton() {
             className="w-full flex items-center justify-center gap-3 px-6 py-4 text-gray-700 bg-white rounded-xl border border-gray-200 hover:bg-gray-50 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 shadow-sm hover:shadow disabled:opacity-50 disabled:cursor-not-allowed"
         >
             {isLoading ? (
-                <div className="w-6 h-6 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin" />
+                <div className="relative w-6 h-6">
+                    {[0, 1, 2, 3, 4].map((i) => (
+                        <motion.div
+                            key={i}
+                            className="absolute w-1.5 h-1.5 bg-[#7969F7] rounded-full"
+                            style={{
+                                left: '50%',
+                                top: '50%',
+                                transform: 'translate(-50%, -50%)',
+                            }}
+                            animate={{
+                                x: [
+                                    '0px',
+                                    `${Math.cos(i * (2 * Math.PI / 5)) * 12}px`,
+                                    '0px'
+                                ],
+                                y: [
+                                    '0px',
+                                    `${Math.sin(i * (2 * Math.PI / 5)) * 12}px`,
+                                    '0px'
+                                ],
+                            }}
+                            transition={{
+                                duration: 1.2,
+                                repeat: Infinity,
+                                delay: i * 0.1,
+                                ease: [0.4, 0, 0.2, 1],
+                                times: [0, 0.5, 1]
+                            }}
+                        />
+                    ))}
+                </div>
             ) : (
                 <svg viewBox="0 0 24 24" className="w-6 h-6" xmlns="http://www.w3.org/2000/svg">
                     <path

@@ -41,12 +41,12 @@ const statusStyles = {
     }
 }
 
-export default function ContentDetail({ 
-    group, 
-    content 
-}: { 
+export default function ContentDetail({
+    group,
+    content
+}: {
     group: ContentGroup,
-    content: Content 
+    content: Content
 }) {
     const [showOriginal, setShowOriginal] = useState(false)
     const [contentStatus, setContentStatus] = useState(content.status)
@@ -66,12 +66,12 @@ export default function ContentDetail({
                     status: newStatus
                 }),
             });
-    
+
             if (!response.ok) {
                 const errorData = await response.json();
                 throw new Error(errorData.error || '상태 업데이트 중 오류가 발생했습니다');
             }
-    
+
             setContentStatus(newStatus);
             mutate('/api/contents');
             router.refresh();
@@ -83,12 +83,14 @@ export default function ContentDetail({
 
     return (
         <main className="flex min-h-screen flex-col bg-gradient-to-b from-[#F8F4EF] to-[#E8D9C5]">
-            <div className="sticky top-0 bg-[#F8F4EF] border-b border-[#D4C4B7] p-4">
+            <div className="sticky top-0 bg-[#F8F4EF] border-b border-[#D4C4B7] h-12">
                 <button
                     onClick={() => router.back()}
                     className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-800"
                 >
-                    ←
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
                 </button>
             </div>
 
@@ -146,7 +148,7 @@ export default function ContentDetail({
                     >
                         {showOriginal ? '원문 숨기기' : '원문 보기'}
                     </button>
-                    
+
                     {showOriginal && (
                         <div className="mt-4 p-4 bg-white/70 backdrop-blur-md rounded-xl border border-white/20">
                             <h3 className="text-lg font-medium text-gray-800 mb-2">원문</h3>
@@ -173,12 +175,12 @@ export default function ContentDetail({
                                     }}
                                 />
                             )}
-                            
+
                             {/* 원 */}
                             <div
                                 className="absolute left-0 top-[18px] w-[15px] h-[15px] rounded-full bg-white border-2 border-[#D4C4B7]"
                             />
-                            
+
                             {/* 카드 */}
                             <div
                                 className="

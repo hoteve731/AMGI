@@ -40,14 +40,16 @@ export default function GroupDetail({ content, group }: GroupDetailProps) {
     return (
         <main className="flex min-h-screen flex-col bg-gradient-to-b from-[#F8F4EF] to-[#E8D9C5]">
             {isLoading && <LoadingOverlay />}
-            <div className="sticky top-0 bg-[#F8F4EF] border-b border-[#D4C4B7] p-4">
+            <div className="sticky top-0 bg-[#F8F4EF] border-b border-[#D4C4B7] h-12">
                 <button
                     onClick={() => router.back()}
                     className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-800"
                 >
-                    ←
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
                 </button>
-                <h1 className="text-center text-lg font-medium text-gray-800">{content.title}</h1>
+                <h1 className="text-center text-lg font-medium text-gray-800 h-12 flex items-center justify-center">{content.title}</h1>
             </div>
 
             <div className="flex-1 max-w-2xl mx-auto w-full p-4">
