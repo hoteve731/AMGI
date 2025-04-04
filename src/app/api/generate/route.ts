@@ -265,7 +265,7 @@ export async function POST(req: Request) {
                 } catch (parseError) {
                     console.error(`JSON parsing error for group ${i}:`, parseError);
                     console.error('Raw content that failed to parse:', maskedContent);
-                    throw new Error(`Failed to parse masked content: ${parseError.message}`);
+                    throw new Error(`Failed to parse masked content: ${parseError instanceof Error ? parseError.message : String(parseError)}`);
                 }
             } catch (error) {
                 console.error(`Masking error for group ${i}:`, error)
