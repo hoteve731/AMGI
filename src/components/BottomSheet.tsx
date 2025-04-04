@@ -7,6 +7,9 @@ import LoadingScreen from './LoadingScreen'
 export default function BottomSheet() {
     const [text, setText] = useState('')
     const [isLoading, setIsLoading] = useState(false)
+    const [loadingStatus, setLoadingStatus] = useState<'title' | 'content' | 'group'>('title')
+    const [loadingProgress, setLoadingProgress] = useState(0)
+    const [generatedTitle, setGeneratedTitle] = useState('')
     const [isExpanded, setIsExpanded] = useState(false)
     const [preview, setPreview] = useState<{
         title: string
@@ -17,9 +20,12 @@ export default function BottomSheet() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setIsLoading(true)
+        setLoadingProgress(0)
+        setLoadingStatus('title')
         setIsExpanded(false)
 
         try {
+            // 콘텐츠 생성 (제목, 내용, 그룹 모두 포함)
             const response = await fetch('/api/generate', {
                 method: 'POST',
                 headers: {
@@ -31,11 +37,29 @@ export default function BottomSheet() {
             const data = await response.json()
 
             if (!response.ok) {
-                throw new Error(data.error || 'Failed to process content')
+                throw new Error(data.error || '콘텐츠 생성에 실패했습니다.')
             }
 
-            setPreview(data.content)
-            setText('')
+            // API 응답 처리 과정에 따라 프로그레스 바 업데이트
+            // 제목 생성 완료 (약 20%)
+            setLoadingProgress(20)
+
+            // 내용 생성 중 (약 40%)
+            setLoadingProgress(40)
+            setLoadingStatus('content')
+
+            // 그룹 생성 중 (약 60%)
+            setLoadingProgress(60)
+
+            // 청크 생성 중 (약 80%)
+            setLoadingProgress(80)
+            setLoadingStatus('group')
+
+            // 마스킹 처리 중 (약 90%)
+            setLoadingProgress(90)
+
+            // 완료 (100%)
+            setLoadingProgress(100)
 
             // 콘텐츠 생성 후 홈으로 이동하고 새로고침
             setTimeout(() => {
@@ -43,9 +67,11 @@ export default function BottomSheet() {
             }, 500)
         } catch (error) {
             console.error('Error:', error)
-            alert('오류가 발생했습니다.')
+            alert(error instanceof Error ? error.message : '오류가 발생했습니다.')
         } finally {
             setIsLoading(false)
+            setLoadingProgress(0)
+            setText('')
         }
     }
 
@@ -81,7 +107,10 @@ export default function BottomSheet() {
     }, [isExpanded])
 
     if (isLoading) {
-        return <LoadingScreen />
+        return <LoadingScreen
+            progress={loadingProgress}
+            status={loadingStatus}
+        />
     }
 
     if (preview) {

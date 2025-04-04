@@ -1,34 +1,70 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { motion } from 'framer-motion'
 
-const loadingTexts = [
-    "지식을 쪼개는 중...",
-    "핵심을 파악하는 중...",
-    "아인슈타인: '복잡한 것을 단순하게 설명할 수 없다면, 당신은 충분히 이해하지 못한 것입니다.'",
-    "스티브 잡스: '단순함이 궁극의 정교함입니다.'",
-    "빌 게이츠: '실수로부터 배우는 것을 두려워하지 마세요.'"
-]
+type LoadingScreenProps = {
+    progress: number
+    status: 'title' | 'content' | 'group'
+}
 
-export default function LoadingScreen() {
-    const [currentText, setCurrentText] = useState(loadingTexts[0])
-
-    useEffect(() => {
-        let index = 0
-        const interval = setInterval(() => {
-            index = (index + 1) % loadingTexts.length
-            setCurrentText(loadingTexts[index])
-        }, 2000)
-
-        return () => clearInterval(interval)
-    }, [])
+export default function LoadingScreen({ progress, status }: LoadingScreenProps) {
+    const statusText = {
+        title: '제목 생성 중...',
+        content: '내용 생성 중...',
+        group: '그룹 생성 중...'
+    }
 
     return (
         <div className="fixed inset-0 bg-white z-50 flex flex-col items-center justify-center">
-            <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4" />
-            <p className="text-lg text-gray-600 animate-fade-in">
-                {currentText}
+            {/* 로딩 스피너 */}
+            <div className="relative w-16 h-16 mb-8">
+                {[0, 1, 2, 3, 4].map((i) => (
+                    <motion.div
+                        key={i}
+                        className="absolute w-3 h-3 bg-[#7969F7] rounded-full"
+                        style={{
+                            left: '50%',
+                            top: '50%',
+                            transform: 'translate(-50%, -50%)',
+                        }}
+                        animate={{
+                            x: [
+                                '0px',
+                                `${Math.cos(i * (2 * Math.PI / 5)) * 20}px`,
+                                '0px'
+                            ],
+                            y: [
+                                '0px',
+                                `${Math.sin(i * (2 * Math.PI / 5)) * 20}px`,
+                                '0px'
+                            ],
+                        }}
+                        transition={{
+                            duration: 1.2,
+                            repeat: Infinity,
+                            delay: i * 0.1,
+                            ease: [0.4, 0, 0.2, 1],
+                            times: [0, 0.5, 1]
+                        }}
+                    />
+                ))}
+            </div>
+
+            {/* 상태 텍스트 */}
+            <p className="text-lg text-gray-600 mb-6">
+                {statusText[status]}
             </p>
+
+            {/* 프로그레스 바 */}
+            <div className="w-64 h-2 bg-gray-200 rounded-full overflow-hidden">
+                <motion.div
+                    className="h-full bg-[#7969F7]"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${progress}%` }}
+                    transition={{ duration: 0.5 }}
+                />
+            </div>
         </div>
     )
 } 
