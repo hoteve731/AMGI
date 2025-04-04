@@ -222,7 +222,7 @@ export default function ContentList({ contents: initialContents }: { contents: C
 
                     {filteredContents.length === 0 && (
                         <div className="text-center py-10">
-                            <p className="text-gray-500">No contents found</p>
+                            <p className="text-gray-500">No contents here 😄</p>
                         </div>
                     )}
                 </div>

@@ -1,22 +1,23 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import LoadingScreen from './LoadingScreen'
 
 export default function BottomSheet() {
     const [text, setText] = useState('')
     const [isLoading, setIsLoading] = useState(false)
-    const [isOpen, setIsOpen] = useState(false)
-    const [isClosing, setIsClosing] = useState(false)
+    const [isExpanded, setIsExpanded] = useState(false)
     const [preview, setPreview] = useState<{
         title: string
         chunks: { summary: string }[]
     } | null>(null)
+    const textareaRef = useRef<HTMLTextAreaElement>(null)
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setIsLoading(true)
-        setIsOpen(false)
+        setIsExpanded(false)
 
         try {
             const response = await fetch('/api/generate', {
@@ -45,18 +46,34 @@ export default function BottomSheet() {
 
     const handleConfirm = () => {
         setPreview(null)
-        
+
         // Force a complete page reload to ensure fresh data
         window.location.href = '/'
     }
 
-    const closeSheet = () => {
-        setIsClosing(true)
+    const expandSheet = () => {
+        setIsExpanded(true)
+        // Focus the textarea after expansion animation completes
         setTimeout(() => {
-            setIsOpen(false)
-            setIsClosing(false)
-        }, 200)
+            textareaRef.current?.focus()
+        }, 300)
     }
+
+    const collapseSheet = () => {
+        setIsExpanded(false)
+    }
+
+    // Close sheet on escape key
+    useEffect(() => {
+        const handleEscape = (e: KeyboardEvent) => {
+            if (e.key === 'Escape' && isExpanded) {
+                collapseSheet()
+            }
+        }
+
+        window.addEventListener('keydown', handleEscape)
+        return () => window.removeEventListener('keydown', handleEscape)
+    }, [isExpanded])
 
     if (isLoading) {
         return <LoadingScreen />
@@ -64,79 +81,135 @@ export default function BottomSheet() {
 
     if (preview) {
         return (
-            <div className="fixed inset-0 bg-white z-40 overflow-y-auto p-4">
+            <motion.div
+                className="fixed inset-0 bg-gradient-to-b from-[#F8F4EF] to-[#E8D9C5] z-40 overflow-y-auto p-4"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+            >
                 <div className="max-w-2xl mx-auto">
-                    <h1 className="text-2xl font-bold mb-4">{preview.title}</h1>
+                    <h1 className="text-2xl font-bold mb-4 text-[#7969F7]">{preview.title}</h1>
                     <div className="space-y-4">
                         {preview.chunks.map((chunk, index) => (
-                            <div key={index} className="p-4 bg-gray-50 rounded-lg">
+                            <motion.div
+                                key={index}
+                                className="p-4 bg-white/70 backdrop-blur-md rounded-lg border border-[#D4C4B7] shadow-sm"
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: index * 0.1 }}
+                            >
                                 <p>{chunk.summary}</p>
-                            </div>
+                            </motion.div>
                         ))}
                     </div>
-                    <button
+                    <motion.button
                         onClick={handleConfirm}
-                        className="fixed bottom-4 left-1/2 transform -translate-x-1/2 px-6 py-3 bg-black text-white rounded-full"
+                        className="fixed bottom-4 left-1/2 transform -translate-x-1/2 px-8 py-3.5 bg-gradient-to-r from-[#7969F7] to-[#A99BFF] text-white rounded-full shadow-lg"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
                     >
                         홈으로 가기
-                    </button>
+                    </motion.button>
                 </div>
-            </div>
+            </motion.div>
         )
     }
 
     return (
         <>
-            <button
-                onClick={() => setIsOpen(true)}
-                className="fixed bottom-6 left-1/2 transform -translate-x-1/2 px-6 py-3 bg-[#7969F7] text-white rounded-full shadow-lg hover:bg-[#A99BFF] transition-colors z-[60]"
+            <motion.div
+                className="fixed bottom-0 left-0 right-0 z-[60]"
+                initial={{ y: 0 }}
+                animate={{ y: 0 }}
             >
-                머릿속에 넣고 싶은 아이디어를 붙여넣으세요
-            </button>
+                <AnimatePresence>
+                    {isExpanded && (
+                        <motion.div
+                            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[65]"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.3 }}
+                            onClick={collapseSheet}
+                        />
+                    )}
+                </AnimatePresence>
 
-            {(isOpen || isClosing) && (
-                <div
-                    className={`fixed inset-0 transition-all duration-200 ease-out z-[70] ${isClosing ? 'bg-black/0' : 'bg-black/50'
-                        }`}
+                <motion.div
+                    className="bg-white rounded-t-xl shadow-lg overflow-hidden z-[70] relative"
+                    initial={{ height: "80px" }}
+                    animate={{
+                        height: isExpanded ? "90vh" : "80px",
+                        boxShadow: isExpanded ? "0 -10px 30px rgba(0, 0, 0, 0.15)" : "0 -2px 10px rgba(0, 0, 0, 0.05)"
+                    }}
+                    transition={{
+                        type: 'spring',
+                        damping: 25,
+                        stiffness: 300
+                    }}
                 >
-                    <div
-                        className="fixed inset-0"
-                        onClick={closeSheet}
-                    />
-                    <div
-                        className={`fixed bottom-0 left-0 right-0 bg-white rounded-t-2xl p-6 transition-all duration-200 ease-out ${isClosing ? 'translate-y-full' : 'translate-y-0'
-                            }`}
-                        style={{ minHeight: '60vh' }}
-                    >
-                        <form onSubmit={handleSubmit} className="h-full">
-                            <textarea
-                                value={text}
-                                onChange={(e) => setText(e.target.value)}
-                                placeholder="텍스트를 붙여넣으세요..."
-                                className="w-full h-[calc(60vh-120px)] p-4 border rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                                disabled={isLoading}
-                            />
-                            <div className="flex justify-end mt-4 gap-2">
-                                <button
-                                    type="button"
-                                    onClick={closeSheet}
-                                    className="px-6 py-2.5 text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
-                                    disabled={isLoading}
-                                >
-                                    취소
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={isLoading || !text.trim()}
-                                    className="px-6 py-2.5 bg-purple-500 text-white rounded-full hover:bg-purple-600 transition-colors disabled:bg-gray-300 disabled:hover:bg-gray-300"
-                                >
-                                    {isLoading ? '변환 중...' : '변환하기'}
-                                </button>
+                    {/* Collapsed state - shows a preview */}
+                    {!isExpanded && (
+                        <div
+                            className="p-4 h-full cursor-pointer flex items-center"
+                            onClick={expandSheet}
+                        >
+                            <div className="w-full">
+                                <div className="text-[#7C6FFB] font-medium text-sm mb-1">내 것으로 만들고 싶은 아이디어</div>
+                                <div className="text-gray-400 text-base">
+                                    {text ? text.substring(0, 50) + (text.length > 50 ? '...' : '') : '여기에 타이핑하거나 붙여넣으세요...'}
+                                </div>
                             </div>
-                        </form>
-                    </div>
-                </div>
-            )}
+                            <div className="flex-shrink-0 ml-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-[#7969F7]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                </svg>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Expanded state - full form */}
+                    {isExpanded && (
+                        <div className="h-full flex flex-col">
+                            <div className="flex justify-between items-center p-4 border-b border-gray-100">
+                                <button
+                                    onClick={collapseSheet}
+                                    className="text-gray-500 hover:text-gray-700"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                                <h2 className="text-lg font-medium text-gray-700">새 기억 조각 만들기</h2>
+                                <motion.button
+                                    type="button"
+                                    onClick={handleSubmit}
+                                    disabled={!text.trim() || isLoading}
+                                    className="text-[#7969F7] disabled:text-gray-300 disabled:cursor-not-allowed"
+                                    whileHover={{ scale: 1.05 }}
+                                    whileTap={{ scale: 0.95 }}
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                </motion.button>
+                            </div>
+
+                            <form onSubmit={handleSubmit} className="flex-1 flex flex-col p-4">
+                                <div className="text-[#7C6FFB] font-medium text-sm mb-2">내 것으로 만들고 싶은 아이디어</div>
+                                <textarea
+                                    ref={textareaRef}
+                                    value={text}
+                                    onChange={(e) => setText(e.target.value)}
+                                    placeholder="여기에 타이핑하거나 붙여넣으세요..."
+                                    className="flex-1 w-full resize-none border-none focus:outline-none focus:ring-0 text-base"
+                                    disabled={isLoading}
+                                />
+                            </form>
+                        </div>
+                    )}
+                </motion.div>
+            </motion.div>
         </>
     )
-} 
+}
