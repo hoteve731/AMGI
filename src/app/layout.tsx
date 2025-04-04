@@ -61,7 +61,8 @@ export default function RootLayout({
     <html lang="ko" className="bg-[#F8F4EF]">
       <head>
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="theme-color" content="#F8F4EF" />
         <link
           rel="apple-touch-startup-image"
           href="/splash/apple-splash-2048-2732.png"

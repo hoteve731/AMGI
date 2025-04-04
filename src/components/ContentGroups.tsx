@@ -103,7 +103,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
     return (
         <main className="flex min-h-screen flex-col bg-gradient-to-b from-[#F8F4EF] to-[#E8D9C5]">
             {isLoading && <LoadingOverlay />}
-            <div className="sticky top-0 bg-[#F8F4EF] border-b border-[#D4C4B7] h-12">
+            <div className="sticky top-0 bg-[#F8F4EF] border-b border-[#D4C4B7] h-12 z-50">
                 <button
                     onClick={() => router.back()}
                     className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-800"
@@ -111,6 +111,12 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                     </svg>
+                </button>
+                <button
+                    onClick={() => router.back()}
+                    className="absolute left-10 top-1/2 -translate-y-1/2 text-gray-800 font-medium hover:text-gray-600"
+                >
+                    홈
                 </button>
                 <button
                     onClick={handleDeleteContent}

@@ -123,7 +123,7 @@ export default function BottomSheet() {
     return (
         <>
             <motion.div
-                className="fixed bottom-0 left-0 right-0 z-[60]"
+                className="fixed inset-x-0 bottom-[env(safe-area-inset-bottom,16px)] z-[60]"
                 initial={{ y: 0 }}
                 animate={{ y: 0 }}
             >
