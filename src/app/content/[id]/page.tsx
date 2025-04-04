@@ -1,11 +1,10 @@
 // src/app/content/[id]/page.tsx
 'use server'
 
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
 import { PostgrestError } from '@supabase/supabase-js'
-import { cookies } from 'next/headers'
 import ContentDetail from '@/components/ContentDetail'
 import { notFound } from 'next/navigation'
+import { createClient } from '@/utils/supabase/server'
 
 type Chunk = {
   summary: string
@@ -17,11 +16,12 @@ type MaskedChunk = {
 
 type Content = {
   id: string
-  title: string
+  // title: string
   original_text: string
   chunks: Chunk[]
   masked_chunks: MaskedChunk[]
   created_at: string
+  status: string
 }
 
 // ✅ 핵심: Vercel 타입 충돌 피하기 위해 any 사용
@@ -35,7 +35,7 @@ export default async function Page(props: any) {
     notFound()
   }
 
-  const supabase = createServerComponentClient({ cookies })
+  const supabase = await createClient()
 
   let content: Content | null = null
   let fetchError: PostgrestError | null = null

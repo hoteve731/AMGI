@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import LoadingScreen from './LoadingScreen'
 
 export default function BottomSheet() {
@@ -13,8 +12,6 @@ export default function BottomSheet() {
         title: string
         chunks: { summary: string }[]
     } | null>(null)
-
-    const router = useRouter()
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -48,8 +45,9 @@ export default function BottomSheet() {
 
     const handleConfirm = () => {
         setPreview(null)
-        router.push('/')
-        router.refresh()
+        
+        // Force a complete page reload to ensure fresh data
+        window.location.href = '/'
     }
 
     const closeSheet = () => {

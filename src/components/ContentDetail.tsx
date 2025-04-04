@@ -70,42 +70,43 @@ export default function ContentDetail({ content: initialContent }: { content: Co
         }
     }
 
-    const handleDelete = async () => {
-        if (isDeleting) return
+    // ContentDetail.tsx의 handleDelete 함수 부분을 이렇게 수정하세요
+const handleDelete = async () => {
+    if (isDeleting) return
 
-        try {
-            setIsDeleting(true)
+    try {
+        setIsDeleting(true)
+        console.log('Starting deletion for content ID:', content.id)
 
-            const { data: { user }, error: authError } = await supabase.auth.getUser()
+        // API를 통해 삭제 요청
+        const response = await fetch(`/api/contents?id=${content.id}`, {
+            method: 'DELETE',
+        });
 
-            if (authError || !user) {
-                throw new Error('인증되지 않은 사용자입니다.')
-            }
+        const result = await response.json();
+        console.log('Delete API response:', result);
 
-            const { error: deleteError } = await supabase
-                .from('contents')
-                .delete()
-                .match({
-                    id: content.id,
-                    user_id: user.id
-                })
-
-            if (deleteError) {
-                throw deleteError
-            }
-
-            setShowDeleteModal(false)
-            alert('콘텐츠가 삭제되었습니다.')
-
-            router.push('/')
-            router.refresh()
-        } catch (error) {
-            console.error('삭제 중 오류 발생:', error)
-            alert(error instanceof Error ? error.message : '콘텐츠 삭제 중 오류가 발생했습니다.')
-        } finally {
-            setIsDeleting(false)
+        if (!response.ok) {
+            throw new Error(result.error || '콘텐츠 삭제 중 오류가 발생했습니다.');
         }
+
+        setShowDeleteModal(false)
+        alert('콘텐츠가 삭제되었습니다.')
+
+        // 홈으로 리다이렉트
+        router.push('/')
+        
+        // 리다이렉트 완료 후 리프레시를 위해 타이머 시간 늘림
+        setTimeout(() => {
+            router.refresh()
+        }, 300)
+    } catch (error) {
+        console.error('삭제 중 오류 발생:', error)
+        alert(error instanceof Error ? error.message : '콘텐츠 삭제 중 오류가 발생했습니다.')
+    } finally {
+        setIsDeleting(false)
     }
+}
 
     return (
         <main className="flex min-h-screen flex-col bg-gradient-to-b from-[#F8F4EF] to-[#E8D9C5]">
