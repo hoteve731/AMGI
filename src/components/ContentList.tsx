@@ -3,6 +3,8 @@
 import Link from 'next/link'
 import { useState } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { useSWRConfig } from 'swr'
+
 
 type Content = {
     id: string
@@ -44,49 +46,56 @@ export default function ContentList({ contents: initialContents }: { contents: C
     const [activeTab, setActiveTab] = useState('all')
     const [contents, setContents] = useState(initialContents)
     const supabase = createClientComponentClient()
+    const { mutate } = useSWRConfig()
+
 
     const filteredContents = activeTab === 'all'
         ? contents
         : contents.filter(content => content.status === activeTab)
 
-    const handleStatusChange = async (contentId: string, newStatus: Content['status']) => {
-        try {
-            const { data, error } = await supabase
-                .from('contents')
-                .update({ status: newStatus })
-                .eq('id', contentId)
-                .select()
-
-            if (error) {
-                console.error('Supabase error:', error)
-                throw new Error(error.message)
-            }
-
-            if (!data || data.length === 0) {
-                throw new Error('No data returned after update')
-            }
-
-            setContents(prevContents =>
-                prevContents.map(content =>
-                    content.id === contentId
-                        ? { ...content, status: newStatus }
-                        : content
-                )
-            )
-
-        } catch (error) {
-            console.error('Error updating status:', error)
-            alert('상태 업데이트 중 오류가 발생했습니다.')
-
-            const originalContent = contents.find(c => c.id === contentId)
-            if (originalContent) {
-                const selectElement = document.querySelector(`select[data-content-id="${contentId}"]`) as HTMLSelectElement
-                if (selectElement) {
-                    selectElement.value = originalContent.status
+        const handleStatusChange = async (contentId: string, newStatus: Content['status']) => {
+            try {
+                // Use the API endpoint instead of direct Supabase call
+                const response = await fetch('/api/contents', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        id: contentId,
+                        status: newStatus
+                    }),
+                });
+        
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || '상태 업데이트 중 오류가 발생했습니다');
+                }
+        
+                // Update the local state
+                setContents(prevContents =>
+                    prevContents.map(content =>
+                        content.id === contentId
+                            ? { ...content, status: newStatus }
+                            : content
+                    )
+                );
+                
+                // Trigger a global refresh of the content data
+                mutate('/api/contents');
+            } catch (error) {
+                console.error('Error updating status:', error);
+                alert('상태 업데이트 중 오류가 발생했습니다.');
+        
+                const originalContent = contents.find(c => c.id === contentId);
+                if (originalContent) {
+                    const selectElement = document.querySelector(`select[data-content-id="${contentId}"]`) as HTMLSelectElement;
+                    if (selectElement) {
+                        selectElement.value = originalContent.status;
+                    }
                 }
             }
-        }
-    }
+        };
 
     return (
         <div className="flex flex-col h-full">

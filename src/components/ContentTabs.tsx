@@ -1,9 +1,9 @@
+// src/components/ContentTabs.tsx
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import useSWR from 'swr'
 import ContentList from '@/components/ContentList'
-import LoadingSpinner from '@/components/LoadingSpinner'
 
 // Fetcher function for SWR
 const fetcher = (url: string) => fetch(url).then(res => {
@@ -13,16 +13,44 @@ const fetcher = (url: string) => fetch(url).then(res => {
 
 export default function ContentTabs() {
   // Use SWR for data fetching with automatic revalidation
-  const { data, error, isLoading } = useSWR('/api/contents', fetcher, {
+  const { data, error, isLoading, mutate } = useSWR('/api/contents', fetcher, {
     refreshInterval: 0,  // Don't poll automatically
     revalidateOnFocus: true,  // Revalidate when window gets focus
     revalidateOnReconnect: true  // Revalidate when browser regains connection
   })
 
+  // Add an effect to refresh data when the component mounts or becomes visible
+  useEffect(() => {
+    // Function to handle visibility change
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        mutate(); // Refresh data when page becomes visible
+      }
+    };
+
+    // Function to handle focus event
+    const handleFocus = () => {
+      mutate(); // Refresh data when window gets focus
+    };
+
+    // Add event listeners
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+    
+    // Also refresh on initial mount
+    mutate();
+
+    // Clean up event listeners
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [mutate]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <LoadingSpinner />
+        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-purple-500"></div>
       </div>
     )
   }

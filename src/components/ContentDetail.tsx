@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import ConfirmModal from './ConfirmModal'
 import Link from 'next/link'
+import { useSWRConfig } from 'swr'
 
 type Content = {
     id: string
@@ -14,6 +15,8 @@ type Content = {
     chunks: Array<{ summary: string }>
     status: 'studying' | 'completed' | 'paused'
 }
+
+
 
 const statusStyles = {
     studying: {
@@ -43,33 +46,40 @@ export default function ContentDetail({ content: initialContent }: { content: Co
     const [isDeleting, setIsDeleting] = useState(false)
     const router = useRouter()
     const supabase = createClientComponentClient()
+    const { mutate } = useSWRConfig()
 
     const handleStatusChange = async (newStatus: Content['status']) => {
         try {
-            const { data, error } = await supabase
-                .from('contents')
-                .update({ status: newStatus })
-                .eq('id', content.id)
-                .select()
-
-            if (error) {
-                console.error('Supabase error:', error)
-                throw new Error(error.message)
+            // Use the API endpoint instead of direct Supabase call
+            const response = await fetch('/api/contents', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    id: content.id,
+                    status: newStatus
+                }),
+            });
+    
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || '상태 업데이트 중 오류가 발생했습니다');
             }
-
-            if (!data || data.length === 0) {
-                throw new Error('상태 업데이트 후 데이터를 받지 못했습니다')
-            }
-
-            setContent(prev => ({ ...prev, status: newStatus }))
-            router.refresh()
-
+    
+            // Update the local state
+            setContent(prev => ({ ...prev, status: newStatus }));
+            
+            // Trigger a global refresh of the content data
+            mutate('/api/contents');
+            
+            // Also refresh the current page
+            router.refresh();
         } catch (error) {
-            console.error('상태 업데이트 중 오류:', error)
-            alert('상태 업데이트 중 오류가 발생했습니다.')
+            console.error('상태 업데이트 중 오류:', error);
+            alert('상태 업데이트 중 오류가 발생했습니다.');
         }
-    }
-
+    };
     // ContentDetail.tsx의 handleDelete 함수 부분을 이렇게 수정하세요
 const handleDelete = async () => {
     if (isDeleting) return
