@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { useSWRConfig } from 'swr'
+import LoadingOverlay from './LoadingOverlay'
 
 type ContentGroup = {
     id: string
@@ -24,6 +25,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
     const { mutate } = useSWRConfig()
     const [isDeleting, setIsDeleting] = useState<string | null>(null)
     const [isDeletingContent, setIsDeletingContent] = useState(false)
+    const [isLoading, setIsLoading] = useState(false)
 
     const handleDelete = async (groupId: string) => {
         if (!confirm('정말로 이 그룹을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
@@ -92,8 +94,14 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
         }
     }
 
+    const handleGroupClick = (groupId: string) => {
+        setIsLoading(true)
+        router.push(`/content/${content.id}/groups/${groupId}`)
+    }
+
     return (
         <main className="flex min-h-screen flex-col bg-gradient-to-b from-[#F8F4EF] to-[#E8D9C5]">
+            {isLoading && <LoadingOverlay />}
             <div className="sticky top-0 bg-[#F8F4EF] border-b border-[#D4C4B7] p-4">
                 <button
                     onClick={() => router.back()}
@@ -152,6 +160,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                                         <Link
                                             href={`/content/${content.id}/groups/${group.id}`}
                                             className="flex-1"
+                                            onClick={() => handleGroupClick(group.id)}
                                         >
                                             <h3 className="text-lg font-medium text-gray-800">{group.title}</h3>
                                             <div className="flex items-center gap-3 mt-2 text-sm text-gray-500">

@@ -36,6 +36,11 @@ export default function BottomSheet() {
 
             setPreview(data.content)
             setText('')
+
+            // 콘텐츠 생성 후 홈으로 이동하고 새로고침
+            setTimeout(() => {
+                window.location.href = '/'
+            }, 500)
         } catch (error) {
             console.error('Error:', error)
             alert('오류가 발생했습니다.')

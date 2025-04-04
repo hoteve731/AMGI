@@ -2,6 +2,8 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useState } from 'react'
+import LoadingOverlay from './LoadingOverlay'
 
 type Chunk = {
     id: string
@@ -28,9 +30,16 @@ type GroupDetailProps = {
 
 export default function GroupDetail({ content, group }: GroupDetailProps) {
     const router = useRouter()
+    const [isLoading, setIsLoading] = useState(false)
+
+    const handleChunkClick = (chunkId: string) => {
+        setIsLoading(true)
+        router.push(`/content/${content.id}/learning?chunk=${chunkId}`)
+    }
 
     return (
         <main className="flex min-h-screen flex-col bg-gradient-to-b from-[#F8F4EF] to-[#E8D9C5]">
+            {isLoading && <LoadingOverlay />}
             <div className="sticky top-0 bg-[#F8F4EF] border-b border-[#D4C4B7] p-4">
                 <button
                     onClick={() => router.back()}
@@ -52,10 +61,10 @@ export default function GroupDetail({ content, group }: GroupDetailProps) {
                         <h3 className="text-xl font-semibold text-gray-700">학습 청크</h3>
                         <div className="text-sm text-gray-500">{group.chunks.length}개 청크</div>
                     </div>
-                    
+
                     <div className="space-y-4">
                         {group.chunks.map((chunk, index) => (
-                            <div 
+                            <div
                                 key={chunk.id}
                                 className="
                                     p-4 
@@ -76,6 +85,12 @@ export default function GroupDetail({ content, group }: GroupDetailProps) {
                                 <div className="mt-3 p-3 bg-gray-100 rounded-lg">
                                     <p className="text-gray-700 whitespace-pre-wrap">{chunk.masked_text}</p>
                                 </div>
+                                <Link
+                                    href={`/content/${content.id}/learning?chunk=${chunk.id}`}
+                                    className="flex-1"
+                                    onClick={() => handleChunkClick(chunk.id)}
+                                >
+                                </Link>
                             </div>
                         ))}
                     </div>

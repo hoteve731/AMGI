@@ -14,7 +14,7 @@ export default async function AuthPage() {
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#F8F4EF] to-[#E8D9C5]">
-            <div className="max-w-md w-full space-y-8 p-8 bg-white/60 backdrop-blur-md rounded-xl border border-white/30 shadow-lg">
+            <div className="max-w-md w-full space-y-8 p-8 mx-4 bg-white/60 backdrop-blur-md rounded-xl border border-white/30 shadow-lg">
                 <div className="text-center space-y-4">
                     <div className="flex justify-center">
                         <Image
@@ -29,7 +29,7 @@ export default async function AuthPage() {
                         LOOPA
                     </h1>
                     <p className="mt-2 text-gray-700 text-lg">
-                        아이디어를 기록하고 효과적으로 학습하세요
+                        모든 지식을 내 것으로<br />최고의 기억 방법
                     </p>
                 </div>
 
