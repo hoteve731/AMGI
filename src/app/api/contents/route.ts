@@ -206,81 +206,53 @@ export async function PUT(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
-
+    const { id } = await request.json()
+    
     if (!id) {
-      return NextResponse.json({ error: 'Content ID is required' }, { status: 400 });
+      return NextResponse.json(
+        { error: '콘텐츠 ID가 필요합니다.' },
+        { status: 400 }
+      )
     }
 
-    const supabase = await createClient();
+    const supabase = await createClient()
 
-    // 인증 확인
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // 1. 먼저 콘텐츠에 속한 모든 청크들을 삭제
+    const { error: chunksError } = await supabase
+      .from('content_chunks')
+      .delete()
+      .eq('content_id', id)
+
+    if (chunksError) {
+      throw chunksError
     }
 
-    // 트랜잭션 처리를 위한 단계별 삭제
-    // 1. 콘텐츠에 속한 모든 그룹 찾기
-    const { data: groups, error: groupsError } = await supabase
+    // 2. 콘텐츠에 속한 모든 그룹을 삭제
+    const { error: groupsError } = await supabase
       .from('content_groups')
-      .select('id')
-      .eq('content_id', id);
+      .delete()
+      .eq('content_id', id)
 
     if (groupsError) {
-      console.error('Error fetching groups:', groupsError);
-      return NextResponse.json({ error: groupsError.message }, { status: 500 });
+      throw groupsError
     }
 
-    // 2. 각 그룹에 속한 청크 삭제
-    if (groups && groups.length > 0) {
-      const groupIds = groups.map(group => group.id);
-
-      for (const groupId of groupIds) {
-        const { error: chunksError } = await supabase
-          .from('content_chunks')
-          .delete()
-          .eq('group_id', groupId);
-
-        if (chunksError) {
-          console.error(`Error deleting chunks for group ${groupId}:`, chunksError);
-          return NextResponse.json({ error: chunksError.message }, { status: 500 });
-        }
-      }
-
-      // 3. 그룹 삭제
-      const { error: deleteGroupsError } = await supabase
-        .from('content_groups')
-        .delete()
-        .eq('content_id', id);
-
-      if (deleteGroupsError) {
-        console.error('Error deleting groups:', deleteGroupsError);
-        return NextResponse.json({ error: deleteGroupsError.message }, { status: 500 });
-      }
-    }
-
-    // 4. 마지막으로 콘텐츠 삭제
-    const { error } = await supabase
+    // 3. 마지막으로 콘텐츠를 삭제
+    const { error: contentError } = await supabase
       .from('contents')
       .delete()
-      .match({
-        id: id,
-        user_id: session.user.id
-      });
+      .eq('id', id)
 
-    if (error) {
-      console.error('Error deleting content:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (contentError) {
+      throw contentError
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Unexpected error:', error);
+    console.error('콘텐츠 삭제 중 오류:', error)
     return NextResponse.json(
-      { error: 'An unexpected error occurred' },
+      { error: '콘텐츠 삭제 중 오류가 발생했습니다.' },
       { status: 500 }
-    );
+    )
   }
 }
