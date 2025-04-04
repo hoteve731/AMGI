@@ -217,27 +217,56 @@ export async function POST(req: Request) {
                             content: `다음은 여러 개의 문장 청크입니다. 각 청크에서 핵심 단어 하나 또는 두 개를 마스킹 처리해주세요. 
 중요한 키워드를 자연스럽게 빈칸으로 바꾸되, 문장의 리듬이나 문맥이 어색하지 않도록 해주세요. 핵심단어는 **로 감싸서 출력하세요. 예시: **핵심단어**
 
-다음 JSON 형식으로 출력하세요:
+반드시 다음 JSON 형식으로만 출력하세요. 추가 설명이나 텍스트 없이 오직 JSON만 출력해야 합니다:
 {
   "masked_chunks": [
     {"masked_text": "첫 번째 청크 마스킹된 텍스트"},
-    {"masked_text": "두 번째 청크 마스킹된 텍스트"},
-    ...
+    {"masked_text": "두 번째 청크 마스킹된 텍스트"}
   ]
 }
-`
+
+유효한 JSON 형식이 아니면 처리할 수 없으니 반드시 올바른 JSON 형식을 지켜주세요.`
                         },
                         { role: "user", content: JSON.stringify(chunks) }
                     ],
                     temperature: 0,
-                    max_tokens: 1000
+                    max_tokens: 1000,
+                    response_format: { type: "json_object" }
                 })
                 const maskedContent = maskingCompletion.choices[0].message.content
                 if (!maskedContent) {
                     throw new Error('No masked content generated')
                 }
-                maskedChunks = JSON.parse(maskedContent)
-                console.log(`Masked chunks generated for group ${i}:`, maskedChunks)
+
+                // Improved JSON parsing with validation and error handling
+                try {
+                    // Check if the response looks like JSON
+                    if (!maskedContent.trim().startsWith('{')) {
+                        console.error(`Invalid JSON format from API for group ${i}:`, maskedContent);
+                        throw new Error('Response is not in JSON format');
+                    }
+
+                    maskedChunks = JSON.parse(maskedContent);
+
+                    // Validate the expected structure
+                    if (!maskedChunks.masked_chunks || !Array.isArray(maskedChunks.masked_chunks)) {
+                        console.error(`Invalid structure in masked chunks for group ${i}:`, maskedChunks);
+                        throw new Error('Invalid masked_chunks structure in response');
+                    }
+
+                    // Ensure we have the right number of masked chunks
+                    if (maskedChunks.masked_chunks.length !== chunks.chunks.length) {
+                        console.error(`Mismatch in number of chunks vs masked chunks for group ${i}`);
+                        console.error(`Expected ${chunks.chunks.length}, got ${maskedChunks.masked_chunks.length}`);
+                        throw new Error('Mismatch in number of masked chunks');
+                    }
+
+                    console.log(`Masked chunks generated for group ${i}:`, maskedChunks)
+                } catch (parseError) {
+                    console.error(`JSON parsing error for group ${i}:`, parseError);
+                    console.error('Raw content that failed to parse:', maskedContent);
+                    throw new Error(`Failed to parse masked content: ${parseError.message}`);
+                }
             } catch (error) {
                 console.error(`Masking error for group ${i}:`, error)
                 continue
