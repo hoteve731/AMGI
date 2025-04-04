@@ -5,13 +5,12 @@ import { useState } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { useSWRConfig } from 'swr'
 
-
 type Content = {
     id: string
     title: string
     created_at: string
     status: 'studying' | 'completed' | 'paused'
-    chunks: Array<{ summary: string }>
+    groups_count?: number
 }
 
 const tabs = [
@@ -24,38 +23,39 @@ const tabs = [
 const statusStyles = {
     studying: {
         bg: 'bg-blue-100',
-        text: 'text-blue-700',
+        text: 'text-blue-800',
         dot: 'bg-blue-500',
-        label: '진행 중'
     },
     completed: {
         bg: 'bg-green-100',
-        text: 'text-green-700',
+        text: 'text-green-800',
         dot: 'bg-green-500',
-        label: '완료'
     },
     paused: {
         bg: 'bg-gray-100',
-        text: 'text-gray-700',
+        text: 'text-gray-800',
         dot: 'bg-gray-500',
-        label: '시작 전'
-    }
+    },
 }
 
 export default function ContentList({ contents: initialContents }: { contents: Content[] }) {
-    const [activeTab, setActiveTab] = useState('all')
     const [contents, setContents] = useState(initialContents)
+    const [activeTab, setActiveTab] = useState('all')
+    const [isStatusChanging, setIsStatusChanging] = useState(false)
     const supabase = createClientComponentClient()
     const { mutate } = useSWRConfig()
-
 
     const filteredContents = activeTab === 'all'
         ? contents
         : contents.filter(content => content.status === activeTab)
 
     const handleStatusChange = async (contentId: string, newStatus: Content['status']) => {
+        if (isStatusChanging) return
+
         try {
-            // Use the API endpoint instead of direct Supabase call
+            setIsStatusChanging(true)
+
+            // API를 통한 상태 업데이트
             const response = await fetch('/api/contents', {
                 method: 'PUT',
                 headers: {
@@ -63,16 +63,17 @@ export default function ContentList({ contents: initialContents }: { contents: C
                 },
                 body: JSON.stringify({
                     id: contentId,
-                    status: newStatus
+                    status: newStatus,
                 }),
             });
 
+            const result = await response.json();
+
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || '상태 업데이트 중 오류가 발생했습니다');
+                throw new Error(result.error || '상태 업데이트 중 오류가 발생했습니다.');
             }
 
-            // Update the local state
+            // 로컬 상태 업데이트
             setContents(prevContents =>
                 prevContents.map(content =>
                     content.id === contentId
@@ -81,38 +82,32 @@ export default function ContentList({ contents: initialContents }: { contents: C
                 )
             );
 
-            // Trigger a global refresh of the content data
+            // 전역 상태 리프레시
             mutate('/api/contents');
         } catch (error) {
-            console.error('Error updating status:', error);
-            alert('상태 업데이트 중 오류가 발생했습니다.');
-
-            const originalContent = contents.find(c => c.id === contentId);
-            if (originalContent) {
-                const selectElement = document.querySelector(`select[data-content-id="${contentId}"]`) as HTMLSelectElement;
-                if (selectElement) {
-                    selectElement.value = originalContent.status;
-                }
-            }
+            console.error('상태 업데이트 중 오류:', error);
+            alert(error instanceof Error ? error.message : '상태 업데이트 중 오류가 발생했습니다.');
+        } finally {
+            setIsStatusChanging(false);
         }
     };
 
     return (
         <div className="flex flex-col h-full">
-            <div className="flex overflow-x-auto mb-6 px-4 gap-6 mt-2">
+            <div className="flex justify-center p-4 space-x-2 bg-white/80 backdrop-blur-md sticky top-0 z-10 border-b border-[#D4C4B7]">
                 {tabs.map(tab => (
                     <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
                         className={`
-                            py-2
-                            whitespace-nowrap
-                            transition-all
-                            text-xl
-                            font-bold
+                            px-4 py-2 
+                            rounded-full 
+                            text-sm 
+                            font-medium 
+                            transition-colors
                             ${activeTab === tab.id
-                                ? 'text-black'
-                                : 'text-black opacity-40 hover:opacity-60'
+                                ? 'bg-black text-white'
+                                : 'bg-white/50 text-gray-600 hover:bg-white/80'
                             }
                         `}
                     >
@@ -151,7 +146,7 @@ export default function ContentList({ contents: initialContents }: { contents: C
                             ">
                                 <div className="flex items-center justify-between">
                                     <Link
-                                        href={`/content/${content.id}`}
+                                        href={`/content/${content.id}/groups`}
                                         className="flex-1"
                                     >
                                         <h2 className="text-lg font-medium text-gray-800 hover:text-blue-600 transition-colors">
@@ -175,7 +170,7 @@ export default function ContentList({ contents: initialContents }: { contents: C
                                                     d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                                                 />
                                             </svg>
-                                            <span className="text-gray-600 font-medium">{content.chunks.length}</span>
+                                            <span className="text-gray-600 font-medium">{content.groups_count || 0}</span>
                                         </div>
                                         <div>
                                             {new Date(content.created_at).toLocaleDateString('ko-KR')} 암기 시작
@@ -200,17 +195,17 @@ export default function ContentList({ contents: initialContents }: { contents: C
                                                 focus:ring-2
                                                 focus:ring-offset-2
                                                 focus:ring-blue-500
-                                                whitespace-nowrap
                                             `}
+                                            disabled={isStatusChanging}
                                         >
-                                            <option value="studying">진행 중</option>
-                                            <option value="completed">완료</option>
-                                            <option value="paused">시작 전</option>
+                                            <option value="studying">Looping</option>
+                                            <option value="completed">Completed</option>
+                                            <option value="paused">Paused</option>
                                         </select>
                                         <div
                                             className={`
                                                 absolute 
-                                                left-3 
+                                                left-2 
                                                 top-1/2 
                                                 -translate-y-1/2 
                                                 w-2 
@@ -224,8 +219,14 @@ export default function ContentList({ contents: initialContents }: { contents: C
                             </div>
                         </div>
                     ))}
+
+                    {filteredContents.length === 0 && (
+                        <div className="text-center py-10">
+                            <p className="text-gray-500">No contents found</p>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
     )
-} 
+}
