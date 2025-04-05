@@ -303,19 +303,19 @@ async function processContentInBackground(contentId: string, text: string, userI
 
         console.log('Background processing completed successfully')
 
-        // 모든 처리가 완료되면 콘텐츠 상태를 'completed'로 업데이트
+        // 모든 처리가 완료되면 콘텐츠 상태를 'studying'으로 업데이트
         try {
             const { error: updateError } = await supabase
                 .from('contents')
-                .update({ status: 'completed' })
+                .update({ status: 'studying' })
                 .eq('id', contentId)
                 .eq('user_id', userId)
 
             if (updateError) {
-                console.error('Failed to update content status to completed:', updateError)
+                console.error('Failed to update content status to studying:', updateError)
             }
         } catch (updateError) {
-            console.error('Error updating content status to completed:', updateError)
+            console.error('Error updating content status to studying:', updateError)
         }
     } catch (error) {
         console.error('Background processing error:', error)

@@ -14,6 +14,7 @@ type Content = {
     created_at: string
     status: 'studying' | 'completed' | 'paused'
     groups_count?: number
+    chunks_count?: number
     isProcessing?: boolean
 }
 
@@ -46,34 +47,89 @@ export default function ContentList({ contents, showTabs = false, mutate: extern
     const [isDeleting, setIsDeleting] = useState<string | null>(null)
     const [isLoading, setIsLoading] = useState(false)
     const [processedContents, setProcessedContents] = useState<Content[]>([])
+    const [processingContentIds, setProcessingContentIds] = useState<string[]>([])
     const router = useRouter()
     const supabase = createClientComponentClient()
     const { mutate: localMutate } = useSWRConfig()
 
+    // 콘텐츠 처리 상태 설정
     useEffect(() => {
-        const checkContentStatus = async () => {
-            if (!contents || contents.length === 0) {
-                setProcessedContents([]);
-                return;
-            }
+        if (!contents || contents.length === 0) return;
 
-            // 모든 콘텐츠의 상태를 확인하기 위해 전체 복사
+        const processContents = () => {
             const contentsCopy = [...contents];
+            const newProcessingIds: string[] = [];
 
             // 각 콘텐츠에 그룹 수에 따라 처리 상태 설정
             for (const content of contentsCopy) {
                 const index = contentsCopy.findIndex(c => c.id === content.id);
                 if (index !== -1) {
-                    // 그룹이 있으면 처리 완료로 간주
-                    contentsCopy[index].isProcessing = !content.groups_count || content.groups_count === 0;
+                    // 'paused' 상태이면서 그룹이 없거나 청크가 없으면 처리 중으로 간주
+                    const hasNoGroups = !content.groups_count || content.groups_count === 0;
+                    const hasNoChunks = !content.chunks_count || content.chunks_count === 0;
+                    const isProcessing = content.status === 'paused' && (hasNoGroups || hasNoChunks);
+                    contentsCopy[index].isProcessing = isProcessing;
+
+                    // 처리 중인 콘텐츠 ID 저장
+                    if (isProcessing) {
+                        newProcessingIds.push(content.id);
+                    }
                 }
             }
 
             setProcessedContents(contentsCopy);
+
+            // 처리 중인 콘텐츠 ID 목록 업데이트
+            setProcessingContentIds(newProcessingIds);
         };
 
-        checkContentStatus();
+        processContents();
     }, [contents]);
+
+    // 처리 중인 콘텐츠의 상태 확인
+    useEffect(() => {
+        if (processingContentIds.length === 0) return;
+
+        console.log('처리 중인 콘텐츠 감지:', processingContentIds);
+
+        // 각 처리 중인 콘텐츠의 상태를 확인하는 함수
+        const checkContentStatus = async () => {
+            for (const contentId of processingContentIds) {
+                try {
+                    const response = await fetch(`/api/content/${contentId}/status`);
+                    if (!response.ok) continue;
+
+                    const data = await response.json();
+
+                    // 처리가 완료되었는지 확인 (studying 상태로 변경됨)
+                    if (data.status === 'studying') {
+                        console.log('콘텐츠 처리 완료 감지:', contentId);
+
+                        // 콘텐츠 목록 새로고침
+                        if (externalMutate) {
+                            externalMutate();
+                        } else {
+                            localMutate('/api/contents');
+                        }
+
+                        // 처리 중인 콘텐츠 목록에서 제거
+                        setProcessingContentIds(prev => prev.filter(id => id !== contentId));
+                    }
+                } catch (error) {
+                    console.error('콘텐츠 상태 확인 중 오류:', error);
+                }
+            }
+
+            // 아직 처리 중인 콘텐츠가 있으면 3초 후 다시 확인
+            if (processingContentIds.length > 0) {
+                setTimeout(checkContentStatus, 3000);
+            }
+        };
+
+        // 최초 실행
+        checkContentStatus();
+
+    }, [processingContentIds, externalMutate, localMutate]);
 
     const handleStatusChange = async (contentId: string, newStatus: Content['status']) => {
         if (isStatusChanging) return
