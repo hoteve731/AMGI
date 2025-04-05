@@ -65,8 +65,8 @@ export default function GroupDetail({ content, group }: GroupDetailProps) {
 
                 <div className="space-y-4">
                     <div className="flex justify-between items-center">
-                        <h3 className="text-xl font-semibold text-gray-700">학습 청크</h3>
-                        <div className="text-sm text-gray-500">{group.chunks.length}개 청크</div>
+                        <h3 className="text-xl font-semibold text-gray-700">기억 카드</h3>
+                        <div className="text-sm text-gray-500">총 {group.chunks.length}개</div>
                     </div>
 
                     <div className="space-y-4">
@@ -89,7 +89,7 @@ export default function GroupDetail({ content, group }: GroupDetailProps) {
                                     z-0
                                 "
                             >
-                                <h4 className="text-lg font-medium text-gray-800">청크 {index + 1}</h4>
+                                <h4 className="text-lg font-medium text-gray-800">카드 {index + 1}</h4>
                                 <p className="mt-2 text-gray-600">{chunk.summary}</p>
                                 <div className="mt-3 p-3 bg-gray-100 rounded-lg">
                                     <p className="text-gray-700 whitespace-pre-wrap">{chunk.masked_text}</p>
