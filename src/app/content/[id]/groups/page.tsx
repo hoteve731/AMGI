@@ -20,15 +20,10 @@ type ContentWithGroups = {
   groups: ContentGroup[]
 }
 
-type PageProps = {
-  params: {
-    id: string
-  }
-}
-
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export default async function Page({ params }: PageProps) {
-  const id = params.id
+export default async function Page(props: any) {
+  const params = props?.params as { id?: string }
+  const id = typeof params?.id === 'string' ? params.id : ''
 
   if (!id) {
     console.error('Invalid ID param:', params)
