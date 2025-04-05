@@ -20,8 +20,14 @@ type ContentWithGroups = {
   groups: ContentGroup[]
 }
 
+type PageProps = {
+  params: {
+    id: string
+  }
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export default async function Page({ params }: { params: { id: string } }) {
+export default async function Page({ params }: PageProps) {
   const id = params.id
 
   if (!id) {
