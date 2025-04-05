@@ -92,7 +92,7 @@ export default function ContentList({ contents, showTabs = false, mutate: extern
     }
 
     return (
-        <div className="flex-1 overflow-y-auto p-4 relative">
+        <div className="flex-1 overflow-y-auto p-4 pb-[120px] relative">
             {isLoading && <LoadingOverlay />}
             <div className="space-y-5">
                 {contents.map((content, index) => (

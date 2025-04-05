@@ -34,7 +34,21 @@ export default function BottomSheet() {
                 body: JSON.stringify({ text }),
             })
 
-            const data = await response.json()
+            // 응답이 JSON이 아닌 경우를 처리
+            let data;
+            try {
+                const textData = await response.text();
+                try {
+                    data = JSON.parse(textData);
+                } catch (parseError) {
+                    console.error('JSON 파싱 오류:', parseError);
+                    console.error('응답 내용:', textData);
+                    throw new Error(`응답을 파싱할 수 없습니다: ${textData.substring(0, 100)}...`);
+                }
+            } catch (textError) {
+                console.error('응답 텍스트 읽기 오류:', textError);
+                throw new Error('서버 응답을 읽을 수 없습니다.');
+            }
 
             if (!response.ok) {
                 throw new Error(data.error || '콘텐츠 생성에 실패했습니다.')
@@ -169,80 +183,83 @@ export default function BottomSheet() {
                     )}
                 </AnimatePresence>
 
-                <motion.div
-                    className="bg-white rounded-t-xl shadow-lg overflow-hidden z-[70] relative pb-[env(safe-area-inset-bottom,16px)]"
-                    initial={{ height: "calc(80px + env(safe-area-inset-bottom, 16px))" }}
-                    animate={{
-                        height: isExpanded ? "80vh" : "calc(80px + env(safe-area-inset-bottom, 16px))",
-                        boxShadow: isExpanded ? "0 -10px 30px rgba(0, 0, 0, 0.15)" : "0 -2px 10px rgba(0, 0, 0, 0.05)"
-                    }}
-                    transition={{
-                        type: 'spring',
-                        damping: 25,
-                        stiffness: 300
-                    }}
-                >
-                    {/* Collapsed state - shows a preview */}
-                    {!isExpanded && (
-                        <div
-                            className="p-4 h-[80px] cursor-pointer flex items-center"
-                            onClick={expandSheet}
-                        >
-                            <div className="w-full">
-                                <div className="text-[#7C6FFB] font-medium text-sm mb-1">내 것으로 만들고 싶은 아이디어</div>
-                                <div className="text-gray-400 text-base">
-                                    {text ? text.substring(0, 50) + (text.length > 50 ? '...' : '') : '여기에 타이핑하거나 붙여넣으세요...'}
+                {/* 외부 컨테이너: 세이프 에리어 패딩 적용 */}
+                <div className="bg-white rounded-t-xl shadow-lg overflow-hidden z-[70] relative pb-[env(safe-area-inset-bottom,16px)]">
+                    {/* 내부 컨텐츠 컨테이너: 애니메이션 적용 */}
+                    <motion.div
+                        initial={{ height: "80px" }}
+                        animate={{
+                            height: isExpanded ? "calc(80vh - env(safe-area-inset-bottom, 16px))" : "80px",
+                            boxShadow: isExpanded ? "0 -10px 30px rgba(0, 0, 0, 0.15)" : "0 -2px 10px rgba(0, 0, 0, 0.05)"
+                        }}
+                        transition={{
+                            type: 'spring',
+                            damping: 25,
+                            stiffness: 300
+                        }}
+                    >
+                        {/* Collapsed state - shows a preview */}
+                        {!isExpanded && (
+                            <div
+                                className="p-4 h-[80px] cursor-pointer flex items-center"
+                                onClick={expandSheet}
+                            >
+                                <div className="w-full">
+                                    <div className="text-[#7C6FFB] font-medium text-sm mb-1">내 것으로 만들고 싶은 아이디어</div>
+                                    <div className="text-gray-400 text-base">
+                                        {text ? text.substring(0, 50) + (text.length > 50 ? '...' : '') : '여기에 타이핑하거나 붙여넣으세요...'}
+                                    </div>
+                                </div>
+                                <div className="flex-shrink-0 ml-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-[#7969F7]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                    </svg>
                                 </div>
                             </div>
-                            <div className="flex-shrink-0 ml-2">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-[#7969F7]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                                </svg>
-                            </div>
-                        </div>
-                    )}
+                        )}
 
-                    {/* Expanded state - full form */}
-                    {isExpanded && (
-                        <div className="h-full flex flex-col">
-                            <div className="flex justify-between items-center p-4 border-b border-gray-100">
-                                <button
-                                    onClick={collapseSheet}
-                                    className="text-gray-500 hover:text-gray-700"
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                </button>
-                                <h2 className="text-lg font-medium text-gray-700">새 기억 조각 만들기</h2>
-                                <motion.button
-                                    type="button"
-                                    onClick={handleSubmit}
-                                    disabled={!text.trim() || isLoading}
-                                    className="text-[#7969F7] disabled:text-gray-300 disabled:cursor-not-allowed"
-                                    whileHover={{ scale: 1.05 }}
-                                    whileTap={{ scale: 0.95 }}
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                    </svg>
-                                </motion.button>
-                            </div>
+                        {/* Expanded state - full form */}
+                        {isExpanded && (
+                            <div className="h-full flex flex-col">
+                                <div className="flex justify-between items-center p-4 border-b border-gray-100">
+                                    <button
+                                        onClick={collapseSheet}
+                                        className="text-gray-500 hover:text-gray-700"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                    <h2 className="text-lg font-medium text-gray-700">새 기억 조각 만들기</h2>
+                                    <motion.button
+                                        type="button"
+                                        onClick={handleSubmit}
+                                        disabled={!text.trim() || isLoading}
+                                        className="text-[#7969F7] disabled:text-gray-300 disabled:cursor-not-allowed"
+                                        whileHover={{ scale: 1.05 }}
+                                        whileTap={{ scale: 0.95 }}
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                        </svg>
+                                    </motion.button>
+                                </div>
 
-                            <form onSubmit={handleSubmit} className="flex-1 flex flex-col p-4">
-                                <div className="text-[#7C6FFB] font-medium text-sm mb-2">내 것으로 만들고 싶은 아이디어</div>
-                                <textarea
-                                    ref={textareaRef}
-                                    value={text}
-                                    onChange={(e) => setText(e.target.value)}
-                                    placeholder="여기에 타이핑하거나 붙여넣으세요..."
-                                    className="flex-1 w-full resize-none border-none focus:outline-none focus:ring-0 text-base"
-                                    disabled={isLoading}
-                                />
-                            </form>
-                        </div>
-                    )}
-                </motion.div>
+                                <form onSubmit={handleSubmit} className="flex-1 flex flex-col p-4">
+                                    <div className="text-[#7C6FFB] font-medium text-sm mb-2">내 것으로 만들고 싶은 아이디어</div>
+                                    <textarea
+                                        ref={textareaRef}
+                                        value={text}
+                                        onChange={(e) => setText(e.target.value)}
+                                        placeholder="여기에 타이핑하거나 붙여넣으세요..."
+                                        className="flex-1 w-full resize-none border-none focus:outline-none focus:ring-0 text-base"
+                                        disabled={isLoading}
+                                    />
+                                </form>
+                            </div>
+                        )}
+                    </motion.div>
+                </div>
             </motion.div>
         </>
     )
