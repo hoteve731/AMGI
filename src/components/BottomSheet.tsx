@@ -152,7 +152,7 @@ export default function BottomSheet() {
     return (
         <>
             <motion.div
-                className="fixed inset-x-0 bottom-[env(safe-area-inset-bottom,16px)] z-[60]"
+                className="fixed inset-x-0 bottom-0 z-[60]"
                 initial={{ y: 0 }}
                 animate={{ y: 0 }}
             >
@@ -170,10 +170,10 @@ export default function BottomSheet() {
                 </AnimatePresence>
 
                 <motion.div
-                    className="bg-white rounded-t-xl shadow-lg overflow-hidden z-[70] relative"
-                    initial={{ height: "80px" }}
+                    className="bg-white rounded-t-xl shadow-lg overflow-hidden z-[70] relative pb-[env(safe-area-inset-bottom,16px)]"
+                    initial={{ height: "calc(80px + env(safe-area-inset-bottom, 16px))" }}
                     animate={{
-                        height: isExpanded ? "90vh" : "80px",
+                        height: isExpanded ? "90vh" : "calc(80px + env(safe-area-inset-bottom, 16px))",
                         boxShadow: isExpanded ? "0 -10px 30px rgba(0, 0, 0, 0.15)" : "0 -2px 10px rgba(0, 0, 0, 0.05)"
                     }}
                     transition={{
@@ -185,7 +185,7 @@ export default function BottomSheet() {
                     {/* Collapsed state - shows a preview */}
                     {!isExpanded && (
                         <div
-                            className="p-4 h-full cursor-pointer flex items-center"
+                            className="p-4 h-[80px] cursor-pointer flex items-center"
                             onClick={expandSheet}
                         >
                             <div className="w-full">

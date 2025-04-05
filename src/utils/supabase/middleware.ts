@@ -17,10 +17,19 @@ export async function updateSession(request: NextRequest) {
           return request.cookies.get(name)?.value
         },
         set(name: string, value: string, options: CookieOptions) {
+          // Enhance cookie settings for better persistence
+          const enhancedOptions = {
+            ...options,
+            maxAge: 60 * 60 * 24 * 7, // 7 days
+            path: '/',
+            sameSite: 'lax' as const,
+            secure: process.env.NODE_ENV === 'production',
+          };
+
           request.cookies.set({
             name,
             value,
-            ...options,
+            ...enhancedOptions,
           })
           response = NextResponse.next({
             request: {
@@ -30,7 +39,7 @@ export async function updateSession(request: NextRequest) {
           response.cookies.set({
             name,
             value,
-            ...options,
+            ...enhancedOptions,
           })
         },
         remove(name: string, options: CookieOptions) {
@@ -54,7 +63,12 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
-  await supabase.auth.getUser()
+  try {
+    // This refreshes the session if needed
+    await supabase.auth.getUser()
+  } catch (error) {
+    console.error('Error refreshing session:', error)
+  }
 
   return response
 }
