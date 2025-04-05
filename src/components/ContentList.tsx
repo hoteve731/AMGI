@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { useSWRConfig } from 'swr'
 import { useRouter } from 'next/navigation'
@@ -16,6 +16,7 @@ type Content = {
     groups_count?: number
     chunks_count?: number
     isProcessing?: boolean
+    isManuallyPaused?: boolean
 }
 
 const statusStyles = {
@@ -68,6 +69,7 @@ export default function ContentList({ contents, showTabs = false, mutate: extern
                     const hasNoGroups = !content.groups_count || content.groups_count === 0;
                     const hasNoChunks = !content.chunks_count || content.chunks_count === 0;
                     const isProcessing = content.status === 'paused' && (hasNoGroups || hasNoChunks);
+
                     contentsCopy[index].isProcessing = isProcessing;
 
                     // 처리 중인 콘텐츠 ID 저장
@@ -78,8 +80,6 @@ export default function ContentList({ contents, showTabs = false, mutate: extern
             }
 
             setProcessedContents(contentsCopy);
-
-            // 처리 중인 콘텐츠 ID 목록 업데이트
             setProcessingContentIds(newProcessingIds);
         };
 
@@ -87,49 +87,53 @@ export default function ContentList({ contents, showTabs = false, mutate: extern
     }, [contents]);
 
     // 처리 중인 콘텐츠의 상태 확인
+    const checkContentStatus = useCallback(async () => {
+        let needsRefresh = false;
+
+        for (const contentId of processingContentIds) {
+            try {
+                const response = await fetch(`/content/${contentId}/status`);
+                if (!response.ok) continue;
+
+                const data = await response.json();
+
+                // studying 상태로 변경되었으면 처리 완료로 간주
+                if (data.status === 'studying') {
+                    needsRefresh = true;
+                }
+            } catch (error) {
+                console.error('콘텐츠 상태 확인 중 오류:', error);
+            }
+        }
+
+        // 상태 변경이 감지되면 콘텐츠 목록 새로고침
+        if (needsRefresh) {
+            if (externalMutate) {
+                externalMutate();
+            } else {
+                localMutate('/api/contents');
+            }
+        }
+    }, [processingContentIds, externalMutate, localMutate]);
+
     useEffect(() => {
         if (processingContentIds.length === 0) return;
 
-        console.log('처리 중인 콘텐츠 감지:', processingContentIds);
-
-        // 각 처리 중인 콘텐츠의 상태를 확인하는 함수
-        const checkContentStatus = async () => {
-            for (const contentId of processingContentIds) {
-                try {
-                    const response = await fetch(`/api/content/${contentId}/status`);
-                    if (!response.ok) continue;
-
-                    const data = await response.json();
-
-                    // 처리가 완료되었는지 확인 (studying 상태로 변경됨)
-                    if (data.status === 'studying') {
-                        console.log('콘텐츠 처리 완료 감지:', contentId);
-
-                        // 콘텐츠 목록 새로고침
-                        if (externalMutate) {
-                            externalMutate();
-                        } else {
-                            localMutate('/api/contents');
-                        }
-
-                        // 처리 중인 콘텐츠 목록에서 제거
-                        setProcessingContentIds(prev => prev.filter(id => id !== contentId));
-                    }
-                } catch (error) {
-                    console.error('콘텐츠 상태 확인 중 오류:', error);
-                }
-            }
-
-            // 아직 처리 중인 콘텐츠가 있으면 3초 후 다시 확인
-            if (processingContentIds.length > 0) {
-                setTimeout(checkContentStatus, 3000);
-            }
-        };
+        let checkTimeout: NodeJS.Timeout;
 
         // 최초 실행
         checkContentStatus();
 
-    }, [processingContentIds, externalMutate, localMutate]);
+        // 3초 후 다시 확인
+        const intervalId = setInterval(() => {
+            checkContentStatus();
+        }, 3000);
+
+        // 클린업 함수
+        return () => {
+            clearInterval(intervalId);
+        };
+    }, [processingContentIds.length, checkContentStatus]);
 
     const handleStatusChange = async (contentId: string, newStatus: Content['status']) => {
         if (isStatusChanging) return
