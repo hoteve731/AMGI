@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react'
 import useSWR from 'swr'
 import ContentList from '@/components/ContentList'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 
 // Fetcher function for SWR
 const fetcher = (url: string) => fetch(url).then(res => {
@@ -12,7 +12,16 @@ const fetcher = (url: string) => fetch(url).then(res => {
   return res.json()
 })
 
+const tabs = [
+  { id: 'all', label: 'All' },
+  { id: 'studying', label: 'Looping' },
+  { id: 'completed', label: 'Completed' },
+  { id: 'paused', label: 'Paused' },
+]
+
 export default function ContentTabs() {
+  const [activeTab, setActiveTab] = useState('all')
+
   // Use SWR for data fetching with automatic revalidation
   const { data, error, isLoading, mutate } = useSWR('/api/contents', fetcher, {
     refreshInterval: 0,  // Don't poll automatically
@@ -101,5 +110,91 @@ export default function ContentTabs() {
     )
   }
 
-  return <ContentList contents={data?.contents || []} />
+  // Filter contents based on active tab
+  const filteredContents = activeTab === 'all'
+    ? data?.contents || []
+    : (data?.contents || []).filter(content => content.status === activeTab)
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="p-4 bg-white/80 backdrop-blur-md sticky top-0 z-10 border-b border-[#D4C4B7]">
+        <div className="relative flex justify-center max-w-md mx-auto">
+          {/* Tab Background (Pill) */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-full h-10 bg-gray-100 rounded-full"></div>
+          </div>
+
+          {/* Tabs */}
+          <div className="relative flex w-full justify-between">
+            {tabs.map((tab) => {
+              const isActive = activeTab === tab.id;
+              return (
+                <div key={tab.id} className="relative z-10 flex-1">
+                  {isActive && (
+                    <motion.div
+                      layoutId="activeTabBackground"
+                      className="absolute inset-0 bg-white rounded-full shadow-sm"
+                      style={{
+                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)'
+                      }}
+                      transition={{
+                        type: "spring",
+                        stiffness: 500,
+                        damping: 30
+                      }}
+                    />
+                  )}
+                  <button
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`
+                      relative z-20
+                      w-full py-2 px-1
+                      text-sm font-medium
+                      transition-colors duration-200
+                      ${isActive ? 'text-[#7969F7]' : 'text-gray-500 hover:text-gray-700'}
+                    `}
+                  >
+                    {tab.label}
+                    {isActive && (
+                      <motion.div
+                        layoutId="activeTabLine"
+                        className="absolute bottom-0 left-0 right-0 mx-auto h-0.5 w-1/2 bg-[#7969F7]"
+                        transition={{
+                          type: "spring",
+                          stiffness: 500,
+                          damping: 30
+                        }}
+                      />
+                    )}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{
+              duration: 0.3,
+              ease: "easeInOut"
+            }}
+            className="h-full"
+          >
+            <ContentList
+              contents={filteredContents}
+              showTabs={false}
+              mutate={mutate}
+            />
+          </motion.div>
+        </AnimatePresence>
+      </div>
+    </div>
+  )
 }
