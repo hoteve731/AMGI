@@ -35,34 +35,56 @@ export default function ContentTabs() {
   const { data, error, isLoading, mutate } = useSWR<{ contents: Content[] }>('/api/contents', fetcher, {
     refreshInterval: 0,  // Don't poll automatically
     revalidateOnFocus: true,  // Revalidate when window gets focus
-    revalidateOnReconnect: true  // Revalidate when browser regains connection
+    revalidateOnReconnect: true,  // Revalidate when browser regains connection
+    dedupingInterval: 5000, // 5초 내에 중복 요청 방지
   })
 
   // Add an effect to refresh data when the component mounts or becomes visible
   useEffect(() => {
+    // 마지막 새로고침 시간을 추적
+    let lastRefreshTime = 0;
+
     // Function to handle visibility change
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        mutate(); // Refresh data when page becomes visible
+        const now = Date.now();
+        // 마지막 새로고침 후 최소 2초가 지났는지 확인 (너무 빈번한 새로고침 방지)
+        if (now - lastRefreshTime > 2000) {
+          lastRefreshTime = now;
+          mutate(); // Refresh data when page becomes visible
+        }
       }
     };
 
     // Function to handle focus event
     const handleFocus = () => {
-      mutate(); // Refresh data when window gets focus
+      const now = Date.now();
+      if (now - lastRefreshTime > 2000) {
+        lastRefreshTime = now;
+        mutate(); // Refresh data when window gets focus
+      }
+    };
+
+    // 페이지 로드/새로고침 시 자동 새로고침
+    const handleLoad = () => {
+      lastRefreshTime = Date.now();
+      mutate();
     };
 
     // Add event listeners
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('focus', handleFocus);
+    window.addEventListener('load', handleLoad);
 
     // Also refresh on initial mount
+    lastRefreshTime = Date.now();
     mutate();
 
     // Clean up event listeners
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('load', handleLoad);
     };
   }, [mutate]);
 

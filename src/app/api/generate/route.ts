@@ -57,7 +57,7 @@ export async function POST(req: Request) {
                 messages: [
                     {
                         role: "system",
-                        content: "주어진 텍스트를 읽고 핵심적이고 명확한 제목을 생성해주세요. 제목만 출력하세요."
+                        content: "주어진 텍스트를 읽고 핵심적이고 명확한 제목을 생성해주세요. \"등으로 감싸지 말고 오직 텍스트 제목만 출력하세요."
                     },
                     { role: "user", content: text }
                 ],
@@ -207,19 +207,23 @@ async function processContentInBackground(contentId: string, text: string, userI
                                 messages: [
                                     {
                                         role: "system",
-                                        content: `주어진 텍스트를 읽고 3-5개의 핵심 문장이나 구절로 나누어주세요. 
-                                        각 문장이나 구절은 원문에서 직접 발췌해야 합니다.
-                                        각 문장이나 구절에 대해 간략한 요약도 함께 제공해주세요.
+                                        content: `주어진 텍스트를 읽고 기억하기 좋은 문장, 구절 단위로 나눠진 n개의 '기억 카드'를 만들어주세요. 
+                                        각 '기억 카드'는 원문에서 직접 발췌해야 합니다.
+                                        각 '기억 카드'에 대해 간략한 요약도 함께 제공해주세요.
+                                        
+                                        또한, 각 '기억 카드'에서 중요한 단어나 개념을 식별하여 해당 단어를 **로 감싸주세요.
+                                        예를 들어, "인공지능은 미래 기술의 핵심입니다"라는 문장에서 "인공지능"과 "미래 기술"이 중요하다면
+                                        "**인공지능**은 **미래 기술**의 핵심입니다"와 같이 표시해주세요. 되도록이면 마스킹 되는 단어는 가장 중요한 1개로 제한하고, 꼭 필요한 경우 최대 2개까지만 마스킹 처리 하세요.
                                         
                                         다음 형식으로 출력해주세요:
                                         
                                         청크 1:
                                         요약: [간략한 요약]
-                                        원문: [원문에서 발췌한 문장이나 구절]
+                                        원문: [중요 단어가 **로 감싸진 원문 문장이나 구절]
                                         
                                         청크 2:
                                         요약: [간략한 요약]
-                                        원문: [원문에서 발췌한 문장이나 구절]
+                                        원문: [중요 단어가 **로 감싸진 원문 문장이나 구절]
                                         
                                         ...`
                                     },
@@ -243,11 +247,8 @@ async function processContentInBackground(contentId: string, text: string, userI
                                 const summary = chunkMatch[1].trim()
                                 const originalText = chunkMatch[2].trim()
 
-                                // 마스킹 처리
-                                const maskedText = originalText.replace(/\b\w{3,}\b/g, (word) => {
-                                    // 50% 확률로 단어를 마스킹
-                                    return Math.random() < 0.5 ? '_'.repeat(word.length) : word
-                                })
+                                // 마스킹된 텍스트는 LLM이 이미 **로 감싸서 제공함
+                                const maskedText = originalText
 
                                 chunks.push({
                                     group_id: groupId,
@@ -277,7 +278,7 @@ async function processContentInBackground(contentId: string, text: string, userI
                                     .insert([{
                                         group_id: groupId,
                                         summary: "전체 내용",
-                                        masked_text: group.original_text.replace(/\b\w{3,}\b/g, (word) => '_'.repeat(word.length)),
+                                        masked_text: group.original_text,
                                         position: 1
                                     }])
 

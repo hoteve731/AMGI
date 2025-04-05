@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { useSWRConfig } from 'swr'
 import { useRouter } from 'next/navigation'
@@ -14,6 +14,7 @@ type Content = {
     created_at: string
     status: 'studying' | 'completed' | 'paused'
     groups_count?: number
+    isProcessing?: boolean
 }
 
 const statusStyles = {
@@ -44,9 +45,35 @@ export default function ContentList({ contents, showTabs = false, mutate: extern
     const [isStatusChanging, setIsStatusChanging] = useState(false)
     const [isDeleting, setIsDeleting] = useState<string | null>(null)
     const [isLoading, setIsLoading] = useState(false)
+    const [processedContents, setProcessedContents] = useState<Content[]>([])
     const router = useRouter()
     const supabase = createClientComponentClient()
     const { mutate: localMutate } = useSWRConfig()
+
+    useEffect(() => {
+        const checkContentStatus = async () => {
+            if (!contents || contents.length === 0) {
+                setProcessedContents([]);
+                return;
+            }
+
+            // 모든 콘텐츠의 상태를 확인하기 위해 전체 복사
+            const contentsCopy = [...contents];
+
+            // 각 콘텐츠에 그룹 수에 따라 처리 상태 설정
+            for (const content of contentsCopy) {
+                const index = contentsCopy.findIndex(c => c.id === content.id);
+                if (index !== -1) {
+                    // 그룹이 있으면 처리 완료로 간주
+                    contentsCopy[index].isProcessing = !content.groups_count || content.groups_count === 0;
+                }
+            }
+
+            setProcessedContents(contentsCopy);
+        };
+
+        checkContentStatus();
+    }, [contents]);
 
     const handleStatusChange = async (contentId: string, newStatus: Content['status']) => {
         if (isStatusChanging) return
@@ -54,7 +81,6 @@ export default function ContentList({ contents, showTabs = false, mutate: extern
         try {
             setIsStatusChanging(true)
 
-            // API를 통한 상태 업데이트
             const response = await fetch('/api/contents', {
                 method: 'PUT',
                 headers: {
@@ -72,7 +98,6 @@ export default function ContentList({ contents, showTabs = false, mutate: extern
                 throw new Error(result.error || '상태 업데이트 중 오류가 발생했습니다.');
             }
 
-            // 전역 상태 리프레시
             if (externalMutate) {
                 externalMutate();
             } else {
@@ -91,11 +116,13 @@ export default function ContentList({ contents, showTabs = false, mutate: extern
         router.push(`/content/${contentId}/groups`)
     }
 
+    const displayContents = processedContents.length > 0 ? processedContents : contents;
+
     return (
         <div className="flex-1 overflow-y-auto p-4 pb-[120px] relative">
             {isLoading && <LoadingOverlay />}
             <div className="space-y-5">
-                {contents.map((content, index) => (
+                {displayContents.map((content, index) => (
                     <motion.div
                         key={content.id}
                         initial={{ opacity: 0 }}
@@ -107,7 +134,7 @@ export default function ContentList({ contents, showTabs = false, mutate: extern
                         }}
                         className="block relative hover:scale-[1.02] transition-transform duration-200"
                     >
-                        <div className="
+                        <div className={`
                             p-4 
                             bg-white/60
                             backdrop-blur-md 
@@ -119,85 +146,126 @@ export default function ContentList({ contents, showTabs = false, mutate: extern
                             transition-colors
                             [-webkit-backdrop-filter:blur(20px)]
                             [backdrop-filter:blur(20px)]
-                        ">
+                            ${content.isProcessing ? 'opacity-70' : ''}
+                        `}>
                             <div className="flex items-center justify-between">
-                                <div
-                                    onClick={() => handleContentClick(content.id)}
-                                    className="flex-1 cursor-pointer"
-                                >
-                                    <h2 className="text-lg font-medium text-gray-800 hover:text-blue-600 transition-colors">
-                                        {content.title}
-                                    </h2>
-                                </div>
-                            </div>
-                            <div className="flex items-center justify-between mt-2">
-                                <div className="flex items-center gap-3 text-sm text-gray-500">
-                                    <div className="flex items-center gap-1">
-                                        <svg
-                                            className="w-4 h-4"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            viewBox="0 0 24 24"
-                                        >
-                                            <path
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                                strokeWidth={2}
-                                                d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
-                                            />
-                                        </svg>
-                                        <span className="text-gray-600">그룹</span>
-                                        <span className="text-gray-700 font-bold">{content.groups_count || 0}</span>
+                                {content.isProcessing ? (
+                                    <div className="flex-1">
+                                        <div className="flex items-center justify-between">
+                                            <h2 className="text-lg font-medium text-gray-800">
+                                                {content.title}
+                                            </h2>
+                                            <div className="flex items-center ml-2">
+                                                <div className="relative w-5 h-5">
+                                                    {[0, 1, 2].map((i) => (
+                                                        <motion.div
+                                                            key={i}
+                                                            className="absolute w-1.5 h-1.5 bg-[#7969F7] rounded-full"
+                                                            style={{
+                                                                top: '50%',
+                                                                left: '50%',
+                                                                x: `calc(${Math.cos(2 * Math.PI * i / 3) * 6}px - 50%)`,
+                                                                y: `calc(${Math.sin(2 * Math.PI * i / 3) * 6}px - 50%)`,
+                                                            }}
+                                                            animate={{
+                                                                scale: [1, 1.5, 1],
+                                                            }}
+                                                            transition={{
+                                                                duration: 1,
+                                                                repeat: Infinity,
+                                                                delay: i * 0.2,
+                                                                ease: 'easeInOut',
+                                                            }}
+                                                        />
+                                                    ))}
+                                                </div>
+                                                <span className="ml-2 text-sm text-[#7969F7]">처리 중...</span>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div>
-                                        {new Date(content.created_at).toLocaleDateString('ko-KR')} 시작
-                                    </div>
-                                </div>
-                                <div className="relative inline-block">
-                                    <select
-                                        data-content-id={content.id}
-                                        value={content.status}
-                                        onChange={(e) => handleStatusChange(content.id, e.target.value as Content['status'])}
-                                        className={`
-                                            appearance-none
-                                            pl-7 pr-4 py-1.5
-                                            rounded-full
-                                            text-sm
-                                            font-medium
-                                            ${statusStyles[content.status].bg}
-                                            ${statusStyles[content.status].text}
-                                            transition-colors
-                                            border-0
-                                            focus:outline-none
-                                            focus:ring-2
-                                            focus:ring-offset-2
-                                            focus:ring-blue-500
-                                        `}
-                                        disabled={isStatusChanging}
-                                    >
-                                        <option value="studying">Looping</option>
-                                        <option value="completed">Completed</option>
-                                        <option value="paused">Paused</option>
-                                    </select>
+                                ) : (
                                     <div
-                                        className={`
-                                            absolute 
-                                            left-2 
-                                            top-1/2 
-                                            -translate-y-1/2 
-                                            w-2 
-                                            h-2 
-                                            rounded-full 
-                                            ${statusStyles[content.status].dot}
-                                        `}
-                                    />
-                                </div>
+                                        className="flex-1 cursor-pointer"
+                                        onClick={() => handleContentClick(content.id)}
+                                    >
+                                        <h2 className="text-lg font-medium text-gray-800">
+                                            {content.title}
+                                        </h2>
+                                    </div>
+                                )}
                             </div>
+
+                            {!content.isProcessing ? (
+                                <div className="flex items-center justify-between mt-2">
+                                    <div className="flex items-center gap-3 text-sm text-gray-500">
+                                        <div className="flex items-center gap-1">
+                                            <svg
+                                                className="w-4 h-4"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    strokeWidth={2}
+                                                    d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
+                                                />
+                                            </svg>
+                                            <span className="text-gray-600">그룹</span>
+                                            <span className="font-medium text-gray-800">{content.groups_count || 0}</span>
+                                        </div>
+                                        <div>
+                                            {new Date(content.created_at).toLocaleDateString('ko-KR')} 시작
+                                        </div>
+                                    </div>
+
+                                    <div className="relative inline-block">
+                                        <select
+                                            data-content-id={content.id}
+                                            value={content.status}
+                                            onChange={(e) => handleStatusChange(content.id, e.target.value as Content['status'])}
+                                            className={`
+                                                appearance-none
+                                                pl-7 pr-4 py-1.5
+                                                rounded-full
+                                                text-sm
+                                                font-medium
+                                                ${statusStyles[content.status].bg}
+                                                ${statusStyles[content.status].text}
+                                                transition-colors
+                                                border-0
+                                                focus:outline-none
+                                                focus:ring-2
+                                                focus:ring-offset-2
+                                                focus:ring-blue-500
+                                            `}
+                                            disabled={isStatusChanging}
+                                        >
+                                            <option value="studying">Looping</option>
+                                            <option value="completed">Completed</option>
+                                            <option value="paused">Paused</option>
+                                        </select>
+                                        <div
+                                            className={`
+                                                absolute 
+                                                left-2 
+                                                top-1/2 
+                                                -translate-y-1/2 
+                                                w-2 
+                                                h-2 
+                                                rounded-full 
+                                                ${statusStyles[content.status].dot}
+                                            `}
+                                        />
+                                    </div>
+                                </div>
+                            ) : null}
                         </div>
                     </motion.div>
                 ))}
 
-                {contents.length === 0 && (
+                {displayContents.length === 0 && (
                     <div className="text-center py-10">
                         <p className="text-gray-500">No contents here 😄</p>
                     </div>

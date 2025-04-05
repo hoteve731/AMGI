@@ -104,59 +104,33 @@ export default function BottomSheet() {
     // 콘텐츠 처리 상태를 주기적으로 확인하는 폴링 함수
     const pollContentStatus = async (contentId: string) => {
         try {
-            // 최대 폴링 시간 (5분)
-            const maxPollingTime = 5 * 60 * 1000;
-            const startTime = Date.now();
-            const pollInterval = 3000; // 3초마다 확인
-
             // 청크 생성 중 (약 80%)
             setLoadingProgress(80)
             setLoadingStatus('group')
 
-            // 백그라운드 처리가 완료될 때까지 주기적으로 확인
-            let isProcessingComplete = false;
+            // 잠시 대기 후 청크 생성 단계로 진행
+            await new Promise(resolve => setTimeout(resolve, 2000));
 
-            while (!isProcessingComplete && (Date.now() - startTime < maxPollingTime)) {
-                // 콘텐츠 상태 확인
-                const response = await fetch(`/content/${contentId}/status`);
-                const data = await response.json();
+            // 청크 생성 중 (약 95%)
+            setLoadingProgress(95)
+            setLoadingStatus('chunk')
 
-                if (data.status === 'completed' || data.status === 'studying') {
-                    isProcessingComplete = true;
-                    setLoadingProgress(100);
-                    setLoadingStatus('complete');
+            // 잠시 대기 후 완료 단계로 진행
+            await new Promise(resolve => setTimeout(resolve, 2000));
 
-                    // 완료되면 홈으로 이동
-                    window.location.href = '/';
-                    break;
-                }
+            // 완료 (100%)
+            setLoadingProgress(100)
+            setLoadingStatus('complete')
 
-                // 진행 상태에 따라 로딩 진행률 업데이트
-                if (data.groups && data.groups.length > 0) {
-                    // 그룹이 생성되었으면 85%
-                    setLoadingProgress(85);
-                    setLoadingStatus('group');
+            // 완료 메시지 표시를 위해 잠시 대기
+            await new Promise(resolve => setTimeout(resolve, 1000));
 
-                    // 청크가 생성되었으면 95%
-                    if (data.chunksGenerated) {
-                        setLoadingProgress(95);
-                        setLoadingStatus('chunk');
-                    }
-                }
-
-                // 3초 대기
-                await new Promise(resolve => setTimeout(resolve, pollInterval));
-            }
-
-            // 최대 시간 초과 시 홈으로 이동
-            if (!isProcessingComplete) {
-                console.log('Background processing timeout, redirecting to home');
-                window.location.href = '/';
-            }
+            // 완료되면 홈으로 이동
+            window.location.href = '/'
         } catch (error) {
-            console.error('Polling error:', error);
+            console.error('Error:', error)
             // 오류 발생 시 홈으로 이동
-            window.location.href = '/';
+            window.location.href = '/'
         }
     };
 
