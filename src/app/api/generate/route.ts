@@ -138,18 +138,18 @@ async function processContentInBackground(contentId: string, text: string, userI
                 messages: [
                     {
                         role: "system",
-                        content: `주어진 텍스트를 읽고 핵심 아이디어나 목적에 따라 3-5개의 그룹으로 분류해주세요.
-                        각 그룹은 다음 형식으로 출력해주세요:
+                        content: `주어진 텍스트를 읽고 핵심 아이디어나 목적에 따라 여러개의 그룹으로 분류해주세요. 핵심 아이디어가 하나라면 1개의 그룹이여도 괜찮습니다. 3~5개가 이상적이며, 되도록이면 7개의 그룹을 넘기지 마세요.
+                        각 그룹은 다음 형식으로 출력해주세요. 첫번째 줄인 그룹의 제목은 ['핵심키워드'(을/를) 기억하기] 형식으로 정해주세요.:
                         
-                        그룹 1: [그룹의 제목 - "OOO을 기억하기" 형식]
+                        그룹 1: OOO을 기억하기
                         [그룹에 해당하는 원문 텍스트]
                         
-                        그룹 2: [그룹의 제목 - "OOO을 기억하기" 형식]
+                        그룹 2: OOO을 기억하기
                         [그룹에 해당하는 원문 텍스트]
                         
                         ...
                         
-                        각 그룹의 텍스트는 원문에서 직접 발췌해야 합니다.`
+                        각 그룹의 원문 텍스트는 원문을 직접 중복 없이 나눠서 그대로 발췌해야 합니다.`
                     },
                     { role: "user", content: text }
                 ],
@@ -198,84 +198,100 @@ async function processContentInBackground(contentId: string, text: string, userI
                 // 2.2 청크 생성 - 타임아웃 적용
                 try {
                     console.log(`Generating chunks for group: ${group.title}`)
-                    const chunksCompletion = await withTimeout(openai.chat.completions.create({
-                        model: "gpt-4o-mini-2024-07-18",
-                        messages: [
-                            {
-                                role: "system",
-                                content: `주어진 텍스트를 읽고 3-5개의 핵심 문장이나 구절로 나누어주세요. 
-                                각 문장이나 구절은 원문에서 직접 발췌해야 합니다.
-                                각 문장이나 구절에 대해 간략한 요약도 함께 제공해주세요.
-                                
-                                다음 형식으로 출력해주세요:
-                                
-                                청크 1:
-                                요약: [간략한 요약]
-                                원문: [원문에서 발췌한 문장이나 구절]
-                                
-                                청크 2:
-                                요약: [간략한 요약]
-                                원문: [원문에서 발췌한 문장이나 구절]
-                                
-                                ...`
-                            },
-                            { role: "user", content: group.original_text }
-                        ],
-                        temperature: 0,
-                        max_tokens: 1000
-                    }), TIMEOUT);
 
-                    const chunksText = chunksCompletion.choices[0].message.content || ''
-                    console.log(`Chunks generated for group ${group.title}:`, chunksText)
+                    // 각 그룹의 청크 생성을 Promise로 감싸서 처리
+                    await new Promise(async (resolve, reject) => {
+                        try {
+                            const chunksCompletion = await withTimeout(openai.chat.completions.create({
+                                model: "gpt-4o-mini-2024-07-18",
+                                messages: [
+                                    {
+                                        role: "system",
+                                        content: `주어진 텍스트를 읽고 3-5개의 핵심 문장이나 구절로 나누어주세요. 
+                                        각 문장이나 구절은 원문에서 직접 발췌해야 합니다.
+                                        각 문장이나 구절에 대해 간략한 요약도 함께 제공해주세요.
+                                        
+                                        다음 형식으로 출력해주세요:
+                                        
+                                        청크 1:
+                                        요약: [간략한 요약]
+                                        원문: [원문에서 발췌한 문장이나 구절]
+                                        
+                                        청크 2:
+                                        요약: [간략한 요약]
+                                        원문: [원문에서 발췌한 문장이나 구절]
+                                        
+                                        ...`
+                                    },
+                                    { role: "user", content: group.original_text }
+                                ],
+                                temperature: 0,
+                                max_tokens: 1000
+                            }), TIMEOUT);
 
-                    // 청크 텍스트 파싱
-                    const chunkRegex = /청크 \d+:\s*\n요약: (.*?)\s*\n원문: ([\s\S]*?)(?=\n\n청크 \d+:|$)/g
-                    let chunkMatch
-                    let chunkPosition = 0
-                    const chunks = []
+                            const chunksText = chunksCompletion.choices[0].message.content || ''
+                            console.log(`Chunks generated for group ${group.title}:`, chunksText)
 
-                    while ((chunkMatch = chunkRegex.exec(chunksText)) !== null) {
-                        chunkPosition++
-                        const summary = chunkMatch[1].trim()
-                        const originalText = chunkMatch[2].trim()
+                            // 청크 텍스트 파싱
+                            const chunkRegex = /청크 \d+:\s*\n요약: (.*?)\s*\n원문: ([\s\S]*?)(?=\n\n청크 \d+:|$)/g
+                            let chunkMatch
+                            let chunkPosition = 0
+                            const chunks = []
 
-                        // 마스킹 처리
-                        const maskedText = originalText.replace(/\b\w{3,}\b/g, (word) => {
-                            // 50% 확률로 단어를 마스킹
-                            return Math.random() < 0.5 ? '_'.repeat(word.length) : word
-                        })
+                            while ((chunkMatch = chunkRegex.exec(chunksText)) !== null) {
+                                chunkPosition++
+                                const summary = chunkMatch[1].trim()
+                                const originalText = chunkMatch[2].trim()
 
-                        chunks.push({
-                            group_id: groupId,
-                            summary,
-                            masked_text: maskedText,
-                            position: chunkPosition
-                        })
-                    }
+                                // 마스킹 처리
+                                const maskedText = originalText.replace(/\b\w{3,}\b/g, (word) => {
+                                    // 50% 확률로 단어를 마스킹
+                                    return Math.random() < 0.5 ? '_'.repeat(word.length) : word
+                                })
 
-                    console.log(`Parsed chunks for group ${group.title}:`, chunks)
+                                chunks.push({
+                                    group_id: groupId,
+                                    summary,
+                                    masked_text: maskedText,
+                                    position: chunkPosition
+                                })
+                            }
 
-                    // 청크 저장
-                    if (chunks.length > 0) {
-                        const { error: chunksError } = await supabase
-                            .from('content_chunks')
-                            .insert(chunks)
+                            console.log(`Parsed chunks for group ${group.title}:`, chunks)
 
-                        if (chunksError) throw chunksError
-                    }
+                            // 청크 저장
+                            if (chunks.length > 0) {
+                                const { error: chunksError } = await supabase
+                                    .from('content_chunks')
+                                    .insert(chunks)
+
+                                if (chunksError) throw chunksError
+                            }
+                            resolve(true);
+                        } catch (error) {
+                            console.error(`Chunks generation error for group ${group.title}:`, error)
+                            // 청크 생성 실패 시 기본 청크 하나 생성
+                            try {
+                                const { error: fallbackChunkError } = await supabase
+                                    .from('content_chunks')
+                                    .insert([{
+                                        group_id: groupId,
+                                        summary: "전체 내용",
+                                        masked_text: group.original_text.replace(/\b\w{3,}\b/g, (word) => '_'.repeat(word.length)),
+                                        position: 1
+                                    }])
+
+                                if (fallbackChunkError) throw fallbackChunkError
+                                resolve(true);
+                            } catch (fallbackError) {
+                                reject(fallbackError);
+                            }
+                        }
+                    });
                 } catch (error) {
-                    console.error(`Chunks generation error for group ${group.title}:`, error)
-                    // 청크 생성 실패 시 기본 청크 하나 생성
-                    const { error: fallbackChunkError } = await supabase
-                        .from('content_chunks')
-                        .insert([{
-                            group_id: groupId,
-                            summary: "전체 내용",
-                            masked_text: group.original_text.replace(/\b\w{3,}\b/g, (word) => '_'.repeat(word.length)),
-                            position: 1
-                        }])
-
-                    if (fallbackChunkError) throw fallbackChunkError
+                    console.error(`Error processing group ${group.title}:`, error)
+                    // 개별 그룹 처리 실패는 다른 그룹 처리에 영향을 주지 않도록 함
+                    continue
                 }
             } catch (error) {
                 console.error(`Error processing group ${group.title}:`, error)
@@ -285,6 +301,21 @@ async function processContentInBackground(contentId: string, text: string, userI
         }
 
         console.log('Background processing completed successfully')
+
+        // 모든 처리가 완료되면 콘텐츠 상태를 'completed'로 업데이트
+        try {
+            const { error: updateError } = await supabase
+                .from('contents')
+                .update({ status: 'completed' })
+                .eq('id', contentId)
+                .eq('user_id', userId)
+
+            if (updateError) {
+                console.error('Failed to update content status to completed:', updateError)
+            }
+        } catch (updateError) {
+            console.error('Error updating content status to completed:', updateError)
+        }
     } catch (error) {
         console.error('Background processing error:', error)
         // 백그라운드 처리 실패 시 상태 업데이트

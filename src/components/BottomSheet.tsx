@@ -133,9 +133,15 @@ export default function BottomSheet() {
 
                 // 진행 상태에 따라 로딩 진행률 업데이트
                 if (data.groups && data.groups.length > 0) {
-                    // 그룹이 생성되었으면 90%
-                    setLoadingProgress(90);
-                    setLoadingStatus('chunk');
+                    // 그룹이 생성되었으면 85%
+                    setLoadingProgress(85);
+                    setLoadingStatus('group');
+
+                    // 청크가 생성되었으면 95%
+                    if (data.chunksGenerated) {
+                        setLoadingProgress(95);
+                        setLoadingStatus('chunk');
+                    }
                 }
 
                 // 3초 대기
