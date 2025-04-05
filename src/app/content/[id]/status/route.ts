@@ -1,12 +1,11 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
 
-export async function GET(
-    request: Request,
-    context: { params: { id: string } }
-) {
+export async function GET(request: Request) {
     try {
-        const contentId = context.params.id;
+        // URL에서 ID 파라미터 추출
+        const url = new URL(request.url)
+        const contentId = url.pathname.split('/').filter(Boolean)[1] // /content/[id]/status에서 [id] 추출
 
         const supabase = await createClient()
 
