@@ -3,12 +3,10 @@ import { createClient } from '@/utils/supabase/server'
 
 export async function GET(
     request: Request,
-    { params }: { params: { id: string } }
+    context: { params: { id: string } }
 ) {
     try {
-        // params를 await로 처리
-        const resolvedParams = await Promise.resolve(params);
-        const contentId = resolvedParams.id;
+        const contentId = context.params.id;
 
         const supabase = await createClient()
 
