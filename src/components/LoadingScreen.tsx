@@ -5,14 +5,16 @@ import { motion } from 'framer-motion'
 
 type LoadingScreenProps = {
     progress: number
-    status: 'title' | 'content' | 'group'
+    status: 'title' | 'content' | 'group' | 'chunk' | 'complete'
 }
 
 export default function LoadingScreen({ progress, status }: LoadingScreenProps) {
     const statusText = {
         title: '제목 생성 중...',
         content: '내용 생성 중...',
-        group: '그룹 생성 중...'
+        group: '그룹 생성 중...',
+        chunk: '청크 생성 중...',
+        complete: '완료!'
     }
 
     return (

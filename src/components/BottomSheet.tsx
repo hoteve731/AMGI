@@ -7,7 +7,7 @@ import LoadingScreen from './LoadingScreen'
 export default function BottomSheet() {
     const [text, setText] = useState('')
     const [isLoading, setIsLoading] = useState(false)
-    const [loadingStatus, setLoadingStatus] = useState<'title' | 'content' | 'group'>('title')
+    const [loadingStatus, setLoadingStatus] = useState<'title' | 'content' | 'group' | 'chunk' | 'complete'>('title')
     const [loadingProgress, setLoadingProgress] = useState(0)
     const [generatedTitle, setGeneratedTitle] = useState('')
     const [isExpanded, setIsExpanded] = useState(false)
@@ -89,10 +89,8 @@ export default function BottomSheet() {
             // 완료 (100%)
             setLoadingProgress(100)
 
-            // 콘텐츠 생성 후 홈으로 이동하고 새로고침
-            setTimeout(() => {
-                window.location.href = '/'
-            }, 500)
+            // 콘텐츠 생성 후 홈으로 이동하기 전에 백그라운드 처리가 완료될 때까지 기다림
+            await pollContentStatus(data.content_id)
         } catch (error) {
             console.error('Error:', error)
             alert(error instanceof Error ? error.message : '오류가 발생했습니다.')
@@ -115,51 +113,46 @@ export default function BottomSheet() {
             setLoadingProgress(80)
             setLoadingStatus('group')
 
-            while (Date.now() - startTime < maxPollingTime) {
-                // 콘텐츠 상태 확인 (기존 API 활용)
-                const response = await fetch(`/api/contents?id=${contentId}`);
+            // 백그라운드 처리가 완료될 때까지 주기적으로 확인
+            let isProcessingComplete = false;
+
+            while (!isProcessingComplete && (Date.now() - startTime < maxPollingTime)) {
+                // 콘텐츠 상태 확인
+                const response = await fetch(`/content/${contentId}/status`);
                 const data = await response.json();
 
-                if (!response.ok) {
-                    throw new Error(data.error || '상태 확인에 실패했습니다.');
+                if (data.status === 'completed' || data.status === 'studying') {
+                    isProcessingComplete = true;
+                    setLoadingProgress(100);
+                    setLoadingStatus('complete');
+
+                    // 완료되면 홈으로 이동
+                    window.location.href = '/';
+                    break;
                 }
 
-                const contentStatus = data.content?.status;
-
-                // 상태가 'paused'면 처리 완료
-                if (contentStatus === 'paused') {
-                    // 마스킹 처리 중 (약 90%)
-                    setLoadingProgress(90)
-
-                    // 완료 (100%)
-                    setLoadingProgress(100)
-
-                    // 콘텐츠 생성 후 홈으로 이동하고 새로고침
-                    setTimeout(() => {
-                        window.location.href = '/'
-                    }, 500)
-                    return;
+                // 진행 상태에 따라 로딩 진행률 업데이트
+                if (data.groups && data.groups.length > 0) {
+                    // 그룹이 생성되었으면 90%
+                    setLoadingProgress(90);
+                    setLoadingStatus('chunk');
                 }
 
-                // 오류 상태인 경우
-                if (contentStatus === 'error') {
-                    throw new Error('콘텐츠 생성 중 오류가 발생했습니다.');
-                }
-
-                // 아직 처리 중이면 잠시 대기 후 다시 확인
+                // 3초 대기
                 await new Promise(resolve => setTimeout(resolve, pollInterval));
             }
 
-            // 최대 시간을 초과한 경우
-            throw new Error('콘텐츠 생성 시간이 너무 오래 걸립니다. 홈으로 이동합니다.');
+            // 최대 시간 초과 시 홈으로 이동
+            if (!isProcessingComplete) {
+                console.log('Background processing timeout, redirecting to home');
+                window.location.href = '/';
+            }
         } catch (error) {
             console.error('Polling error:', error);
-            alert(error instanceof Error ? error.message : '오류가 발생했습니다.');
-
             // 오류 발생 시 홈으로 이동
             window.location.href = '/';
         }
-    }
+    };
 
     const handleConfirm = () => {
         setPreview(null)
