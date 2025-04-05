@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import LoadingOverlay from './LoadingOverlay'
+import { motion, AnimatePresence } from 'framer-motion'
 
 type Chunk = {
     id: string
@@ -31,10 +32,15 @@ type GroupDetailProps = {
 export default function GroupDetail({ content, group }: GroupDetailProps) {
     const router = useRouter()
     const [isLoading, setIsLoading] = useState(false)
+    const [showOriginalText, setShowOriginalText] = useState(false)
 
     const handleChunkClick = (chunkId: string) => {
         setIsLoading(true)
         router.push(`/content/${content.id}/learning?chunk=${chunkId}`)
+    }
+
+    const toggleOriginalText = () => {
+        setShowOriginalText(!showOriginalText)
     }
 
     return (
@@ -58,9 +64,50 @@ export default function GroupDetail({ content, group }: GroupDetailProps) {
             </div>
 
             <div className="flex-1 max-w-2xl mx-auto w-full p-4">
-                <div className="space-y-4 mb-8">
-                    <h2 className="text-2xl font-bold text-gray-800">{group.title}</h2>
-                    <p className="text-gray-600 text-sm whitespace-pre-wrap">{group.original_text}</p>
+                <div className={`mb-8 ${showOriginalText ? 'space-y-0' : 'space-y-4'}`}>
+                    <h2 className="text-2xl font-bold text-gray-800 mb-4">{group.title}</h2>
+
+                    <div className="flex flex-col">
+                        <button
+                            onClick={toggleOriginalText}
+                            className={`w-full bg-white/60 backdrop-blur-md rounded-xl p-4 flex items-center justify-between border border-white/20 ${showOriginalText ? 'rounded-b-none border-b-0' : ''
+                                }`}
+                        >
+                            <div className="flex items-center">
+                                <svg
+                                    className={`w-5 h-5 text-gray-600 transition-transform mr-2 ${showOriginalText ? 'transform rotate-90' : ''}`}
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M9 5l7 7-7 7"
+                                    />
+                                </svg>
+                                <span className="text-lg font-medium text-gray-800">소스 텍스트 보기</span>
+                            </div>
+                            <div></div>
+                        </button>
+
+                        <AnimatePresence>
+                            {showOriginalText && (
+                                <motion.div
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: "auto" }}
+                                    exit={{ opacity: 0, height: 0 }}
+                                    transition={{ duration: 0.3 }}
+                                    className="overflow-hidden"
+                                >
+                                    <div className="bg-white/40 backdrop-blur-md rounded-xl rounded-t-none p-4 border border-white/20 border-t-0">
+                                        <p className="text-gray-600 text-sm whitespace-pre-wrap">{group.original_text}</p>
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
                 </div>
 
                 <div className="space-y-4">
@@ -75,13 +122,12 @@ export default function GroupDetail({ content, group }: GroupDetailProps) {
                                 key={chunk.id}
                                 className="
                                     p-4 
-                                    bg-white/60
+                                    bg-white/80
                                     backdrop-blur-md 
                                     rounded-xl
-                                    shadow-lg
                                     border
                                     border-white/20
-                                    hover:bg-white/70
+                                    hover:bg-white/90
                                     transition-colors
                                     [-webkit-backdrop-filter:blur(20px)]
                                     [backdrop-filter:blur(20px)]
