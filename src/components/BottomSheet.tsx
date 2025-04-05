@@ -54,10 +54,24 @@ export default function BottomSheet() {
                 throw new Error(data.error || '콘텐츠 생성에 실패했습니다.')
             }
 
-            // API 응답 처리 과정에 따라 프로그레스 바 업데이트
             // 제목 생성 완료 (약 20%)
             setLoadingProgress(20)
 
+            // 내용이 처리 중인 상태인 경우 폴링 시작
+            if (data.status === 'processing') {
+                // 내용 생성 중 (약 40%)
+                setLoadingProgress(40)
+                setLoadingStatus('content')
+
+                // 그룹 생성 중 (약 60%)
+                setLoadingProgress(60)
+
+                // 폴링을 통해 콘텐츠 처리 상태 확인
+                await pollContentStatus(data.content_id);
+                return;
+            }
+
+            // API 응답 처리 과정에 따라 프로그레스 바 업데이트
             // 내용 생성 중 (약 40%)
             setLoadingProgress(40)
             setLoadingStatus('content')
@@ -86,6 +100,64 @@ export default function BottomSheet() {
             setIsLoading(false)
             setLoadingProgress(0)
             setText('')
+        }
+    }
+
+    // 콘텐츠 처리 상태를 주기적으로 확인하는 폴링 함수
+    const pollContentStatus = async (contentId: string) => {
+        try {
+            // 최대 폴링 시간 (5분)
+            const maxPollingTime = 5 * 60 * 1000;
+            const startTime = Date.now();
+            const pollInterval = 3000; // 3초마다 확인
+
+            // 청크 생성 중 (약 80%)
+            setLoadingProgress(80)
+            setLoadingStatus('group')
+
+            while (Date.now() - startTime < maxPollingTime) {
+                // 콘텐츠 상태 확인 (기존 API 활용)
+                const response = await fetch(`/api/contents?id=${contentId}`);
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || '상태 확인에 실패했습니다.');
+                }
+
+                const contentStatus = data.content?.status;
+
+                // 상태가 'paused'면 처리 완료
+                if (contentStatus === 'paused') {
+                    // 마스킹 처리 중 (약 90%)
+                    setLoadingProgress(90)
+
+                    // 완료 (100%)
+                    setLoadingProgress(100)
+
+                    // 콘텐츠 생성 후 홈으로 이동하고 새로고침
+                    setTimeout(() => {
+                        window.location.href = '/'
+                    }, 500)
+                    return;
+                }
+
+                // 오류 상태인 경우
+                if (contentStatus === 'error') {
+                    throw new Error('콘텐츠 생성 중 오류가 발생했습니다.');
+                }
+
+                // 아직 처리 중이면 잠시 대기 후 다시 확인
+                await new Promise(resolve => setTimeout(resolve, pollInterval));
+            }
+
+            // 최대 시간을 초과한 경우
+            throw new Error('콘텐츠 생성 시간이 너무 오래 걸립니다. 홈으로 이동합니다.');
+        } catch (error) {
+            console.error('Polling error:', error);
+            alert(error instanceof Error ? error.message : '오류가 발생했습니다.');
+
+            // 오류 발생 시 홈으로 이동
+            window.location.href = '/';
         }
     }
 

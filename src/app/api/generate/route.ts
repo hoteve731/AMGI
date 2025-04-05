@@ -7,6 +7,26 @@ const openai = new OpenAI({
     baseURL: "https://api.openai.com/v1"
 })
 
+// 타임아웃 시간을 설정 (ms)
+const TIMEOUT = 25000; // 25초
+
+// 타임아웃 프로미스 생성 함수
+function timeoutPromise(ms: number) {
+    return new Promise((_, reject) => {
+        setTimeout(() => {
+            reject(new Error('API 요청 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.'));
+        }, ms);
+    });
+}
+
+// 타임아웃과 함께 프로미스 실행
+async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+    return Promise.race([
+        promise,
+        timeoutPromise(ms)
+    ]) as Promise<T>;
+}
+
 export async function POST(req: Request) {
     const supabase = await createClient()
 
@@ -28,11 +48,11 @@ export async function POST(req: Request) {
             )
         }
 
-        // 1. 제목 생성
+        // 1. 제목 생성 - 타임아웃 적용
         let title
         try {
             console.log('Attempting to generate title...')
-            const titleCompletion = await openai.chat.completions.create({
+            const titleCompletion = await withTimeout(openai.chat.completions.create({
                 model: "gpt-4o-mini-2024-07-18",
                 messages: [
                     {
@@ -43,7 +63,8 @@ export async function POST(req: Request) {
                 ],
                 temperature: 0,
                 max_tokens: 50
-            })
+            }), TIMEOUT);
+
             title = titleCompletion.choices[0].message.content
             console.log('Title generated:', title)
         } catch (error) {
@@ -55,16 +76,66 @@ export async function POST(req: Request) {
             )
         }
 
-        // 2. 텍스트를 논리적 그룹으로 분할
-        let groups
+        // 2. 콘텐츠 저장 (청크와 그룹은 아직 생성하지 않음)
+        let contentId
         try {
-            console.log('Attempting to divide text into groups...')
-            const groupCompletion = await openai.chat.completions.create({
-                model: "gpt-4o-mini-2024-07-18",
-                messages: [
+            const { data: contentData, error: contentError } = await supabase
+                .from('contents')
+                .insert([
                     {
-                        role: "system",
-                        content: `주어진 텍스트를 읽고, 핵심 아이디어/목적 단위로 논리적인 그룹으로 나눠주세요.
+                        user_id: session.user.id,
+                        title,
+                        original_text: text,
+                        status: 'processing', // 처리 중 상태로 변경
+                        chunks: [],
+                        masked_chunks: []
+                    }
+                ])
+                .select('id')
+
+            if (contentError) throw contentError
+            contentId = contentData[0].id
+        } catch (error) {
+            console.error('Content database error:', error)
+            const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.'
+            return NextResponse.json(
+                { error: `콘텐츠 저장 중 오류: ${errorMessage}` },
+                { status: 500 }
+            )
+        }
+
+        // 3. 비동기 처리를 위한 백그라운드 작업 시작
+        // 여기서는 응답을 먼저 반환하고, 나머지 작업은 백그라운드에서 계속 진행
+        processContentInBackground(contentId, text, session.user.id, supabase);
+
+        // 4. 즉시 응답 반환
+        return NextResponse.json({
+            content_id: contentId,
+            title,
+            status: 'processing'
+        })
+
+    } catch (error) {
+        console.error('General error:', error)
+        const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.'
+        return NextResponse.json(
+            { error: `서버 처리 중 오류: ${errorMessage}` },
+            { status: 500 }
+        )
+    }
+}
+
+// 백그라운드에서 콘텐츠 처리를 계속하는 함수
+async function processContentInBackground(contentId: string, text: string, userId: string, supabase: any) {
+    try {
+        // 그룹 생성
+        console.log('Attempting to divide text into groups...')
+        const groupCompletion = await openai.chat.completions.create({
+            model: "gpt-4o-mini-2024-07-18",
+            messages: [
+                {
+                    role: "system",
+                    content: `주어진 텍스트를 읽고, 핵심 아이디어/목적 단위로 논리적인 그룹으로 나눠주세요.
 각 그룹은 하나의 핵심 주제나 목적을 담고 있어야 합니다.
 각 그룹에는 원문 텍스트의 일부가 할당되어야 하며, 그룹의 제목은 "OOO을 기억하기" 형식이어야 합니다.
 
@@ -86,92 +157,60 @@ export async function POST(req: Request) {
   ]
 }
 `
-                    },
-                    { role: "user", content: text }
-                ],
-                temperature: 0,
-                max_tokens: 2000
-            })
-            const groupContent = groupCompletion.choices[0].message.content
-            if (!groupContent) {
-                throw new Error('No group content generated')
-            }
-            groups = JSON.parse(groupContent)
-            console.log('Groups generated:', groups)
-        } catch (error) {
-            console.error('Group generation error:', error)
-            const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.'
-            return NextResponse.json(
-                { error: `그룹 생성 중 오류: ${errorMessage}` },
-                { status: 500 }
-            )
+                },
+                { role: "user", content: text }
+            ],
+            temperature: 0,
+            max_tokens: 2000
+        });
+
+        const groupContent = groupCompletion.choices[0].message.content;
+        if (!groupContent) {
+            throw new Error('No group content generated');
         }
 
-        // 3. DB에 콘텐츠 저장
-        let contentId
+        let groups;
         try {
-            const { data: contentData, error: contentError } = await supabase
-                .from('contents')
+            groups = JSON.parse(groupContent);
+            console.log('Groups generated:', groups);
+        } catch (error) {
+            console.error('Group parsing error:', error);
+            throw new Error('그룹 파싱 중 오류가 발생했습니다.');
+        }
+
+        // 각 그룹 처리
+        for (let i = 0; i < groups.groups.length; i++) {
+            const group = groups.groups[i];
+
+            // 그룹 저장
+            let groupId;
+            const { data: groupData, error: groupError } = await supabase
+                .from('content_groups')
                 .insert([
                     {
-                        user_id: session.user.id,
-                        title,
-                        original_text: text,
-                        status: 'paused',
-                        chunks: [],
-                        masked_chunks: []
+                        content_id: contentId,
+                        title: group.title,
+                        original_text: group.original_text,
+                        position: i
                     }
                 ])
-                .select('id')
+                .select();
 
-            if (contentError) throw contentError
-            contentId = contentData[0].id
-        } catch (error) {
-            console.error('Content database error:', error)
-            const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.'
-            return NextResponse.json(
-                { error: `콘텐츠 저장 중 오류: ${errorMessage}` },
-                { status: 500 }
-            )
-        }
-
-        // 4. 각 그룹에 대해 청크 생성 및 저장
-        const processedGroups = []
-        for (let i = 0; i < groups.groups.length; i++) {
-            const group = groups.groups[i]
-
-            // 4.1 그룹 저장
-            let groupId
-            try {
-                const { data: groupData, error: groupError } = await supabase
-                    .from('content_groups')
-                    .insert([
-                        {
-                            content_id: contentId,
-                            title: group.title,
-                            original_text: group.original_text,
-                            position: i
-                        }
-                    ])
-                    .select()
-
-                if (groupError) throw groupError
-                groupId = groupData[0].id
-            } catch (error) {
-                console.error(`Group ${i} database error:`, error)
-                continue
+            if (groupError) {
+                console.error(`Group ${i} database error:`, groupError);
+                continue;
             }
 
-            // 4.2 그룹 텍스트에 대한 청크 생성
-            let chunks
-            try {
-                console.log(`Generating chunks for group ${i}...`)
-                const chunkCompletion = await openai.chat.completions.create({
-                    model: "gpt-4o-mini-2024-07-18",
-                    messages: [
-                        {
-                            role: "system",
-                            content: `주어진 텍스트를 읽고, 그 안에 담긴 아이디어/주장/통찰이 각각 한 문장씩 담길 수 있도록 청크로 나눠주세요.
+            groupId = groupData[0].id;
+
+            // 청크 생성
+            console.log(`Generating chunks for group ${i}...`);
+            const chunkCompletion = await openai.chat.completions.create({
+                model: "gpt-4o-mini-2024-07-18",
+                messages: [
+                    {
+                        role: "system",
+                        content: `주어진 텍스트를 읽고, 그 안에 담긴 아이디어/주장/통찰이 각각 한 문장씩 담길 수 있도록 청크로 나눠주세요.
 
 각 청크는 서로 다른 아이디어를 담고 있어야 하며, 하나의 청크에는 하나의 핵심 메시지만 들어 있어야 합니다.
 
@@ -189,86 +228,42 @@ export async function POST(req: Request) {
 }
 
 어떤 추가 설명이나 마크다운 형식도 포함하지 마세요. 순수한 JSON 객체만 반환하세요.`
-                        },
-                        { role: "user", content: group.original_text }
-                    ],
-                    temperature: 0,
-                    max_tokens: 1000,
-                    response_format: { type: "json_object" }
-                })
-                const content = chunkCompletion.choices[0].message.content
-                if (!content) {
-                    throw new Error('No content generated')
-                }
+                    },
+                    { role: "user", content: group.original_text }
+                ],
+                temperature: 0,
+                max_tokens: 1000,
+                response_format: { type: "json_object" }
+            });
 
-                // 개선된 JSON 파싱 및 검증
-                try {
-                    // 응답이 JSON 형식인지 확인
-                    const cleanedContent = content.trim();
-                    const jsonStart = cleanedContent.indexOf('{');
-                    const jsonEnd = cleanedContent.lastIndexOf('}') + 1;
-
-                    if (jsonStart === -1 || jsonEnd <= jsonStart) {
-                        console.error(`Invalid JSON format from API for chunks in group ${i}:`, content);
-                        throw new Error('Response is not in JSON format');
-                    }
-
-                    const jsonContent = cleanedContent.substring(jsonStart, jsonEnd);
-                    chunks = JSON.parse(jsonContent);
-
-                    // 예상된 구조 검증
-                    if (!chunks.chunks || !Array.isArray(chunks.chunks)) {
-                        console.error(`Invalid structure in chunks for group ${i}:`, chunks);
-                        // 폴백: 구조가 잘못된 경우 기본 구조 생성
-                        chunks = {
-                            chunks: [{
-                                summary: group.original_text.length > 200
-                                    ? group.original_text.substring(0, 200) + "..."
-                                    : group.original_text
-                            }]
-                        };
-                        console.log(`Using fallback chunk for group ${i}`);
-                    }
-
-                    // 청크가 비어있는 경우 처리
-                    if (chunks.chunks.length === 0) {
-                        chunks.chunks = [{
-                            summary: group.original_text.length > 200
-                                ? group.original_text.substring(0, 200) + "..."
-                                : group.original_text
-                        }];
-                        console.log(`Empty chunks array detected for group ${i}, using fallback`);
-                    }
-
-                    console.log(`Chunks generated for group ${i}:`, chunks);
-                } catch (parseError) {
-                    console.error(`JSON parsing error for chunks in group ${i}:`, parseError);
-                    console.error('Raw content that failed to parse:', content);
-                    // 파싱 실패 시 폴백 사용
-                    chunks = {
-                        chunks: [{
-                            summary: group.original_text.length > 200
-                                ? group.original_text.substring(0, 200) + "..."
-                                : group.original_text
-                        }]
-                    };
-                    console.log(`Using fallback chunk after parsing error for group ${i}`);
-                }
-            } catch (error) {
-                console.error(`Chunk generation error for group ${i}:`, error)
-                continue
+            const content = chunkCompletion.choices[0].message.content;
+            if (!content) {
+                console.error(`No content generated for group ${i}`);
+                continue;
             }
 
-            // 4.3 청크 마스킹
-            let maskedChunks
+            let chunks;
             try {
-                console.log(`Generating masked chunks for group ${i}...`)
-                const maskingCompletion = await openai.chat.completions.create({
-                    model: "gpt-4o-mini-2024-07-18",
-                    messages: [
-                        {
-                            role: "system",
-                            content: `다음은 여러 개의 문장 청크입니다. 각 청크에서 핵심 단어 하나 또는 두 개를 마스킹 처리해주세요. 
+                chunks = JSON.parse(content);
+            } catch (error) {
+                console.error(`JSON parsing error for chunks in group ${i}:`, error);
+                chunks = {
+                    chunks: [{
+                        summary: group.original_text.length > 200
+                            ? group.original_text.substring(0, 200) + "..."
+                            : group.original_text
+                    }]
+                };
+            }
+
+            // 마스킹 처리
+            console.log(`Generating masked chunks for group ${i}...`);
+            const maskingCompletion = await openai.chat.completions.create({
+                model: "gpt-4o-mini-2024-07-18",
+                messages: [
+                    {
+                        role: "system",
+                        content: `다음은 여러 개의 문장 청크입니다. 각 청크에서 핵심 단어 하나 또는 두 개를 마스킹 처리해주세요. 
 중요한 키워드를 자연스럽게 빈칸으로 바꾸되, 문장의 리듬이나 문맥이 어색하지 않도록 해주세요. 핵심단어는 **로 감싸서 출력하세요. 예시: **핵심단어**
 
 반드시 다음 JSON 형식으로만 출력하세요. 추가 설명이나 텍스트 없이 오직 JSON만 출력해야 합니다:
@@ -280,137 +275,66 @@ export async function POST(req: Request) {
 }
 
 어떤 추가 설명이나 마크다운 형식도 포함하지 마세요. 순수한 JSON 객체만 반환하세요.`
-                        },
-                        { role: "user", content: JSON.stringify(chunks) }
-                    ],
-                    temperature: 0,
-                    max_tokens: 1000,
-                    response_format: { type: "json_object" }
-                })
-                const maskedContent = maskingCompletion.choices[0].message.content
-                if (!maskedContent) {
-                    throw new Error('No masked content generated')
-                }
+                    },
+                    { role: "user", content: JSON.stringify(chunks) }
+                ],
+                temperature: 0,
+                max_tokens: 1000,
+                response_format: { type: "json_object" }
+            });
 
-                // Improved JSON parsing with validation and error handling
-                try {
-                    // 응답이 JSON 형식인지 확인 및 정리
-                    const cleanedContent = maskedContent.trim();
-                    const jsonStart = cleanedContent.indexOf('{');
-                    const jsonEnd = cleanedContent.lastIndexOf('}') + 1;
-
-                    if (jsonStart === -1 || jsonEnd <= jsonStart) {
-                        console.error(`Invalid JSON format from API for masked chunks in group ${i}:`, maskedContent);
-                        throw new Error('Response is not in JSON format');
-                    }
-
-                    const jsonContent = cleanedContent.substring(jsonStart, jsonEnd);
-                    maskedChunks = JSON.parse(jsonContent);
-
-                    // Validate the expected structure
-                    if (!maskedChunks.masked_chunks || !Array.isArray(maskedChunks.masked_chunks)) {
-                        console.error(`Invalid structure in masked chunks for group ${i}:`, maskedChunks);
-                        // 폴백: 마스킹된 청크 구조가 잘못된 경우
-                        maskedChunks = {
-                            masked_chunks: chunks.chunks.map((chunk: { summary: string }) => ({
-                                masked_text: chunk.summary
-                            }))
-                        };
-                        console.log(`Using fallback masked chunks for group ${i}`);
-                    }
-
-                    // 마스킹된 청크가 비어있는 경우 처리
-                    if (maskedChunks.masked_chunks.length === 0) {
-                        maskedChunks.masked_chunks = chunks.chunks.map((chunk: { summary: string }) => ({
-                            masked_text: chunk.summary
-                        }));
-                        console.log(`Empty masked_chunks array detected for group ${i}, using fallback`);
-                    }
-
-                    // Ensure we have the right number of masked chunks
-                    if (maskedChunks.masked_chunks.length !== chunks.chunks.length) {
-                        console.log(`Mismatch in number of chunks vs masked chunks for group ${i}`);
-                        console.log(`Expected ${chunks.chunks.length}, got ${maskedChunks.masked_chunks.length}`);
-
-                        // 청크 수가 일치하지 않는 경우 조정
-                        if (maskedChunks.masked_chunks.length < chunks.chunks.length) {
-                            // 부족한 마스킹 청크 추가
-                            const diff = chunks.chunks.length - maskedChunks.masked_chunks.length;
-                            for (let k = 0; k < diff; k++) {
-                                const index = maskedChunks.masked_chunks.length + k;
-                                if (index < chunks.chunks.length) {
-                                    maskedChunks.masked_chunks.push({
-                                        masked_text: chunks.chunks[index].summary
-                                    });
-                                }
-                            }
-                        } else {
-                            // 초과된 마스킹 청크 제거
-                            maskedChunks.masked_chunks = maskedChunks.masked_chunks.slice(0, chunks.chunks.length);
-                        }
-
-                        console.log(`Adjusted masked chunks to match count: ${maskedChunks.masked_chunks.length}`);
-                    }
-
-                    console.log(`Masked chunks generated for group ${i}:`, maskedChunks)
-                } catch (parseError) {
-                    console.error(`JSON parsing error for group ${i}:`, parseError);
-                    console.error('Raw content that failed to parse:', maskedContent);
-
-                    // 파싱 실패 시 폴백 사용
-                    maskedChunks = {
-                        masked_chunks: chunks.chunks.map((chunk: { summary: string }) => ({
-                            masked_text: chunk.summary
-                        }))
-                    };
-                    console.log(`Using fallback masked chunks after parsing error for group ${i}`);
-                }
-            } catch (error) {
-                console.error(`Masking error for group ${i}:`, error)
-                continue
+            const maskedContent = maskingCompletion.choices[0].message.content;
+            if (!maskedContent) {
+                console.error(`No masked content generated for group ${i}`);
+                continue;
             }
 
-            // 4.4 청크 저장
+            let maskedChunks;
             try {
-                for (let j = 0; j < chunks.chunks.length; j++) {
-                    const { error: chunkError } = await supabase
-                        .from('content_chunks')
-                        .insert([
-                            {
-                                group_id: groupId,
-                                summary: chunks.chunks[j].summary,
-                                masked_text: maskedChunks.masked_chunks[j].masked_text,
-                                position: j
-                            }
-                        ])
-
-                    if (chunkError) throw chunkError
-                }
-
-                // 성공적으로 처리된 그룹 추가
-                processedGroups.push({
-                    id: groupId,
-                    title: group.title,
-                    chunks_count: chunks.chunks.length
-                })
+                maskedChunks = JSON.parse(maskedContent);
             } catch (error) {
-                console.error(`Chunk database error for group ${i}:`, error)
-                continue
+                console.error(`JSON parsing error for masked chunks in group ${i}:`, error);
+                maskedChunks = {
+                    masked_chunks: chunks.chunks.map((chunk: { summary: string }) => ({
+                        masked_text: chunk.summary
+                    }))
+                };
+            }
+
+            // 청크 저장
+            for (let j = 0; j < chunks.chunks.length; j++) {
+                const { error: chunkError } = await supabase
+                    .from('content_chunks')
+                    .insert([
+                        {
+                            group_id: groupId,
+                            summary: chunks.chunks[j].summary,
+                            masked_text: maskedChunks.masked_chunks[j]?.masked_text || chunks.chunks[j].summary,
+                            position: j
+                        }
+                    ]);
+
+                if (chunkError) {
+                    console.error(`Chunk database error for group ${i}, chunk ${j}:`, chunkError);
+                }
             }
         }
 
-        return NextResponse.json({
-            content_id: contentId,
-            title,
-            groups: processedGroups
-        })
+        // 처리 완료 후 상태 업데이트
+        await supabase
+            .from('contents')
+            .update({ status: 'paused' })
+            .eq('id', contentId);
+
+        console.log(`Content ${contentId} processing completed successfully`);
 
     } catch (error) {
-        console.error('General error:', error)
-        const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.'
-        return NextResponse.json(
-            { error: `서버 처리 중 오류: ${errorMessage}` },
-            { status: 500 }
-        )
+        console.error('Background processing error:', error);
+
+        // 오류 발생 시 상태 업데이트
+        await supabase
+            .from('contents')
+            .update({ status: 'error' })
+            .eq('id', contentId);
     }
 }
