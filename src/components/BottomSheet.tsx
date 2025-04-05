@@ -173,7 +173,7 @@ export default function BottomSheet() {
                     className="bg-white rounded-t-xl shadow-lg overflow-hidden z-[70] relative pb-[env(safe-area-inset-bottom,16px)]"
                     initial={{ height: "calc(80px + env(safe-area-inset-bottom, 16px))" }}
                     animate={{
-                        height: isExpanded ? "90vh" : "calc(80px + env(safe-area-inset-bottom, 16px))",
+                        height: isExpanded ? "70vh" : "calc(80px + env(safe-area-inset-bottom, 16px))",
                         boxShadow: isExpanded ? "0 -10px 30px rgba(0, 0, 0, 0.15)" : "0 -2px 10px rgba(0, 0, 0, 0.05)"
                     }}
                     transition={{

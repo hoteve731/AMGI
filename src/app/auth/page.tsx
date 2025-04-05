@@ -29,7 +29,7 @@ export default async function AuthPage() {
                         LOOPA
                     </h1>
                     <p className="mt-2 text-gray-700 text-lg">
-                        모든 지식을 내 것으로<br />최고의 기억 방법
+                        한 번 입력, 평생 기억.
                     </p>
                 </div>
 

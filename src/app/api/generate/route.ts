@@ -179,7 +179,7 @@ export async function POST(req: Request) {
 
 각 청크는 원문 스타일과 톤을 유지하며, 150~200자 내외로 작성해주세요.
 
-다음 JSON 형식으로 출력해주세요:
+반드시 다음 JSON 형식으로만 출력하세요. 추가 설명이나 텍스트 없이 오직 JSON만 출력해야 합니다:
 {
   "chunks": [
     {"summary": "첫 번째 청크 요약"},
@@ -187,19 +187,73 @@ export async function POST(req: Request) {
     ...
   ]
 }
-`
+
+어떤 추가 설명이나 마크다운 형식도 포함하지 마세요. 순수한 JSON 객체만 반환하세요.`
                         },
                         { role: "user", content: group.original_text }
                     ],
                     temperature: 0,
-                    max_tokens: 1000
+                    max_tokens: 1000,
+                    response_format: { type: "json_object" }
                 })
                 const content = chunkCompletion.choices[0].message.content
                 if (!content) {
                     throw new Error('No content generated')
                 }
-                chunks = JSON.parse(content)
-                console.log(`Chunks generated for group ${i}:`, chunks)
+
+                // 개선된 JSON 파싱 및 검증
+                try {
+                    // 응답이 JSON 형식인지 확인
+                    const cleanedContent = content.trim();
+                    const jsonStart = cleanedContent.indexOf('{');
+                    const jsonEnd = cleanedContent.lastIndexOf('}') + 1;
+
+                    if (jsonStart === -1 || jsonEnd <= jsonStart) {
+                        console.error(`Invalid JSON format from API for chunks in group ${i}:`, content);
+                        throw new Error('Response is not in JSON format');
+                    }
+
+                    const jsonContent = cleanedContent.substring(jsonStart, jsonEnd);
+                    chunks = JSON.parse(jsonContent);
+
+                    // 예상된 구조 검증
+                    if (!chunks.chunks || !Array.isArray(chunks.chunks)) {
+                        console.error(`Invalid structure in chunks for group ${i}:`, chunks);
+                        // 폴백: 구조가 잘못된 경우 기본 구조 생성
+                        chunks = {
+                            chunks: [{
+                                summary: group.original_text.length > 200
+                                    ? group.original_text.substring(0, 200) + "..."
+                                    : group.original_text
+                            }]
+                        };
+                        console.log(`Using fallback chunk for group ${i}`);
+                    }
+
+                    // 청크가 비어있는 경우 처리
+                    if (chunks.chunks.length === 0) {
+                        chunks.chunks = [{
+                            summary: group.original_text.length > 200
+                                ? group.original_text.substring(0, 200) + "..."
+                                : group.original_text
+                        }];
+                        console.log(`Empty chunks array detected for group ${i}, using fallback`);
+                    }
+
+                    console.log(`Chunks generated for group ${i}:`, chunks);
+                } catch (parseError) {
+                    console.error(`JSON parsing error for chunks in group ${i}:`, parseError);
+                    console.error('Raw content that failed to parse:', content);
+                    // 파싱 실패 시 폴백 사용
+                    chunks = {
+                        chunks: [{
+                            summary: group.original_text.length > 200
+                                ? group.original_text.substring(0, 200) + "..."
+                                : group.original_text
+                        }]
+                    };
+                    console.log(`Using fallback chunk after parsing error for group ${i}`);
+                }
             } catch (error) {
                 console.error(`Chunk generation error for group ${i}:`, error)
                 continue
@@ -225,7 +279,7 @@ export async function POST(req: Request) {
   ]
 }
 
-유효한 JSON 형식이 아니면 처리할 수 없으니 반드시 올바른 JSON 형식을 지켜주세요.`
+어떤 추가 설명이나 마크다운 형식도 포함하지 마세요. 순수한 JSON 객체만 반환하세요.`
                         },
                         { role: "user", content: JSON.stringify(chunks) }
                     ],
@@ -240,32 +294,76 @@ export async function POST(req: Request) {
 
                 // Improved JSON parsing with validation and error handling
                 try {
-                    // Check if the response looks like JSON
-                    if (!maskedContent.trim().startsWith('{')) {
-                        console.error(`Invalid JSON format from API for group ${i}:`, maskedContent);
+                    // 응답이 JSON 형식인지 확인 및 정리
+                    const cleanedContent = maskedContent.trim();
+                    const jsonStart = cleanedContent.indexOf('{');
+                    const jsonEnd = cleanedContent.lastIndexOf('}') + 1;
+
+                    if (jsonStart === -1 || jsonEnd <= jsonStart) {
+                        console.error(`Invalid JSON format from API for masked chunks in group ${i}:`, maskedContent);
                         throw new Error('Response is not in JSON format');
                     }
 
-                    maskedChunks = JSON.parse(maskedContent);
+                    const jsonContent = cleanedContent.substring(jsonStart, jsonEnd);
+                    maskedChunks = JSON.parse(jsonContent);
 
                     // Validate the expected structure
                     if (!maskedChunks.masked_chunks || !Array.isArray(maskedChunks.masked_chunks)) {
                         console.error(`Invalid structure in masked chunks for group ${i}:`, maskedChunks);
-                        throw new Error('Invalid masked_chunks structure in response');
+                        // 폴백: 마스킹된 청크 구조가 잘못된 경우
+                        maskedChunks = {
+                            masked_chunks: chunks.chunks.map((chunk: { summary: string }) => ({
+                                masked_text: chunk.summary
+                            }))
+                        };
+                        console.log(`Using fallback masked chunks for group ${i}`);
+                    }
+
+                    // 마스킹된 청크가 비어있는 경우 처리
+                    if (maskedChunks.masked_chunks.length === 0) {
+                        maskedChunks.masked_chunks = chunks.chunks.map((chunk: { summary: string }) => ({
+                            masked_text: chunk.summary
+                        }));
+                        console.log(`Empty masked_chunks array detected for group ${i}, using fallback`);
                     }
 
                     // Ensure we have the right number of masked chunks
                     if (maskedChunks.masked_chunks.length !== chunks.chunks.length) {
-                        console.error(`Mismatch in number of chunks vs masked chunks for group ${i}`);
-                        console.error(`Expected ${chunks.chunks.length}, got ${maskedChunks.masked_chunks.length}`);
-                        throw new Error('Mismatch in number of masked chunks');
+                        console.log(`Mismatch in number of chunks vs masked chunks for group ${i}`);
+                        console.log(`Expected ${chunks.chunks.length}, got ${maskedChunks.masked_chunks.length}`);
+
+                        // 청크 수가 일치하지 않는 경우 조정
+                        if (maskedChunks.masked_chunks.length < chunks.chunks.length) {
+                            // 부족한 마스킹 청크 추가
+                            const diff = chunks.chunks.length - maskedChunks.masked_chunks.length;
+                            for (let k = 0; k < diff; k++) {
+                                const index = maskedChunks.masked_chunks.length + k;
+                                if (index < chunks.chunks.length) {
+                                    maskedChunks.masked_chunks.push({
+                                        masked_text: chunks.chunks[index].summary
+                                    });
+                                }
+                            }
+                        } else {
+                            // 초과된 마스킹 청크 제거
+                            maskedChunks.masked_chunks = maskedChunks.masked_chunks.slice(0, chunks.chunks.length);
+                        }
+
+                        console.log(`Adjusted masked chunks to match count: ${maskedChunks.masked_chunks.length}`);
                     }
 
                     console.log(`Masked chunks generated for group ${i}:`, maskedChunks)
                 } catch (parseError) {
                     console.error(`JSON parsing error for group ${i}:`, parseError);
                     console.error('Raw content that failed to parse:', maskedContent);
-                    throw new Error(`Failed to parse masked content: ${parseError instanceof Error ? parseError.message : String(parseError)}`);
+
+                    // 파싱 실패 시 폴백 사용
+                    maskedChunks = {
+                        masked_chunks: chunks.chunks.map((chunk: { summary: string }) => ({
+                            masked_text: chunk.summary
+                        }))
+                    };
+                    console.log(`Using fallback masked chunks after parsing error for group ${i}`);
                 }
             } catch (error) {
                 console.error(`Masking error for group ${i}:`, error)
