@@ -6,6 +6,15 @@ import useSWR from 'swr'
 import ContentList from '@/components/ContentList'
 import { motion, AnimatePresence } from 'framer-motion'
 
+// Content 타입 정의
+type Content = {
+  id: string
+  title: string
+  created_at: string
+  status: 'studying' | 'completed' | 'paused'
+  groups_count?: number
+}
+
 // Fetcher function for SWR
 const fetcher = (url: string) => fetch(url).then(res => {
   if (!res.ok) throw new Error('Failed to fetch contents')
@@ -23,7 +32,7 @@ export default function ContentTabs() {
   const [activeTab, setActiveTab] = useState('all')
 
   // Use SWR for data fetching with automatic revalidation
-  const { data, error, isLoading, mutate } = useSWR('/api/contents', fetcher, {
+  const { data, error, isLoading, mutate } = useSWR<{ contents: Content[] }>('/api/contents', fetcher, {
     refreshInterval: 0,  // Don't poll automatically
     revalidateOnFocus: true,  // Revalidate when window gets focus
     revalidateOnReconnect: true  // Revalidate when browser regains connection
@@ -113,19 +122,14 @@ export default function ContentTabs() {
   // Filter contents based on active tab
   const filteredContents = activeTab === 'all'
     ? data?.contents || []
-    : (data?.contents || []).filter(content => content.status === activeTab)
+    : (data?.contents || []).filter((content: Content) => content.status === activeTab)
 
   return (
     <div className="flex flex-col h-full">
-      <div className="p-4 bg-white/80 backdrop-blur-md sticky top-0 z-10 border-b border-[#D4C4B7]">
+      <div className="p-4 sticky top-0 z-10">
         <div className="relative flex justify-center max-w-md mx-auto">
-          {/* Tab Background (Pill) */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-full h-10 bg-gray-100 rounded-full"></div>
-          </div>
-
           {/* Tabs */}
-          <div className="relative flex w-full justify-between">
+          <div className="relative flex w-full justify-between bg-white/80 backdrop-blur-md rounded-full p-1">
             {tabs.map((tab) => {
               const isActive = activeTab === tab.id;
               return (
@@ -133,10 +137,7 @@ export default function ContentTabs() {
                   {isActive && (
                     <motion.div
                       layoutId="activeTabBackground"
-                      className="absolute inset-0 bg-white rounded-full shadow-sm"
-                      style={{
-                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)'
-                      }}
+                      className="absolute inset-0 bg-[#7969F7] rounded-full"
                       transition={{
                         type: "spring",
                         stiffness: 500,
@@ -149,23 +150,14 @@ export default function ContentTabs() {
                     className={`
                       relative z-20
                       w-full py-2 px-1
-                      text-sm font-medium
+                      text-sm
                       transition-colors duration-200
-                      ${isActive ? 'text-[#7969F7]' : 'text-gray-500 hover:text-gray-700'}
+                      ${isActive
+                        ? 'text-white font-bold'
+                        : 'text-gray-500 hover:text-gray-700 font-medium'}
                     `}
                   >
                     {tab.label}
-                    {isActive && (
-                      <motion.div
-                        layoutId="activeTabLine"
-                        className="absolute bottom-0 left-0 right-0 mx-auto h-0.5 w-1/2 bg-[#7969F7]"
-                        transition={{
-                          type: "spring",
-                          stiffness: 500,
-                          damping: 30
-                        }}
-                      />
-                    )}
                   </button>
                 </div>
               );
@@ -178,11 +170,11 @@ export default function ContentTabs() {
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             transition={{
-              duration: 0.3,
+              duration: 0.2,
               ease: "easeInOut"
             }}
             className="h-full"
