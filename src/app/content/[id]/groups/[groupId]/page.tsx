@@ -1,5 +1,4 @@
 // src/app/content/[id]/groups/[groupId]/page.tsx
-'use server'
 
 import { PostgrestError } from '@supabase/supabase-js'
 import GroupDetail from '@/components/GroupDetail'
@@ -28,21 +27,19 @@ type Content = {
   status: string
 }
 
-type PageProps = {
-  params: {
-    id: string
-    groupId: string
-  }
-  searchParams: { [key: string]: string | string[] | undefined }
-}
-
-export default async function Page(props: PageProps) {
-  // params를 직접 사용하지 않고 props에서 추출
-  const contentId = props.params.id
-  const groupId = props.params.groupId
+export default async function Page({
+  params,
+  searchParams,
+}: {
+  params: { id: string; groupId: string };
+  searchParams: { [key: string]: string | string[] | undefined };
+}) {
+  // params를 직접 사용
+  const contentId = params.id
+  const groupId = params.groupId
 
   if (!contentId || !groupId) {
-    console.error('Invalid ID params:', props.params)
+    console.error('Invalid ID params:', params)
     notFound()
   }
 
