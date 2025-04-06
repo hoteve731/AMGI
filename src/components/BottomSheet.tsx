@@ -275,7 +275,7 @@ export default function BottomSheet() {
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                         </svg>
                                     </button>
-                                    <h2 className="text-lg font-medium text-gray-700">새 기억 조각 만들기</h2>
+                                    <h2 className="text-lg font-medium text-gray-700">새 기억 카드 생성</h2>
                                     <motion.button
                                         type="button"
                                         onClick={handleSubmit}

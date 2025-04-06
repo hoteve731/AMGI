@@ -57,7 +57,7 @@ export async function POST(req: Request) {
                 messages: [
                     {
                         role: "system",
-                        content: "주어진 텍스트를 읽고 핵심적이고 명확한 제목을 생성해주세요. \"등으로 감싸지 말고 오직 텍스트 제목만 출력하세요."
+                        content: "당신은 텍스트의 핵심을 정확히 파악하여 간결하고 명확한 제목을 생성하는 전문가입니다. 주어진 텍스트를 분석하고 15자 이내의 핵심적인 제목만 출력하세요. 따옴표나 기타 부가 설명 없이 제목 텍스트만 반환해야 합니다."
                     },
                     { role: "user", content: text }
                 ],
@@ -138,22 +138,24 @@ async function processContentInBackground(contentId: string, text: string, userI
                 messages: [
                     {
                         role: "system",
-                        content: `주어진 텍스트를 읽고 핵심 아이디어나 목적에 따라 여러개의 그룹으로 분류해주세요. 핵심 아이디어가 하나라면 1개의 그룹이여도 괜찮습니다. 3~5개가 이상적이며, 되도록이면 7개의 그룹을 넘기지 마세요.
-                        각 그룹은 다음 형식으로 출력해주세요. 첫번째 줄인 그룹의 제목은 ['핵심키워드'(을/를) 기억하기] 형식으로 정해주세요.:
-                        
-                        그룹 1: OOO을 기억하기
-                        [그룹에 해당하는 원문 텍스트]
-                        
-                        그룹 2: OOO을 기억하기
-                        [그룹에 해당하는 원문 텍스트]
-                        
-                        ...
-                        
-                        각 그룹의 원문 텍스트는 원문을 직접 중복 없이 나눠서 그대로 발췌해야 합니다.`
+                        content: `당신은 텍스트를 의미 있는 그룹으로 분류하는 전문가입니다. 다음 지침을 따라주세요:
+                    
+                        1. 텍스트를 핵심 아이디어나 목적에 따라 3-5개의 그룹으로 분류하세요(최대 7개)
+                        2. 각 그룹의 제목은 해당 텍스트의 핵심을 고려해서 '{핵심키워드}를 기억하기' 형식으로 작성하세요. '를' 또는 '을' 조사는 한국 문법에 맞춰서 자연스럽게 넣으세요.
+                        3. 각 그룹의 내용은 원문에서 직접 발췌하고, 중복 없이 분배하세요
+                        4. 출력 형식:
+                           
+                           그룹 1: 핵심키워드를 기억하기 
+                           [그룹에 해당하는 원문 텍스트]
+                           
+                           그룹 2: 핵심키워드를 기억하기
+                           [그룹에 해당하는 원문 텍스트]
+                           
+                           ...`
                     },
                     { role: "user", content: text }
                 ],
-                temperature: 0,
+                temperature: 0.1,
                 max_tokens: 1000
             }), TIMEOUT);
 
@@ -161,7 +163,7 @@ async function processContentInBackground(contentId: string, text: string, userI
             console.log('Groups generated:', groupsText)
 
             // 그룹 텍스트 파싱
-            const groupRegex = /그룹 \d+: (.*?)\n([\s\S]*?)(?=\n그룹 \d+:|$)/g
+            const groupRegex = /그룹 (\d+): (.*?)\n([\s\S]*?)(?=\n그룹 \d+:|$)/g
             let match
             let position = 0
             while ((match = groupRegex.exec(groupsText)) !== null) {
@@ -207,29 +209,27 @@ async function processContentInBackground(contentId: string, text: string, userI
                                 messages: [
                                     {
                                         role: "system",
-                                        content: `주어진 텍스트를 읽고 기억하기 좋은 문장, 구절 단위로 나눠진 n개의 '기억 카드'를 만들어주세요. 
-                                        각 '기억 카드'는 원문에서 직접 발췌해야 합니다.
-                                        각 '기억 카드'에 대해 간략한 요약도 함께 제공해주세요.
-                                        
-                                        또한, 각 '기억 카드'에서 중요한 단어나 개념을 식별하여 해당 단어를 **로 감싸주세요.
-                                        예를 들어, "인공지능은 미래 기술의 핵심입니다"라는 문장에서 "인공지능"과 "미래 기술"이 중요하다면
-                                        "**인공지능**은 **미래 기술**의 핵심입니다"와 같이 표시해주세요. 되도록이면 마스킹 되는 단어는 가장 중요한 1개로 제한하고, 꼭 필요한 경우 최대 2개까지만 마스킹 처리 하세요.
-                                        
-                                        다음 형식으로 출력해주세요:
-                                        
-                                        청크 1:
-                                        요약: [간략한 요약]
-                                        원문: [중요 단어가 **로 감싸진 원문 문장이나 구절]
-                                        
-                                        청크 2:
-                                        요약: [간략한 요약]
-                                        원문: [중요 단어가 **로 감싸진 원문 문장이나 구절]
-                                        
-                                        ...`
+                                        content: `당신은 텍스트를 기억하기 쉬운 카드로 변환하는 전문가입니다. 다음 지침을 따라주세요:
+                                    
+                                        1. 주어진 텍스트를 3-5개의 '기억 카드'로 분할하세요
+                                        2. 각 카드는 원문에서 직접 발췌하되, 이해하기 쉽게 다듬으세요
+                                        3. 각 카드에서 가장 중요한 단어나 개념 1개(필요시 최대 2개)를 **로 감싸세요
+                                           예: "**인공지능**은 미래 기술의 핵심입니다"
+                                        4. 출력 형식:
+                                           
+                                           청크 1:
+                                           요약: [5-10자 내외의 핵심 요약]
+                                           원문: [중요 단어가 **로 감싸진 문단]
+                                           
+                                           청크 2:
+                                           요약: [5-10자 내외의 핵심 요약]
+                                           원문: [중요 단어가 **로 감싸진 문단]
+                                           
+                                           ...`
                                     },
                                     { role: "user", content: group.original_text }
                                 ],
-                                temperature: 0,
+                                temperature: 0.1,
                                 max_tokens: 1000
                             }), TIMEOUT);
 
@@ -237,7 +237,7 @@ async function processContentInBackground(contentId: string, text: string, userI
                             console.log(`Chunks generated for group ${group.title}:`, chunksText)
 
                             // 청크 텍스트 파싱
-                            const chunkRegex = /청크 \d+:\s*\n요약: (.*?)\s*\n원문: ([\s\S]*?)(?=\n\n청크 \d+:|$)/g
+                            const chunkRegex = /청크 (\d+):\s*\n요약: (.*?)\s*\n원문: ([\s\S]*?)(?=\n\n청크 \d+:|$)/g
                             let chunkMatch
                             let chunkPosition = 0
                             const chunks = []
