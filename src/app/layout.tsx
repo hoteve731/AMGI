@@ -14,6 +14,36 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+// Firebase 설정 정보를 서비스 워커에 전달하는 스크립트
+const firebaseConfigScript = `
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function() {
+      navigator.serviceWorker.register('/firebase-messaging-sw.js')
+        .then(function(registration) {
+          console.log('서비스 워커 등록 성공:', registration.scope);
+          
+          // Firebase 설정 정보를 서비스 워커에 전달
+          if (registration.active) {
+            registration.active.postMessage({
+              type: 'FIREBASE_CONFIG',
+              config: {
+                apiKey: '${process.env.NEXT_PUBLIC_FIREBASE_API_KEY}',
+                authDomain: '${process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN}',
+                projectId: '${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}',
+                storageBucket: '${process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET}',
+                messagingSenderId: '${process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID}',
+                appId: '${process.env.NEXT_PUBLIC_FIREBASE_APP_ID}'
+              }
+            });
+          }
+        })
+        .catch(function(error) {
+          console.log('서비스 워커 등록 실패:', error);
+        });
+    });
+  }
+`;
+
 export const viewport = {
   themeColor: "#ffffff",
   width: "device-width",
@@ -60,6 +90,7 @@ export default function RootLayout({
   return (
     <html lang="ko" className="bg-gradient-to-b from-[#F8F4EF] to-[#E8D9C5]">
       <head>
+      <script dangerouslySetInnerHTML={{ __html: firebaseConfigScript }} />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="theme-color" content="#F8F4EF" />
