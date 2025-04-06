@@ -58,7 +58,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko" className="bg-[#F8F4EF]">
+    <html lang="ko" className="bg-gradient-to-b from-[#F8F4EF] to-[#E8D9C5]">
       <head>
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -79,7 +79,7 @@ export default function RootLayout({
           media="(device-width: 360px) and (device-height: 640px) and (-webkit-device-pixel-ratio: 3)"
         />
       </head>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#F8F4EF]`}>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gradient-to-b from-[#F8F4EF] to-[#E8D9C5] min-h-screen`}>
         {children}
         <UpdatePrompt />
         {/* <PushTest /> */}

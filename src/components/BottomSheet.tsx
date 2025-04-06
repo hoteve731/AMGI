@@ -345,10 +345,13 @@ export default function BottomSheet() {
                                                     ref={additionalMemoryRef}
                                                     value={additionalMemory}
                                                     onChange={(e) => setAdditionalMemory(e.target.value)}
-                                                    placeholder="특별히 기억하고 싶은 부분을 적어주세요 (빈칸으로 남겨도 괜찮습니다)"
-                                                    className="w-full h-20 resize-none rounded-lg p-2 focus:outline-none text-sm border border-gray-200 focus:ring-1 focus:ring-[#7C6FFB]"
+                                                    placeholder="(선택) 이제 특별히 기억하고 싶은 부분을 알려주세요."
+                                                    className="w-full h-20 resize-none rounded-lg p-2 focus:outline-none text-sm border border-gray-200 focus:border-[#A99BFF] focus:border-2"
                                                     disabled={isLoading}
                                                 />
+                                                <p className="text-gray-400 text-xs mt-1 px-1">
+                                                    *예: 특정 단어에 집중해서 분석하기, 내 삶에 이것을 어떻게 적용할 수 있을지
+                                                </p>
                                             </motion.div>
                                         )}
                                     </AnimatePresence>

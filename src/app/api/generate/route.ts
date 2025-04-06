@@ -238,7 +238,11 @@ async function processContentInBackground(contentId: string, text: string, addit
                         6. 중요: '요약:' 다음에 실제 요약 내용이 와야 합니다.
                         7. 중요: '원문:' 다음에 실제 원문 내용이 와야 합니다.${additionalMemory ? `
                         8. 사용자가 특별히 기억하고 싶어하는 내용: "${additionalMemory}"
-                           이 내용과 관련된 부분이 있다면 해당 부분을 **로 감싸서 강조하세요.` : ''}`
+                           이 내용은 매우 중요합니다. 다음과 같이 처리하세요:
+                           - 이 내용과 관련된 부분이 있다면 반드시 해당 부분을 **로 감싸서 강조하세요
+                           - 가능하면 이 내용과 관련된 청크를 우선적으로 만드세요
+                           - 청크의 요약에도 이 내용을 반영하세요
+                           - 이 내용과 관련된 개념이나 단어가 있다면 그것을 중심으로 청크를 구성하세요` : ''}`
 
                     const chunksCompletion = await withTimeout(openai.chat.completions.create({
                         model: "gpt-4o-mini-2024-07-18",
