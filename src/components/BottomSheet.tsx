@@ -293,7 +293,7 @@ export default function BottomSheet() {
                                         </svg>
                                     </button>
                                     <h2 className="text-lg font-medium text-gray-700">새 기억 카드 생성</h2>
-                                    {!showAdditionalMemoryInput && (
+                                    {!showAdditionalMemoryInput ? (
                                         <motion.button
                                             type="button"
                                             onClick={handleSubmit}
@@ -306,16 +306,52 @@ export default function BottomSheet() {
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                             </svg>
                                         </motion.button>
-                                    )}
-                                    {showAdditionalMemoryInput && (
-                                        <div className="w-7"></div>
+                                    ) : (
+                                        <motion.button
+                                            type="button"
+                                            onClick={handleSubmit}
+                                            disabled={isLoading}
+                                            className="px-4 py-1.5 bg-gradient-to-r from-[#7969F7] to-[#A99BFF] text-white rounded-full shadow-md text-sm font-medium"
+                                            whileHover={{ scale: 1.05 }}
+                                            whileTap={{ scale: 0.95 }}
+                                        >
+                                            생성하기
+                                        </motion.button>
                                     )}
                                 </div>
 
                                 <form onSubmit={handleSubmit} className="flex-1 flex flex-col p-4">
                                     <div className="text-[#7C6FFB] font-medium text-sm mb-2">내 것으로 만들고 싶은 아이디어</div>
+
+                                    {/* Additional Memory Input Area - Moved Here */}
+                                    <AnimatePresence mode="wait" initial={false}>
+                                        {showAdditionalMemoryInput && (
+                                            <motion.div
+                                                key="additional-memory-input"
+                                                initial={{ opacity: 0, scale: 0.95, height: 0 }}
+                                                animate={{ opacity: 1, scale: 1, height: 'auto' }}
+                                                exit={{ opacity: 0, scale: 0.95, height: 0 }}
+                                                transition={{
+                                                    duration: 0.25, // Slightly slower for smoother feel
+                                                    ease: "easeInOut"
+                                                }}
+                                                className="flex flex-col overflow-hidden mb-3" // Added margin bottom
+                                            >
+                                                <textarea
+                                                    ref={additionalMemoryRef}
+                                                    value={additionalMemory}
+                                                    onChange={(e) => setAdditionalMemory(e.target.value)}
+                                                    placeholder="특별히 기억하고 싶은 부분을 적어주세요 (빈칸으로 남겨도 괜찮습니다)"
+                                                    className="w-full h-20 resize-none border border-gray-200 rounded-lg p-2 focus:outline-none focus:ring-1 focus:ring-[#7C6FFB] text-sm" // Smaller text
+                                                    disabled={isLoading}
+                                                />
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+
+                                    {/* Original Text Input Area (or Read-Only View) */}
                                     <div
-                                        className="flex-1 flex flex-col mb-4"
+                                        className="flex-1 flex flex-col"
                                     >
                                         {showAdditionalMemoryInput ? (
                                             <div
@@ -346,41 +382,6 @@ export default function BottomSheet() {
                                             />
                                         )}
                                     </div>
-
-                                    <AnimatePresence mode="wait" initial={false}>
-                                        {showAdditionalMemoryInput && (
-                                            <motion.div
-                                                key="additional-memory-input"
-                                                initial={{ opacity: 0, scale: 0.9 }}
-                                                animate={{ opacity: 1, scale: 1 }}
-                                                exit={{ opacity: 0, scale: 0.9 }}
-                                                transition={{
-                                                    duration: 0.2,
-                                                    ease: "easeInOut"
-                                                }}
-                                                className="flex flex-col"
-                                            >
-                                                <textarea
-                                                    ref={additionalMemoryRef}
-                                                    value={additionalMemory}
-                                                    onChange={(e) => setAdditionalMemory(e.target.value)}
-                                                    placeholder="특별히 기억하고 싶은 부분을 적어주세요 (빈칸으로 남겨도 괜찮습니다)"
-                                                    className="w-full h-24 resize-none border border-gray-200 rounded-lg p-2 focus:outline-none focus:ring-1 focus:ring-[#7C6FFB] text-base"
-                                                    disabled={isLoading}
-                                                />
-                                                <div className="flex justify-end mt-4">
-                                                    <motion.button
-                                                        type="submit"
-                                                        className="px-6 py-2 bg-gradient-to-r from-[#7969F7] to-[#A99BFF] text-white rounded-full shadow-md"
-                                                        whileHover={{ scale: 1.05 }}
-                                                        whileTap={{ scale: 0.95 }}
-                                                    >
-                                                        생성하기
-                                                    </motion.button>
-                                                </div>
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
                                 </form>
                             </div>
                         )}
