@@ -18,6 +18,7 @@ type ContentWithGroups = {
   created_at: string
   status: 'studying' | 'completed' | 'paused'
   groups: ContentGroup[]
+  additional_memory: string // Add this line
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -39,7 +40,7 @@ export default async function Page(props: any) {
     // 1. 콘텐츠 기본 정보 가져오기
     const { data: contentData, error: contentError } = await supabase
       .from('contents')
-      .select('id, title, created_at, status')
+      .select('id, title, created_at, status, additional_memory')
       .eq('id', id)
       .single()
 
