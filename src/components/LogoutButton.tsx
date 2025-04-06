@@ -9,9 +9,15 @@ export default function LogoutButton() {
     const supabase = createClient()
 
     const handleLogout = async () => {
-        await supabase.auth.signOut()
-        router.refresh()
-        router.push('/auth') // Redirect to login page after logout
+        try {
+            // 기본 Supabase 로그아웃 메서드 호출
+            await supabase.auth.signOut();
+
+            // 로그아웃 후 페이지 새로고침 (브라우저 내장 기능 사용)
+            window.location.href = '/auth';
+        } catch (error) {
+            console.error('로그아웃 중 오류 발생:', error);
+        }
     }
 
     return (

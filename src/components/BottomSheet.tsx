@@ -267,9 +267,11 @@ export default function BottomSheet() {
                                 onClick={expandSheet}
                             >
                                 <div className="w-full">
-                                    <div className="text-[#7C6FFB] font-medium text-sm mb-1">내 것으로 만들고 싶은 아이디어</div>
-                                    <div className="text-gray-400 text-base">
-                                        {text ? text.substring(0, 50) + (text.length > 50 ? '...' : '') : '여기에 타이핑하거나 붙여넣으세요...'}
+                                    <div className="text-[#7C6FFB] font-medium text-sm mb-1">
+                                        내 것으로 만들고 싶은 아이디어
+                                    </div>
+                                    <div className="text-gray-400 text-base truncate">
+                                        {text ? text : '여기에 타이핑하거나 붙여넣으세요...'}
                                     </div>
                                 </div>
                                 <div className="flex-shrink-0 ml-2">
@@ -283,22 +285,22 @@ export default function BottomSheet() {
                         {/* Expanded state - full form */}
                         {isExpanded && (
                             <div className="h-full flex flex-col">
-                                <div className="flex justify-between items-center p-4 border-b border-gray-100">
+                                <div className="flex items-center p-4 border-b border-gray-100 relative">
                                     <button
                                         onClick={collapseSheet}
-                                        className="text-gray-500 hover:text-gray-700"
+                                        className="text-gray-500 hover:text-gray-700 absolute left-4"
                                     >
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                         </svg>
                                     </button>
-                                    <h2 className="text-lg font-medium text-gray-700">새 기억 카드 생성</h2>
+                                    <h2 className="text-lg font-medium text-gray-700 flex-grow text-center">새 기억 카드 생성</h2>
                                     {!showAdditionalMemoryInput ? (
                                         <motion.button
                                             type="button"
                                             onClick={handleSubmit}
                                             disabled={!text.trim() || isLoading}
-                                            className="text-[#7969F7] disabled:text-gray-300 disabled:cursor-not-allowed"
+                                            className="text-[#7969F7] disabled:text-gray-300 disabled:cursor-not-allowed absolute right-4"
                                             whileHover={{ scale: 1.05 }}
                                             whileTap={{ scale: 0.95 }}
                                         >
@@ -311,7 +313,7 @@ export default function BottomSheet() {
                                             type="button"
                                             onClick={handleSubmit}
                                             disabled={isLoading}
-                                            className="px-4 py-1.5 bg-gradient-to-r from-[#7969F7] to-[#A99BFF] text-white rounded-full shadow-md text-sm font-medium"
+                                            className="px-4 py-1.5 bg-[#7969F7] text-white rounded-full shadow-md text-sm font-bold absolute right-4"
                                             whileHover={{ scale: 1.05 }}
                                             whileTap={{ scale: 0.95 }}
                                         >
@@ -321,7 +323,9 @@ export default function BottomSheet() {
                                 </div>
 
                                 <form onSubmit={handleSubmit} className="flex-1 flex flex-col p-4">
-                                    <div className="text-[#7C6FFB] font-medium text-sm mb-2">내 것으로 만들고 싶은 아이디어</div>
+                                    <div className="text-[#7C6FFB] font-medium text-sm mb-2">
+                                        내 것으로 만들고 싶은 아이디어
+                                    </div>
 
                                     {/* Additional Memory Input Area - Moved Here */}
                                     <AnimatePresence mode="wait" initial={false}>
@@ -342,7 +346,7 @@ export default function BottomSheet() {
                                                     value={additionalMemory}
                                                     onChange={(e) => setAdditionalMemory(e.target.value)}
                                                     placeholder="특별히 기억하고 싶은 부분을 적어주세요 (빈칸으로 남겨도 괜찮습니다)"
-                                                    className="w-full h-20 resize-none border border-gray-200 rounded-lg p-2 focus:outline-none focus:ring-1 focus:ring-[#7C6FFB] text-sm" // Smaller text
+                                                    className="w-full h-20 resize-none rounded-lg p-2 focus:outline-none text-sm border border-gray-200 focus:ring-1 focus:ring-[#7C6FFB]"
                                                     disabled={isLoading}
                                                 />
                                             </motion.div>
@@ -359,13 +363,13 @@ export default function BottomSheet() {
                                                 style={{ minHeight: "80px" }}
                                                 onClick={() => setShowAdditionalMemoryInput(false)}
                                             >
-                                                <p className="text-gray-700 whitespace-pre-wrap">{text}</p>
-                                                <div className="mt-2 text-xs text-[#7969F7] flex items-center">
+                                                <div className="mb-2 text-xs text-[#7969F7] flex items-center">
                                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                                                     </svg>
                                                     수정
                                                 </div>
+                                                <p className="text-gray-700 whitespace-pre-wrap">{text}</p>
                                             </div>
                                         ) : (
                                             <textarea
