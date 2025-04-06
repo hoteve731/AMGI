@@ -18,7 +18,6 @@ type Chunk = {
 
 type ContentGroup = {
     id: string
-    content_id: string
     title: string
     original_text: string
     chunks: Chunk[]
@@ -39,7 +38,7 @@ type NotificationInfo = {
     status: 'pending' | 'sent' | 'failed';
 }
 
-export default function GroupDetail({ content }: { content: Content }) {
+export default function GroupDetail({ content, group }: { content: Content; group: ContentGroup }) {
     const router = useRouter()
     const [isLoading, setIsLoading] = useState(false)
     const [groups, setGroups] = useState<ContentGroup[]>([])
@@ -49,35 +48,63 @@ export default function GroupDetail({ content }: { content: Content }) {
     const [fcmToken, setFcmToken] = useState<string | null>(null)
     const supabase = createClientComponentClient()
 
+    // 세션 상태 관리 추가
+    const [session, setSession] = useState<any>(null)
+
+    // 세션 초기화 및 감시
+    useEffect(() => {
+        const initializeAuth = async () => {
+            try {
+                const { data: { session: currentSession }, error } = await supabase.auth.getSession()
+                if (error) throw error
+                setSession(currentSession)
+            } catch (error) {
+                console.error('세션 초기화 오류:', error)
+            }
+        }
+
+        initializeAuth()
+
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            setSession(session)
+        })
+
+        return () => {
+            subscription.unsubscribe()
+        }
+    }, [supabase])
+
     // 그룹 정보 로드
     useEffect(() => {
         const fetchGroups = async () => {
-            setIsLoading(true);
+            if (!content.id) return
+
+            setIsLoading(true)
             try {
                 const { data, error } = await supabase
                     .from('content_groups')
                     .select('*, chunks:content_chunks(*)')
                     .eq('content_id', content.id)
-                    .order('id');
+                    .order('id')
 
                 if (error) {
-                    console.error('그룹 정보 가져오기 오류:', error);
-                } else if (data && data.length > 0) {
-                    setGroups(data);
-                    setCurrentGroup(data[0]); // 첫 번째 그룹을 현재 그룹으로 설정
-                    console.log('그룹 데이터 로드 완료:', data);
+                    console.error('그룹 정보 가져오기 오류:', error)
+                    return
+                }
+
+                if (data && data.length > 0) {
+                    setGroups(data)
+                    setCurrentGroup(data[0])
                 }
             } catch (err) {
-                console.error('그룹 정보 가져오기 중 예외 발생:', err);
+                console.error('그룹 정보 가져오기 중 예외 발생:', err)
             } finally {
-                setIsLoading(false);
+                setIsLoading(false)
             }
-        };
-
-        if (content.id) {
-            fetchGroups();
         }
-    }, [content.id, supabase]);
+
+        fetchGroups()
+    }, [content.id, supabase])
 
     // FCM 토큰 요청 및 알림 권한 획득
     useEffect(() => {
@@ -99,68 +126,52 @@ export default function GroupDetail({ content }: { content: Content }) {
     // 알림 정보 가져오기
     useEffect(() => {
         const fetchNotifications = async () => {
+            if (!content.id) return
+
             try {
-                // 인증 세션 확인 - 인증이 없어도 로컬에서 확인
-                let userId = null;
-                try {
-                    const { data, error } = await supabase.auth.getUser();
-                    if (!error && data.user) {
-                        userId = data.user.id;
-                        console.log('인증된 사용자:', userId);
+                let userId = null
+                const { data: { user }, error } = await supabase.auth.getUser()
 
-                        // 인증된 사용자는 Supabase에서 알림 정보 가져오기
-                        const { data: notificationData, error: notificationError } = await supabase
-                            .from('notifications')
-                            .select('*')
-                            .eq('user_id', userId)
-                            .eq('content_id', content.id)
-                            .order('scheduled_time', { ascending: true });
+                if (!error && user) {
+                    userId = user.id
+                    console.log('인증된 사용자:', userId)
 
-                        if (notificationError) {
-                            console.error('알림 정보 가져오기 실패:', notificationError);
-                        } else if (notificationData) {
-                            // 청크 ID별로 알림 정보 매핑
-                            const notificationsMap = notificationData.map(notification => ({
-                                chunkId: notification.chunk_id,
-                                scheduledFor: new Date(notification.scheduled_time),
-                                status: notification.status || 'pending'
-                            }));
-                            setNotifications(notificationsMap);
-                        }
-                    } else {
-                        // 인증되지 않은 사용자는 로컬 스토리지에서 확인
-                        const localNotifications = JSON.parse(localStorage.getItem('notifications') || '[]');
-                        const contentNotifications = localNotifications
-                            .filter((n: any) => n.content_id === content.id)
-                            .map((n: any) => ({
-                                chunkId: n.chunk_id,
-                                scheduledFor: new Date(n.scheduled_time),
-                                status: 'pending'
-                            }));
-                        setNotifications(contentNotifications);
+                    const { data: notificationData, error: notificationError } = await supabase
+                        .from('notifications')
+                        .select('*')
+                        .eq('user_id', userId)
+                        .eq('content_id', content.id)
+                        .order('scheduled_time', { ascending: true })
+
+                    if (notificationError) {
+                        console.error('알림 정보 가져오기 실패:', notificationError)
+                    } else if (notificationData) {
+                        const notificationsMap = notificationData.map(notification => ({
+                            chunkId: notification.chunk_id,
+                            scheduledFor: new Date(notification.scheduled_time),
+                            status: notification.status || 'pending'
+                        }))
+                        setNotifications(notificationsMap)
                     }
-                } catch (authError) {
-                    console.log('인증 세션 오류 (무시됨):', authError);
-                    // 인증 오류 시 로컬 스토리지에서 확인
-                    const localNotifications = JSON.parse(localStorage.getItem('notifications') || '[]');
+                } else {
+                    // 인증되지 않은 사용자는 로컬 스토리지에서 확인
+                    const localNotifications = JSON.parse(localStorage.getItem('notifications') || '[]')
                     const contentNotifications = localNotifications
                         .filter((n: any) => n.content_id === content.id)
                         .map((n: any) => ({
                             chunkId: n.chunk_id,
                             scheduledFor: new Date(n.scheduled_time),
                             status: 'pending'
-                        }));
-                    setNotifications(contentNotifications);
+                        }))
+                    setNotifications(contentNotifications)
                 }
             } catch (error) {
-                console.error('알림 정보 처리 중 오류:', error);
+                console.error('알림 정보 처리 중 오류:', error)
             }
-        };
-
-        if (content.id) {
-            fetchNotifications();
         }
-    }, [content.id, supabase]);
+
+        fetchNotifications()
+    }, [content.id, supabase])
 
     const handleChunkClick = (chunkId: string) => {
         setIsLoading(true)
@@ -174,138 +185,127 @@ export default function GroupDetail({ content }: { content: Content }) {
     // 알림 스케줄링 함수
     const scheduleNotifications = async () => {
         if (!currentGroup || !currentGroup.chunks || currentGroup.chunks.length === 0) {
-            alert('학습할 내용이 없습니다.');
-            return;
+            alert('학습할 내용이 없습니다.')
+            return
         }
 
         if (!fcmToken) {
             try {
-                const token = await requestFCMPermission();
+                const token = await requestFCMPermission()
                 if (!token) {
-                    alert('알림을 보내기 위해 알림 권한이 필요합니다.');
-                    return;
+                    alert('알림을 보내기 위해 알림 권한이 필요합니다.')
+                    return
                 }
-                setFcmToken(token);
+                setFcmToken(token)
             } catch (error) {
-                console.error('FCM 설정 오류:', error);
-                alert('알림 권한을 설정할 수 없습니다.');
-                return;
+                console.error('FCM 설정 오류:', error)
+                alert('알림 권한을 설정할 수 없습니다.')
+                return
             }
         }
 
-        setIsLoading(true);
+        setIsLoading(true)
         try {
             // 로컬 스토리지의 기존 알림 삭제
-            const existingNotifications = JSON.parse(localStorage.getItem('notifications') || '[]');
+            const existingNotifications = JSON.parse(localStorage.getItem('notifications') || '[]')
             const filteredNotifications = existingNotifications.filter(
                 (notification: any) => notification.content_id !== content.id
-            );
-            localStorage.setItem('notifications', JSON.stringify(filteredNotifications));
+            )
+            localStorage.setItem('notifications', JSON.stringify(filteredNotifications))
 
-            // 사용자 인증 정보 확인 (세션이 없을 때 오류 방지)
-            let userId = null;
-            try {
-                const { data, error } = await supabase.auth.getUser();
+            // 사용자 인증 정보 확인
+            const { data: { user }, error: userError } = await supabase.auth.getUser()
 
-                if (!error && data.user && data.user.id) {
-                    userId = data.user.id;
-                    console.log('인증된 사용자 ID:', userId);
+            if (userError) {
+                console.error('사용자 인증 오류:', userError)
+                throw userError
+            }
 
-                    // 기존 알림 삭제 (인증된 경우에만)
-                    const { error: deleteError } = await supabase
-                        .from('notifications')
-                        .delete()
-                        .eq('user_id', userId)
-                        .eq('content_id', content.id);
+            const userId = user?.id
 
-                    if (deleteError) {
-                        console.error('기존 알림 삭제 오류:', deleteError);
-                    }
-                } else {
-                    console.log('인증된 사용자 정보가 없습니다. 로컬 알림만 사용합니다.');
+            if (userId) {
+                // 기존 알림 삭제
+                const { error: deleteError } = await supabase
+                    .from('notifications')
+                    .delete()
+                    .eq('user_id', userId)
+                    .eq('content_id', content.id)
+
+                if (deleteError) {
+                    console.error('기존 알림 삭제 오류:', deleteError)
                 }
-            } catch (authError) {
-                console.log('인증 세션 오류 (무시됨):', authError);
             }
 
             // 각 청크별로 알림 스케줄링
             const promises = currentGroup.chunks.map(async (chunk, index) => {
-                // 테스트를 위해 각 카드마다 10초씩 증가하는 시간으로 설정
-                const scheduledTime = new Date(Date.now() + (index + 1) * 10 * 1000);
+                const scheduledTime = new Date(Date.now() + (index + 1) * 10 * 1000)
+                const notificationBody = `${currentGroup.title}의 카드 ${index + 1}을 복습할 시간입니다.`
 
-                // 알림 내용 설정
-                const notificationBody = `${currentGroup.title}의 카드 ${index + 1}을 복습할 시간입니다.`;
-
-                // 알림 스케줄링
                 const result = await scheduleNotification(
                     content.id,
                     chunk.id,
                     '기억을 꺼낼 시간이에요 🧠',
                     notificationBody,
                     scheduledTime
-                );
+                )
 
                 if (!result) {
-                    console.log(`청크 ${index + 1} 알림 설정 실패`);
-                } else {
-                    console.log(`청크 ${index + 1} 알림 설정 성공:`, result);
+                    console.log(`청크 ${index + 1} 알림 설정 실패`)
+                    return null
+                }
 
-                    // 인증된 사용자인 경우 Supabase에 알림 정보 저장
-                    if (userId) {
-                        try {
-                            const { error: insertError } = await supabase
-                                .from('notifications')
-                                .insert({
-                                    user_id: userId,
-                                    content_id: content.id,
-                                    chunk_id: chunk.id,
-                                    title: '기억을 꺼낼 시간이에요 🧠',
-                                    body: notificationBody,
-                                    scheduled_time: scheduledTime.toISOString(),
-                                    status: 'pending'
-                                });
+                if (userId) {
+                    try {
+                        const { error: insertError } = await supabase
+                            .from('notifications')
+                            .insert({
+                                user_id: userId,
+                                content_id: content.id,
+                                chunk_id: chunk.id,
+                                title: '기억을 꺼낼 시간이에요 🧠',
+                                body: notificationBody,
+                                scheduled_time: scheduledTime.toISOString(),
+                                status: 'pending'
+                            })
 
-                            if (insertError) {
-                                console.error('알림 정보 저장 실패:', insertError);
-                            }
-                        } catch (dbError) {
-                            console.error('알림 정보 저장 중 오류:', dbError);
+                        if (insertError) {
+                            console.error('알림 정보 저장 실패:', insertError)
                         }
-                    } else {
-                        // 인증되지 않은 사용자는 로컬 스토리지에 저장
-                        const localNotifications = JSON.parse(localStorage.getItem('notifications') || '[]');
-                        localNotifications.push({
-                            content_id: content.id,
-                            chunk_id: chunk.id,
-                            title: '기억을 꺼낼 시간이에요 🧠',
-                            body: notificationBody,
-                            scheduled_time: scheduledTime.toISOString()
-                        });
-                        localStorage.setItem('notifications', JSON.stringify(localNotifications));
+                    } catch (dbError) {
+                        console.error('알림 정보 저장 중 오류:', dbError)
                     }
+                } else {
+                    const localNotifications = JSON.parse(localStorage.getItem('notifications') || '[]')
+                    localNotifications.push({
+                        content_id: content.id,
+                        chunk_id: chunk.id,
+                        title: '기억을 꺼낼 시간이에요 🧠',
+                        body: notificationBody,
+                        scheduled_time: scheduledTime.toISOString()
+                    })
+                    localStorage.setItem('notifications', JSON.stringify(localNotifications))
                 }
 
                 return {
                     chunkId: chunk.id,
                     scheduledFor: scheduledTime,
                     status: 'pending' as const
-                };
-            });
+                }
+            })
 
-            const newNotifications = await Promise.all(promises);
-            setNotifications(newNotifications);
+            const newNotifications = (await Promise.all(promises)).filter(Boolean) as NotificationInfo[]
+            setNotifications(newNotifications)
 
-            // 알림 설정 후 첫 번째 카드로 이동
             if (currentGroup.chunks.length > 0) {
-                router.push(`/content/${content.id}/learning?chunk=${currentGroup.chunks[0].id}`);
+                router.push(`/content/${content.id}/learning?chunk=${currentGroup.chunks[0].id}`)
             }
         } catch (error) {
-            console.error('알림 스케줄링 실패:', error);
-            alert('알림 설정 중 오류가 발생했습니다.');
+            console.error('알림 스케줄링 실패:', error)
+            alert('알림 설정 중 오류가 발생했습니다.')
         } finally {
-            setIsLoading(false);
+            setIsLoading(false)
         }
-    };
+    }
 
     // 학습 시작 핸들러 (알림 설정 없이 바로 학습 페이지로 이동)
     const handleStartLearning = () => {
@@ -475,13 +475,13 @@ export default function GroupDetail({ content }: { content: Content }) {
 
                 {/* 그룹 선택 탭 (여러 그룹이 있는 경우) */}
                 {groups.length > 1 && (
-                    <div className="mb-6 overflow-x-auto">
-                        <div className="flex space-x-2 pb-2">
+                    <div className="mb-6">
+                        <div className="flex flex-wrap gap-2">
                             {groups.map((group) => (
                                 <button
                                     key={group.id}
                                     onClick={() => setCurrentGroup(group)}
-                                    className={`px-4 py-2 whitespace-nowrap rounded-lg text-sm font-medium ${currentGroup.id === group.id
+                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${currentGroup.id === group.id
                                         ? 'bg-purple-600 text-white'
                                         : 'bg-white/60 text-gray-700 hover:bg-white/80'
                                         }`}
