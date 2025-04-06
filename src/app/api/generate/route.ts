@@ -39,7 +39,7 @@ export async function POST(req: Request) {
             )
         }
 
-        const { text } = await req.json()
+        const { text, additionalMemory } = await req.json()
 
         if (!text || typeof text !== 'string') {
             return NextResponse.json(
@@ -86,6 +86,7 @@ export async function POST(req: Request) {
                         user_id: session.user.id,
                         title,
                         original_text: text,
+                        additional_memory: additionalMemory || '',
                         status: 'paused',
                         chunks: [],
                         masked_chunks: []
@@ -105,7 +106,7 @@ export async function POST(req: Request) {
         }
 
         // 백그라운드에서 나머지 처리 진행
-        processContentInBackground(contentId, text, session.user.id, supabase).catch(error => {
+        processContentInBackground(contentId, text, additionalMemory, session.user.id, supabase).catch(error => {
             console.error('Background processing error:', error)
         })
 
@@ -127,34 +128,40 @@ export async function POST(req: Request) {
 }
 
 // 백그라운드에서 콘텐츠 처리를 계속하는 함수
-async function processContentInBackground(contentId: string, text: string, userId: string, supabase: any) {
+async function processContentInBackground(contentId: string, text: string, additionalMemory: string, userId: string, supabase: any) {
     try {
         // 1. 그룹 생성 - 타임아웃 적용
         let groups = []
         try {
             console.log('Generating groups...')
+
+            // 추가 기억 정보가 있는 경우 프롬프트에 포함
+            const systemPrompt = `당신은 텍스트를 의미 있는 그룹으로 분류하는 전문가입니다. 다음 지침을 따라주세요:
+                            
+                1. 텍스트를 핵심 아이디어나 목적에 따라 3-5개의 그룹으로 분류하세요(최대 7개)
+                2. 각 그룹의 제목은 '{핵심키워드}를 기억하기' 형식으로 작성하세요. '를' 또는 '을' 조사는 한국 문법에 맞게 사용하세요.
+                3. 각 그룹의 내용은 원문에서 직접 발췌하고, 중복 없이 분배하세요
+                4. 출력 형식을 정확히 따라주세요:
+                   
+                   그룹 1: {핵심키워드}를 기억하기
+                   {그룹에 해당하는 원문 텍스트}
+                   
+                   그룹 2: {핵심키워드}를 기억하기
+                   {그룹에 해당하는 원문 텍스트}
+                   
+                   ...
+                   
+                5. 중요: 그룹 번호와 제목 사이에 콜론(:)을 반드시 넣어주세요.
+                6. 중요: 제목과 내용 사이에 반드시 줄바꿈을 넣어주세요.${additionalMemory ? `
+                7. 사용자가 특별히 기억하고 싶어하는 내용: "${additionalMemory}"
+                   이 내용을 반드시 고려하여 그룹을 생성하고, 가능하면 이와 관련된 그룹을 우선적으로 만드세요.` : ''}`
+
             const groupsCompletion = await withTimeout(openai.chat.completions.create({
                 model: "gpt-4o-mini-2024-07-18",
                 messages: [
                     {
                         role: "system",
-                        content: `당신은 텍스트를 의미 있는 그룹으로 분류하는 전문가입니다. 다음 지침을 따라주세요:
-                    
-                        1. 텍스트를 핵심 아이디어나 목적에 따라 3-5개의 그룹으로 분류하세요(최대 7개)
-                        2. 각 그룹의 제목은 '{핵심키워드}를 기억하기' 형식으로 작성하세요. '를' 또는 '을' 조사는 한국 문법에 맞게 사용하세요.
-                        3. 각 그룹의 내용은 원문에서 직접 발췌하고, 중복 없이 분배하세요
-                        4. 출력 형식을 정확히 따라주세요:
-                           
-                           그룹 1: {핵심키워드}를 기억하기
-                           {그룹에 해당하는 원문 텍스트}
-                           
-                           그룹 2: {핵심키워드}를 기억하기
-                           {그룹에 해당하는 원문 텍스트}
-                           
-                           ...
-                           
-                        5. 중요: 그룹 번호와 제목 사이에 콜론(:)을 반드시 넣어주세요.
-                        6. 중요: 제목과 내용 사이에 반드시 줄바꿈을 넣어주세요.`
+                        content: systemPrompt
                     },
                     { role: "user", content: text }
                 ],
@@ -209,32 +216,36 @@ async function processContentInBackground(contentId: string, text: string, userI
                 try {
                     console.log(`Generating chunks for group: ${group.title}`)
 
+                    const chunkSystemPrompt = `당신은 텍스트를 기억하기 쉬운 카드로 변환하는 전문가입니다. 다음 지침을 따라주세요:
+                            
+                        1. 주어진 텍스트를 3-5개의 '기억 카드'로 분할하세요
+                        2. 각 카드는 원문에서 직접 발췌하되, 이해하기 쉽게 다듬으세요
+                        3. 각 카드에서 가장 중요한 단어나 개념 1개(필요시 최대 2개)를 **로 감싸세요
+                           예: "**인공지능**은 미래 기술의 핵심입니다"
+                        4. 출력 형식을 정확히 따라주세요:
+                           
+                           청크 1:
+                           요약: [5-10자 내외의 핵심 요약]
+                           원문: [중요 단어가 **로 감싸진 문단]
+                           
+                           청크 2:
+                           요약: [5-10자 내외의 핵심 요약]
+                           원문: [중요 단어가 **로 감싸진 문단]
+                           
+                           ...
+                           
+                        5. 중요: 청크 번호와 콜론(:) 사이에 공백을 넣어주세요.
+                        6. 중요: '요약:' 다음에 실제 요약 내용이 와야 합니다.
+                        7. 중요: '원문:' 다음에 실제 원문 내용이 와야 합니다.${additionalMemory ? `
+                        8. 사용자가 특별히 기억하고 싶어하는 내용: "${additionalMemory}"
+                           이 내용과 관련된 부분이 있다면 해당 부분을 **로 감싸서 강조하세요.` : ''}`
+
                     const chunksCompletion = await withTimeout(openai.chat.completions.create({
                         model: "gpt-4o-mini-2024-07-18",
                         messages: [
                             {
                                 role: "system",
-                                content: `당신은 텍스트를 기억하기 쉬운 카드로 변환하는 전문가입니다. 다음 지침을 따라주세요:
-                            
-                                1. 주어진 텍스트를 3-5개의 '기억 카드'로 분할하세요
-                                2. 각 카드는 원문에서 직접 발췌하되, 이해하기 쉽게 다듬으세요
-                                3. 각 카드에서 가장 중요한 단어나 개념 1개(필요시 최대 2개)를 **로 감싸세요
-                                   예: "**인공지능**은 미래 기술의 핵심입니다"
-                                4. 출력 형식을 정확히 따라주세요:
-                                   
-                                   청크 1:
-                                   요약: [5-10자 내외의 핵심 요약]
-                                   원문: [중요 단어가 **로 감싸진 문단]
-                                   
-                                   청크 2:
-                                   요약: [5-10자 내외의 핵심 요약]
-                                   원문: [중요 단어가 **로 감싸진 문단]
-                                   
-                                   ...
-                                   
-                                5. 중요: 청크 번호와 콜론(:) 사이에 공백을 넣어주세요.
-                                6. 중요: '요약:' 다음에 실제 요약 내용이 와야 합니다.
-                                7. 중요: '원문:' 다음에 실제 원문 내용이 와야 합니다.`
+                                content: chunkSystemPrompt
                             },
                             { role: "user", content: group.original_text }
                         ],

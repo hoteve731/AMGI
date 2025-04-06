@@ -6,6 +6,7 @@ import LoadingScreen from './LoadingScreen'
 
 export default function BottomSheet() {
     const [text, setText] = useState('')
+    const [additionalMemory, setAdditionalMemory] = useState('')
     const [isLoading, setIsLoading] = useState(false)
     const [loadingStatus, setLoadingStatus] = useState<'title' | 'content' | 'group' | 'chunk' | 'complete'>('title')
     const [loadingProgress, setLoadingProgress] = useState(0)
@@ -31,7 +32,10 @@ export default function BottomSheet() {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ text }),
+                body: JSON.stringify({
+                    text,
+                    additionalMemory
+                }),
             })
 
             // 응답이 JSON이 아닌 경우를 처리
@@ -98,6 +102,7 @@ export default function BottomSheet() {
             setIsLoading(false)
             setLoadingProgress(0)
             setText('')
+            setAdditionalMemory('')
         }
     }
 
@@ -297,7 +302,16 @@ export default function BottomSheet() {
                                         value={text}
                                         onChange={(e) => setText(e.target.value)}
                                         placeholder="여기에 타이핑하거나 붙여넣으세요..."
-                                        className="flex-1 w-full resize-none border-none focus:outline-none focus:ring-0 text-base"
+                                        className="flex-1 w-full resize-none border-none focus:outline-none focus:ring-0 text-base mb-4"
+                                        disabled={isLoading}
+                                    />
+
+                                    <div className="text-[#7C6FFB] font-medium text-sm mb-2">특히 더 무엇을 기억하고 싶나요?</div>
+                                    <textarea
+                                        value={additionalMemory}
+                                        onChange={(e) => setAdditionalMemory(e.target.value)}
+                                        placeholder="특별히 기억하고 싶은 부분이나 중요한 포인트를 적어주세요..."
+                                        className="w-full h-24 resize-none border border-gray-200 rounded-lg p-2 focus:outline-none focus:ring-1 focus:ring-[#7C6FFB] text-base"
                                         disabled={isLoading}
                                     />
                                 </form>
