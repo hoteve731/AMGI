@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useState, use, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { createClientComponentClient, Session } from '@supabase/auth-helpers-nextjs'
 import { Dialog } from '@headlessui/react'
 import { subscribeUserToPush } from '@/utils/pushNotification'
 
@@ -13,69 +13,31 @@ type ChunkProgress = {
     nextReviewDate: Date;
 }
 
+type Chunk = {
+    id: string;
+    group_id: string;
+    summary: string;
+    masked_text: string;
+    order: number;
+}
+
+type ContentGroup = {
+    id: string;
+    content_id: string;
+    title: string;
+    original_text: string;
+    chunks: Chunk[];
+}
+
 type Content = {
-    id: string
-    title: string
-    chunks: Array<{ summary: string }>
-    masked_chunks: Array<{ masked_text: string }>
-    progress?: { [chunkIndex: number]: ChunkProgress }
-}
-
-function maskText(text: string | undefined, isFlipped: boolean) {
-    if (!text) return ''
-    return text.replace(/\*\*([^*]+)\*\*/g, (_, word) =>
-        isFlipped
-            ? `<span class="font-bold text-purple-600">${word}</span>`
-            : '<span class="inline-block w-12 h-5 bg-black rounded align-text-bottom mx-1"></span>'
-    )
-}
-
-function calculateNextReview(quality: number, prevProgress?: ChunkProgress): ChunkProgress {
-    const progress = prevProgress || {
-        repetitions: 0,
-        easeFactor: 2.5,
-        interval: 0,
-        nextReviewDate: new Date()
-    };
-
-    // 연속 성공/실패 횟수에 따른 간격 조정
-    if (quality >= 3) {  // 성공한 경우
-        let newInterval: number;
-
-        if (progress.repetitions === 0) {
-            // 첫 복습: 기본 간격
-            newInterval = quality === 5 ? 40 : quality === 4 ? 30 : 20;
-        } else {
-            // 이전 복습 간격의 easeFactor 배
-            const baseInterval = progress.interval;
-            newInterval = Math.ceil(baseInterval * progress.easeFactor);
-
-            // 연속 성공에 따른 추가 간격 증가
-            if (progress.repetitions > 2) {
-                newInterval *= 1.5;  // 3회 이상 연속 성공시 50% 더 긴 간격
-            }
-        }
-
-        // easeFactor 조정: 성공할수록 증가
-        const newEaseFactor = progress.easeFactor + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
-
-        return {
-            repetitions: progress.repetitions + 1,
-            easeFactor: Math.max(1.3, newEaseFactor),
-            interval: newInterval,
-            nextReviewDate: new Date(Date.now() + newInterval * 1000)  // 테스트용 초단위
-        };
-    } else {  // 실패한 경우
-        // 실패시 간격 감소
-        const newInterval = Math.max(10, progress.interval * 0.5);  // 최소 10초는 보장
-
-        return {
-            repetitions: 0,  // 실패시 반복 횟수 리셋
-            easeFactor: Math.max(1.3, progress.easeFactor * 0.8),  // easeFactor 감소
-            interval: newInterval,
-            nextReviewDate: new Date(Date.now() + newInterval * 1000)
-        };
-    }
+    id: string;
+    title: string;
+    user_id: string;
+    original_text: string;
+    created_at: string;
+    status: string;
+    progress?: { [chunkIndex: number]: ChunkProgress };
+    groups?: ContentGroup[];
 }
 
 function formatTimeRemaining(date: Date): string {
@@ -94,61 +56,206 @@ function formatTimeRemaining(date: Date): string {
 }
 
 export default function LearningPage({ params }: { params: Promise<{ id: string }> }) {
-    const id = use(params).id
-    const [content, setContent] = useState<Content | null>(null)
-    const [currentIndex, setCurrentIndex] = useState(0)
-    const [isFlipped, setIsFlipped] = useState(false)
-    const router = useRouter()
-    const supabase = createClientComponentClient()
+    const id = use(params).id;
+    const searchParams = useSearchParams();
+    const chunkId = searchParams.get('chunk'); // URL에서 청크 ID 가져오기
+
+    const [content, setContent] = useState<Content | null>(null);
+    const [currentChunk, setCurrentChunk] = useState<Chunk | null>(null);
+    const [currentGroupIndex, setCurrentGroupIndex] = useState(0);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isFlipped, setIsFlipped] = useState(false);
+    const router = useRouter();
+    const supabase = createClientComponentClient();
+    const [session, setSession] = useState<Session | null>(null);
     const [showNotificationRequest, setShowNotificationRequest] = useState(false);
     const [serviceWorkerRegistration, setServiceWorkerRegistration] = useState<ServiceWorkerRegistration | null>(null);
 
     // Supabase에 구독 정보 저장
     const saveSubscriptionToSupabase = useCallback(async (subscription: PushSubscription) => {
         try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) throw new Error('로그인이 필요합니다.');
+            // 인증 세션 오류 방지를 위한 처리
+            let userId = null;
 
-            const { error } = await supabase
-                .from('push_subscriptions')
-                .upsert({
-                    user_id: user.id,
-                    endpoint: subscription.endpoint,
-                    p256dh_key: subscription.toJSON().keys?.p256dh,
-                    auth_key: subscription.toJSON().keys?.auth,
-                    updated_at: new Date().toISOString()
-                }, {
-                    onConflict: 'endpoint'
-                });
+            try {
+                const { data, error } = await supabase.auth.getUser();
 
-            if (error) throw error;
-            console.log('푸시 구독 정보가 저장되었습니다.');
+                if (!error && data.user && data.user.id) {
+                    userId = data.user.id;
+                    console.log('인증된 사용자 ID:', userId);
+
+                    // 인증된 사용자만 Supabase에 구독 정보 저장
+                    const { error: upsertError } = await supabase
+                        .from('push_subscriptions')
+                        .upsert({
+                            user_id: userId,
+                            endpoint: subscription.endpoint,
+                            p256dh_key: subscription.toJSON().keys?.p256dh,
+                            auth_key: subscription.toJSON().keys?.auth,
+                            updated_at: new Date().toISOString()
+                        }, {
+                            onConflict: 'endpoint'
+                        });
+
+                    if (upsertError) {
+                        console.error('구독 정보 저장 실패:', upsertError);
+                    } else {
+                        console.log('푸시 구독 정보가 저장되었습니다.');
+                    }
+                } else {
+                    console.log('인증된 사용자 정보가 없습니다. 로컬에만 구독 정보를 저장합니다.');
+                    // 로컬 스토리지에 구독 정보 저장
+                    localStorage.setItem('push_subscription', JSON.stringify(subscription.toJSON()));
+                }
+            } catch (authError) {
+                console.log('인증 세션 오류 (무시됨):', authError);
+                // 로컬 스토리지에 구독 정보 저장
+                localStorage.setItem('push_subscription', JSON.stringify(subscription.toJSON()));
+            }
         } catch (error) {
-            console.error('구독 정보 저장 실패:', error);
+            console.error('구독 정보 처리 실패:', error);
+            // 오류가 발생해도 학습 페이지는 계속 사용할 수 있도록 함
         }
     }, [supabase]);
 
+    // 세션 변경 감지 및 콘텐츠 로드 트리거
     useEffect(() => {
-        if (!id) return
+        const { data: authListener } = supabase.auth.onAuthStateChange(
+            async (event, session) => {
+                console.log('Auth state changed:', event, session);
+                setSession(session);
 
-        const fetchContent = async () => {
-            const { data, error } = await supabase
-                .from('contents')
-                .select('*')
-                .eq('id', id)
-                .single()
+                if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+                    await fetchContentAndChunk();
+                }
+            }
+        );
 
-            if (error) {
-                console.error('Error fetching content:', error)
-                router.push('/')
-                return
+        return () => {
+            authListener?.subscription.unsubscribe();
+        };
+    }, [id, chunkId, supabase]);
+
+    // 콘텐츠 및 특정 청크 데이터 로드 함수
+    const fetchContentAndChunk = useCallback(async () => {
+        if (!id) return;
+
+        setIsLoading(true);
+        console.log(`Fetching content ${id} and chunk ${chunkId}`);
+        let contentData: Content | null = null;
+        let fetchError: Error | null = null;
+
+        try {
+            // 먼저 로컬 스토리지 확인
+            const localContent = localStorage.getItem(`content_${id}`);
+            if (localContent) {
+                console.log('로컬 스토리지에서 콘텐츠 로드 시도.');
+                contentData = JSON.parse(localContent);
+                setContent(contentData); // 먼저 로컬 데이터로 UI 업데이트
             }
 
-            setContent(data)
+            // Supabase 클라이언트 준비 및 세션 확인
+            console.log('Supabase 세션 확인 중...');
+            const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+
+            if (sessionError) {
+                console.error('세션 확인 오류:', sessionError);
+                if (!contentData) {
+                    fetchError = sessionError;
+                }
+            } else {
+                console.log('현재 세션:', sessionData.session);
+
+                // 이제 Supabase에서 콘텐츠 가져오기
+                console.log('Supabase에서 콘텐츠 가져오기 시도...');
+
+                // 콘텐츠 기본 정보 가져오기
+                const { data: contentResult, error: contentError } = await supabase
+                    .from('contents')
+                    .select('*')
+                    .eq('id', id)
+                    .single();
+
+                if (contentError) {
+                    console.error('콘텐츠 가져오기 오류:', contentError);
+                    if (!contentData) fetchError = contentError;
+                } else if (contentResult) {
+                    contentData = contentResult as Content;
+
+                    // 그룹 정보 가져오기
+                    const { data: groupsData, error: groupsError } = await supabase
+                        .from('content_groups')
+                        .select('*, chunks:content_chunks(*)')
+                        .eq('content_id', id)
+                        .order('id');
+
+                    if (groupsError) {
+                        console.error('그룹 정보 가져오기 오류:', groupsError);
+                    } else if (groupsData) {
+                        contentData.groups = groupsData as ContentGroup[];
+                        console.log('그룹 정보 로드 완료:', contentData.groups);
+
+                        // 현재 청크 찾기
+                        if (chunkId && contentData.groups) {
+                            let foundChunk: Chunk | null = null;
+                            let groupIndex = -1;
+
+                            for (let i = 0; i < contentData.groups.length; i++) {
+                                const group = contentData.groups[i];
+                                const chunk = group.chunks.find(c => c.id === chunkId);
+                                if (chunk) {
+                                    foundChunk = chunk;
+                                    groupIndex = i;
+                                    break;
+                                }
+                            }
+
+                            if (foundChunk) {
+                                setCurrentChunk(foundChunk);
+                                setCurrentGroupIndex(groupIndex);
+                                console.log(`청크 ${chunkId} 찾음, 그룹 인덱스: ${groupIndex}`);
+                            } else if (contentData.groups.length > 0 && contentData.groups[0].chunks.length > 0) {
+                                // 청크를 찾지 못했지만 첫 번째 그룹의 첫 번째 청크가 있으면 사용
+                                setCurrentChunk(contentData.groups[0].chunks[0]);
+                                setCurrentGroupIndex(0);
+                                console.log(`청크 ${chunkId} 찾지 못함, 첫 번째 청크 사용`);
+                            }
+                        } else if (contentData.groups && contentData.groups.length > 0 && contentData.groups[0].chunks.length > 0) {
+                            // 청크 ID가 없으면 첫 번째 그룹의 첫 번째 청크 사용
+                            setCurrentChunk(contentData.groups[0].chunks[0]);
+                            setCurrentGroupIndex(0);
+                            console.log('청크 ID 없음, 첫 번째 청크 사용');
+                        }
+                    }
+
+                    setContent(contentData);
+                    localStorage.setItem(`content_${id}`, JSON.stringify(contentData));
+                    console.log('콘텐츠 및 그룹 정보 저장 완료');
+                }
+            }
+        } catch (err: any) {
+            console.error('fetchContentAndChunk 실행 중 예외 발생:', err);
+            if (!contentData) fetchError = err;
+        } finally {
+            setIsLoading(false);
         }
 
-        fetchContent()
-    }, [id, router, supabase])
+        // 최종 오류 처리
+        if (fetchError && !contentData) {
+            console.error('최종 콘텐츠/청크 로드 실패:', fetchError);
+            alert('콘텐츠를 불러올 수 없습니다. 홈으로 이동합니다.');
+            router.push('/');
+        } else if (!currentChunk && chunkId && contentData) {
+            console.error(`청크 ${chunkId} 찾지 못함`);
+            alert(`요청한 청크를 찾을 수 없습니다. 첫 번째 청크를 표시합니다.`);
+            if (contentData.groups && contentData.groups.length > 0 && contentData.groups[0].chunks.length > 0) {
+                setCurrentChunk(contentData.groups[0].chunks[0]);
+                setCurrentGroupIndex(0);
+            } else {
+                router.push('/');
+            }
+        }
+    }, [id, chunkId, router, supabase]);
 
     // Service Worker 등록 및 푸시 구독
     useEffect(() => {
@@ -179,295 +286,237 @@ export default function LearningPage({ params }: { params: Promise<{ id: string 
 
     // 알림 권한 상태 확인 및 요청
     useEffect(() => {
-        // 즉시 권한 상태 확인
         const checkNotificationPermission = () => {
-            console.log('현재 알림 권한 상태:', Notification.permission); // 디버깅용
+            console.log('현재 알림 권한 상태:', Notification.permission);
 
             if ('Notification' in window) {
                 if (Notification.permission === 'default') {
-                    console.log('알림 권한 요청 모달 표시'); // 디버깅용
+                    console.log('알림 권한 요청 모달 표시');
                     setShowNotificationRequest(true);
                 } else {
-                    console.log('알림 권한 상태:', Notification.permission); // 디버깅용
+                    console.log('알림 권한 상태:', Notification.permission);
                 }
-            } else {
-                console.log('이 브라우저는 알림을 지원하지 않습니다.'); // 디버깅용
             }
         };
 
-        // 컴포넌트 마운트 시 즉시 실행
         checkNotificationPermission();
-
-        // 1초 후에도 한 번 더 체크 (브라우저 초기화 지연 대응)
-        const timer = setTimeout(checkNotificationPermission, 1000);
-
-        return () => clearTimeout(timer);
     }, []);
 
-    // 알림 권한 요청 및 구독 처리
-    const requestNotificationPermission = async () => {
+    // 알림 권한 요청 처리
+    const handleRequestNotification = async () => {
+        setShowNotificationRequest(false);
+
         try {
-            console.log('알림 권한 요청 시작');
-
-            if (!('Notification' in window)) {
-                console.error('이 브라우저는 알림을 지원하지 않습니다.');
-                alert('이 브라우저는 알림을 지원하지 않습니다.');
-                return;
-            }
-
-            console.log('현재 알림 권한 상태:', Notification.permission);
-
-            // 이미 거부된 상태라면 안내 메시지 표시
-            if (Notification.permission === 'denied') {
-                alert('알림이 차단되어 있습니다. 브라우저 설정에서 알림을 허용해주세요.\n\nChrome: 설정 > 개인정보 및 보안 > 사이트 설정 > 알림');
-                return;
-            }
-
             const permission = await Notification.requestPermission();
             console.log('알림 권한 요청 결과:', permission);
 
             if (permission === 'granted') {
-                console.log('알림 권한이 허용되었습니다.');
-                setShowNotificationRequest(false);
-
+                // 권한이 허용되면 푸시 구독 진행
                 if (serviceWorkerRegistration) {
-                    console.log('Service Worker 등록 상태:', serviceWorkerRegistration);
                     const subscription = await subscribeUserToPush(serviceWorkerRegistration);
-                    console.log('푸시 구독 결과:', subscription);
-
                     if (subscription) {
                         await saveSubscriptionToSupabase(subscription);
-                        console.log('구독 정보가 Supabase에 저장되었습니다.');
-
-                        // 테스트 알림 발송
-                        new Notification('알림 설정 완료', {
-                            body: '이제 복습 알림을 받을 수 있습니다.',
-                            icon: '/icons/icon-192x192.png'
-                        });
                     }
-                } else {
-                    console.error('Service Worker가 등록되지 않았습니다.');
                 }
-            } else {
-                console.log('알림 권한이 거부되었습니다:', permission);
-                alert('알림이 차단되었습니다. 브라우저 설정에서 알림을 허용해주세요.\n\nChrome: 설정 > 개인정보 및 보안 > 사이트 설정 > 알림');
             }
         } catch (error) {
-            console.error('알림 권한 요청 중 오류 발생:', error);
-            alert('알림 설정 중 오류가 발생했습니다. 브라우저 설정을 확인해주세요.');
+            console.error('알림 권한 요청 오류:', error);
         }
     };
 
-    // URL에서 chunk 파라미터 가져오기
-    useEffect(() => {
-        const searchParams = new URLSearchParams(window.location.search);
-        const chunkParam = searchParams.get('chunk');
-        if (chunkParam) {
-            setCurrentIndex(parseInt(chunkParam));
-            setIsFlipped(true);
-        }
-    }, []);
+    // 카드 뒤집기 핸들러
+    const handleFlip = () => {
+        setIsFlipped(!isFlipped);
+    };
 
-    const handleQualitySelect = async (quality: number) => {
-        if (!content) return;
+    // 난이도 버튼 핸들러
+    const handleDifficulty = (level: 'easy' | 'medium' | 'hard') => {
+        if (!content || !currentChunk) return;
 
-        const newProgress = calculateNextReview(quality, content.progress?.[currentIndex]);
-        const updatedProgress = {
-            ...content.progress,
-            [currentIndex]: newProgress
-        };
+        console.log(`난이도 선택: ${level}, 청크 ID: ${currentChunk.id}`);
 
-        // id 사용
-        await supabase
-            .from('contents')
-            .update({ progress: updatedProgress })
-            .eq('id', id);
+        // 다음 청크로 이동
+        handleNextChunk();
+    };
 
-        setContent(prev => prev ? { ...prev, progress: updatedProgress } : null);
+    // 다음 청크로 이동
+    const handleNextChunk = () => {
+        if (!content || !content.groups || !currentChunk) return;
 
-        // scheduleNotification 함수 호출
-        if (serviceWorkerRegistration) {
-            const notificationData = {
-                title: '기억을 꺼낼 시간이에요 🧠',
-                body: `${content.title}의 ${currentIndex + 1}번째 카드, 지금이 기억할 타이밍이에요.`,
-                contentId: content.id,
-                chunkIndex: currentIndex
-            };
+        const currentGroup = content.groups[currentGroupIndex];
+        if (!currentGroup) return;
 
-            const delay = newProgress.nextReviewDate.getTime() - Date.now();
-            if (delay > 0) {
-                console.log('알림 예약:', {
-                    title: notificationData.title,
-                    body: notificationData.body,
-                    delay: delay,
-                    scheduledTime: new Date(Date.now() + delay).toISOString()
-                });
-                setTimeout(async () => {
-                    if (Notification.permission === 'granted') {
-                        try {
-                            const existingSubscription = await serviceWorkerRegistration.pushManager.getSubscription();
-                            if (existingSubscription) {
-                                await fetch('/api/push', {
-                                    method: 'POST',
-                                    headers: {
-                                        'Content-Type': 'application/json',
-                                    },
-                                    body: JSON.stringify({
-                                        subscription: existingSubscription,
-                                        notification: notificationData
-                                    }),
-                                });
-                                console.log('푸시 알림 전송 요청 완료');
-                            } else {
-                                console.error('푸시 구독이 없습니다.');
-                            }
-                        } catch (error) {
-                            console.error('푸시 알림 전송 실패:', error);
-                        }
-                    }
-                }, delay);
+        // 현재 그룹에서 현재 청크의 인덱스 찾기
+        const currentChunkIndex = currentGroup.chunks.findIndex(c => c.id === currentChunk.id);
+
+        if (currentChunkIndex < currentGroup.chunks.length - 1) {
+            // 같은 그룹의 다음 청크로 이동
+            const nextChunk = currentGroup.chunks[currentChunkIndex + 1];
+            router.push(`/content/${id}/learning?chunk=${nextChunk.id}`);
+            setCurrentChunk(nextChunk);
+            setIsFlipped(false);
+        } else if (currentGroupIndex < content.groups.length - 1) {
+            // 다음 그룹의 첫 번째 청크로 이동
+            const nextGroup = content.groups[currentGroupIndex + 1];
+            if (nextGroup.chunks.length > 0) {
+                const nextChunk = nextGroup.chunks[0];
+                router.push(`/content/${id}/learning?chunk=${nextChunk.id}`);
+                setCurrentChunk(nextChunk);
+                setCurrentGroupIndex(currentGroupIndex + 1);
+                setIsFlipped(false);
             }
+        } else {
+            // 모든 청크를 학습 완료
+            alert('모든 카드를 학습했습니다!');
+            router.push('/');
         }
-
-        handleNext();
     };
 
-    const handleNext = () => {
-        if (!content) return;
-
-        if (currentIndex === content.chunks.length - 1) {
-            setCurrentIndex(0)
-        } else {
-            setCurrentIndex(prev => prev + 1)
-        }
-        setIsFlipped(false)
+    if (isLoading) {
+        return (
+            <div className="flex justify-center items-center h-screen">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+            </div>
+        );
     }
 
-    if (!content) return null
+    if (!content || !currentChunk) {
+        return (
+            <div className="p-4 text-center">
+                <p className="text-red-500">콘텐츠를 표시할 수 없습니다.</p>
+                <button
+                    onClick={() => router.push('/')}
+                    className="mt-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+                >
+                    홈으로 돌아가기
+                </button>
+            </div>
+        );
+    }
 
-    const totalCards = content.chunks.length
+    const currentGroup = content.groups?.[currentGroupIndex];
+    const currentChunkIndex = currentGroup?.chunks.findIndex(c => c.id === currentChunk.id) ?? -1;
 
     return (
-        <>
-            <main className="flex min-h-screen flex-col">
-                <div className="sticky top-0 bg-white border-b p-4 flex items-center justify-between">
-                    <button
-                        onClick={() => router.back()}
-                        className="text-gray-600"
-                    >
-                        ←
-                    </button>
-                    <h1 className="text-lg font-bold">{content.title}</h1>
-                    <button
-                        onClick={() => setShowNotificationRequest(true)}
-                        className="px-4 py-2 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700"
-                    >
-                        알림 설정
-                    </button>
-                </div>
+        <div className="p-4 max-w-md mx-auto">
+            <h1 className="text-xl font-bold mb-2">{content.title}</h1>
+            {currentGroup && (
+                <h2 className="text-lg mb-4">{currentGroup.title}</h2>
+            )}
 
-                <div className="flex-1 flex flex-col items-center justify-center p-4">
-                    <div className="text-center mb-4">
-                        {currentIndex + 1}/{totalCards}
-                    </div>
+            <div className="text-sm text-gray-600 mb-4">
+                카드: {currentChunkIndex + 1} / {currentGroup?.chunks.length || 0}
+            </div>
 
+            {/* 카드 표시 영역 */}
+            <div
+                className="relative w-full h-64 border rounded-lg p-4 mb-4 cursor-pointer"
+                onClick={handleFlip}
+                style={{ perspective: '1000px' }}
+            >
+                <div
+                    className="absolute inset-0 w-full h-full transition-transform duration-700"
+                    style={{
+                        transformStyle: 'preserve-3d',
+                        transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)'
+                    }}
+                >
+                    {/* 앞면 (마스킹된 텍스트) */}
                     <div
-                        onClick={() => setIsFlipped(!isFlipped)}
-                        className="w-full max-w-2xl min-h-[200px] p-6 bg-gray-50 rounded-lg cursor-pointer transition-all duration-300 hover:bg-gray-100 flex items-center"
+                        className="absolute inset-0 w-full h-full bg-white flex items-center justify-center p-4"
+                        style={{ backfaceVisibility: 'hidden' }}
                     >
-                        <p
-                            className="text-left leading-relaxed"
-                            dangerouslySetInnerHTML={{
-                                __html: maskText(content.masked_chunks[currentIndex]?.masked_text, isFlipped)
-                            }}
-                        />
+                        <p>{currentChunk.masked_text}</p>
                     </div>
 
-                    <div className="mt-8 space-x-4">
-                        {isFlipped ? (
-                            <>
-                                <button
-                                    onClick={() => handleQualitySelect(1)}
-                                    className="px-4 py-2 text-sm bg-red-500 text-white rounded-lg"
-                                >
-                                    다시 (10초)
-                                </button>
-                                <button
-                                    onClick={() => handleQualitySelect(3)}
-                                    className="px-4 py-2 text-sm bg-yellow-500 text-white rounded-lg"
-                                >
-                                    어려움 (20초)
-                                </button>
-                                <button
-                                    onClick={() => handleQualitySelect(4)}
-                                    className="px-4 py-2 text-sm bg-green-500 text-white rounded-lg"
-                                >
-                                    알맞음 (30초)
-                                </button>
-                                <button
-                                    onClick={() => handleQualitySelect(5)}
-                                    className="px-4 py-2 text-sm bg-blue-500 text-white rounded-lg"
-                                >
-                                    쉬움 (40초)
-                                </button>
-                            </>
-                        ) : (
-                            <button
-                                onClick={() => setIsFlipped(true)}
-                                className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg"
-                            >
-                                정답 보기
-                            </button>
-                        )}
-                    </div>
-
-                    {content.progress?.[currentIndex]?.nextReviewDate && (
-                        <div className="mt-4 text-sm text-purple-600 font-medium">
-                            {formatTimeRemaining(new Date(content.progress[currentIndex].nextReviewDate))}
-                        </div>
-                    )}
-
-                    <div className="mt-4 text-sm text-gray-500">
-                        화면을 클릭하면 카드가 뒤집힙니다
+                    {/* 뒷면 (요약) */}
+                    <div
+                        className="absolute inset-0 w-full h-full bg-gray-100 flex items-center justify-center p-4"
+                        style={{
+                            backfaceVisibility: 'hidden',
+                            transform: 'rotateY(180deg)'
+                        }}
+                    >
+                        <p>{currentChunk.summary || '내용 없음'}</p>
                     </div>
                 </div>
-            </main>
+            </div>
 
-            {/* 알림 권한 요청 모달 */}
+            {/* 난이도 버튼 (카드 뒷면 표시될 때 활성화) */}
+            {isFlipped && (
+                <div className="flex justify-around mb-4">
+                    <button
+                        onClick={() => handleDifficulty('hard')}
+                        className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded"
+                    >
+                        어려움
+                    </button>
+                    <button
+                        onClick={() => handleDifficulty('medium')}
+                        className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded"
+                    >
+                        보통
+                    </button>
+                    <button
+                        onClick={() => handleDifficulty('easy')}
+                        className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded"
+                    >
+                        쉬움
+                    </button>
+                </div>
+            )}
+
+            {/* 다음 카드로 이동 버튼 */}
+            <button
+                onClick={handleNextChunk}
+                className="w-full bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded mt-4"
+            >
+                다음 카드
+            </button>
+
+            {/* 홈으로 돌아가기 버튼 */}
+            <button
+                onClick={() => router.push('/')}
+                className="w-full bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded mt-2"
+            >
+                학습 종료
+            </button>
+
+            {/* 알림 권한 요청 다이얼로그 */}
             <Dialog
                 open={showNotificationRequest}
                 onClose={() => setShowNotificationRequest(false)}
-                className="relative z-50"
+                className="fixed z-10 inset-0 overflow-y-auto"
             >
-                <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
+                <div className="flex items-center justify-center min-h-screen">
+                    {/* Dialog.Overlay 대신 일반 div 사용 */}
+                    <div className="fixed inset-0 bg-black opacity-30" />
 
-                <div className="fixed inset-0 flex items-center justify-center p-4">
-                    <Dialog.Panel className="w-full max-w-sm rounded bg-white p-6">
-                        <Dialog.Title className="text-lg font-medium mb-4">
-                            복습 알림 설정
+                    <div className="relative bg-white rounded max-w-md mx-auto p-6">
+                        <Dialog.Title className="text-lg font-medium mb-2">
+                            알림 권한 요청
                         </Dialog.Title>
-                        <Dialog.Description className="text-sm text-gray-500 mb-6">
-                            효과적인 학습을 위해 복습 알림을 활성화해주세요.
-                            복습 시간이 되면 알림을 보내드립니다.
+                        <Dialog.Description className="mb-4">
+                            복습 알림을 받으려면 알림 권한을 허용해주세요.
                         </Dialog.Description>
 
-                        <div className="flex justify-end space-x-4">
+                        <div className="flex justify-end space-x-2">
                             <button
                                 onClick={() => setShowNotificationRequest(false)}
-                                className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700"
+                                className="px-4 py-2 bg-gray-300 rounded"
                             >
                                 나중에
                             </button>
                             <button
-                                onClick={requestNotificationPermission}
-                                className="px-4 py-2 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+                                onClick={handleRequestNotification}
+                                className="px-4 py-2 bg-blue-500 text-white rounded"
                             >
-                                알림 허용하기
+                                허용하기
                             </button>
                         </div>
-                    </Dialog.Panel>
+                    </div>
                 </div>
             </Dialog>
-        </>
-    )
-} 
+        </div>
+    );
+}
