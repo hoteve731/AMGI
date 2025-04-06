@@ -9,9 +9,11 @@ export async function GET(request: Request) {
 
     const supabase = await createClient()
 
-    // Check authentication
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) {
+    // Check authentication using getUser for better security
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+
+    if (userError || !user) {
+      console.error('Authentication error:', userError?.message)
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -24,7 +26,7 @@ export async function GET(request: Request) {
           .from('contents')
           .select('id, title, status')
           .eq('id', contentId)
-          .eq('user_id', session.user.id)
+          .eq('user_id', user.id) // Use user.id from getUser()
           .single();
 
         if (contentError) {
@@ -73,7 +75,7 @@ export async function GET(request: Request) {
           .from('contents')
           .select('id, title, created_at, status')
           .eq('id', contentId)
-          .eq('user_id', session.user.id)
+          .eq('user_id', user.id) // Use user.id from getUser()
           .single();
 
         if (contentError) {
@@ -123,7 +125,7 @@ export async function GET(request: Request) {
     const { data, error } = await supabase
       .from('contents')
       .select('id, title, created_at, status')
-      .eq('user_id', session.user.id)
+      .eq('user_id', user.id) // Use user.id from getUser()
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -201,35 +203,29 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: 'Content ID and status are required' }, { status: 400 });
     }
 
-    // Validate status value
-    if (!['studying', 'completed', 'paused'].includes(status)) {
-      return NextResponse.json({ error: 'Invalid status value' }, { status: 400 });
-    }
-
     const supabase = await createClient();
 
-    // Check authentication
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
+    // Check authentication using getUser for better security
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      console.error('Authentication error:', userError?.message);
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Update content status for the authenticated user
-    const { data, error } = await supabase
+    // Update content status
+    const { error } = await supabase
       .from('contents')
       .update({ status })
-      .match({
-        id: id,
-        user_id: session.user.id
-      })
-      .select();
+      .eq('id', id)
+      .eq('user_id', user.id); // Ensure user owns the content
 
     if (error) {
       console.error('Error updating content status:', error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, content: data?.[0] || null });
+    return NextResponse.json({ message: 'Content status updated successfully' });
   } catch (error) {
     console.error('Unexpected error:', error);
     return NextResponse.json(
@@ -253,8 +249,9 @@ export async function DELETE(request: Request) {
     const supabase = await createClient()
 
     // 인증 확인
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) {
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    if (userError || !user) {
+      console.error('Authentication error:', userError?.message);
       return NextResponse.json(
         { error: '인증되지 않은 사용자입니다.' },
         { status: 401 }
@@ -276,7 +273,7 @@ export async function DELETE(request: Request) {
       )
     }
 
-    if (contentData.user_id !== session.user.id) {
+    if (contentData.user_id !== user.id) {
       return NextResponse.json(
         { error: '이 콘텐츠를 삭제할 권한이 없습니다.' },
         { status: 403 }

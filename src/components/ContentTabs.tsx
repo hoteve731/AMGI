@@ -16,7 +16,9 @@ type Content = {
 }
 
 // Fetcher function for SWR
-const fetcher = (url: string) => fetch(url).then(res => {
+const fetcher = (url: string) => fetch(url, {
+  credentials: 'include' // 항상 쿠키를 포함하여 요청
+}).then(res => {
   if (!res.ok) throw new Error('Failed to fetch contents')
   return res.json()
 })

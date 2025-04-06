@@ -5,13 +5,16 @@ export function createClient() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
-      // Set cookie options at the correct level
+      // Enhanced cookie options for better session persistence
       cookieOptions: {
-        maxAge: 60 * 60 * 24 * 30, // 30일
+        maxAge: 60 * 60 * 24 * 30, // 30 days
         path: '/',
         sameSite: 'lax',
-        secure: process.env.NODE_ENV === 'production'
-      }
+        secure: process.env.NODE_ENV === 'production',
+        domain: typeof window !== 'undefined' ? window.location.hostname : undefined
+      },
+      // Set cookie encoding for better compatibility
+      cookieEncoding: 'base64url'
     }
   )
 }
