@@ -11,7 +11,7 @@ type ContentGroup = {
     content_id: string
     title: string
     original_text: string
-    chunks: Array<{ summary: string, masked_text: string }>
+    chunks: Array<{ id: string, summary: string, masked_text: string }>
 }
 
 type Content = {
@@ -203,7 +203,7 @@ export default function ContentDetail({
 
                 <div className="mt-8 mb-4">
                     <Link
-                        href={`/content/${content.id}/group/${group.id}/learning`}
+                        href={`/content/${content.id}/learning?chunk=${group.chunks[0]?.id || ''}`}
                         className="w-full block text-center py-3 px-4 rounded-lg bg-[#DDCFFD] text-white font-medium hover:bg-opacity-90 transition-colors"
                     >
                         학습 시작하기

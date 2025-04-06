@@ -35,11 +35,13 @@ type PageProps = {
   }
 }
 
-export default async function Page({ params }: PageProps) {
-  const { id: contentId, groupId } = params
+export default async function Page(props: PageProps) {
+  // params를 직접 사용하지 않고 props에서 추출
+  const contentId = props.params.id
+  const groupId = props.params.groupId
 
   if (!contentId || !groupId) {
-    console.error('Invalid ID params:', params)
+    console.error('Invalid ID params:', props.params)
     notFound()
   }
 

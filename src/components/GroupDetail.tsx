@@ -309,11 +309,24 @@ export default function GroupDetail({ content, group }: { content: Content; grou
 
     // 학습 시작 핸들러 (알림 설정 없이 바로 학습 페이지로 이동)
     const handleStartLearning = () => {
-        if (groups.length > 0 && groups[0].chunks && groups[0].chunks.length > 0) {
-            const firstChunk = groups[0].chunks[0];
-            router.push(`/content/${content.id}/learning?chunk=${firstChunk.id}`);
-        } else {
+        if (!currentGroup || !currentGroup.chunks || currentGroup.chunks.length === 0) {
             alert('학습할 내용이 없습니다.');
+            return;
+        }
+
+        const firstChunk = currentGroup.chunks[0];
+        console.log('학습 시작:', { contentId: content.id, chunkId: firstChunk.id, groupId: currentGroup.id });
+
+        // 라우팅 전에 로딩 상태 설정
+        setIsLoading(true);
+
+        // 라우팅 시도
+        try {
+            router.push(`/content/${content.id}/learning?chunk=${firstChunk.id}&group=${currentGroup.id}`);
+        } catch (error) {
+            console.error('라우팅 오류:', error);
+            alert('페이지 이동 중 오류가 발생했습니다.');
+            setIsLoading(false);
         }
     };
 
