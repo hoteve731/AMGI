@@ -12,14 +12,27 @@ export default function BottomSheet() {
     const [loadingProgress, setLoadingProgress] = useState(0)
     const [generatedTitle, setGeneratedTitle] = useState('')
     const [isExpanded, setIsExpanded] = useState(false)
+    const [showAdditionalMemoryInput, setShowAdditionalMemoryInput] = useState(false)
     const [preview, setPreview] = useState<{
         title: string
         chunks: { summary: string }[]
     } | null>(null)
     const textareaRef = useRef<HTMLTextAreaElement>(null)
+    const additionalMemoryRef = useRef<HTMLTextAreaElement>(null)
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
+
+        // If additional memory input is not shown yet, show it
+        if (!showAdditionalMemoryInput) {
+            setShowAdditionalMemoryInput(true)
+            // Focus the additional memory textarea after animation completes
+            setTimeout(() => {
+                additionalMemoryRef.current?.focus()
+            }, 300)
+            return
+        }
+
         setIsLoading(true)
         setLoadingProgress(0)
         setLoadingStatus('title')
@@ -103,6 +116,7 @@ export default function BottomSheet() {
             setLoadingProgress(0)
             setText('')
             setAdditionalMemory('')
+            setShowAdditionalMemoryInput(false)
         }
     }
 
@@ -217,8 +231,6 @@ export default function BottomSheet() {
         <>
             <motion.div
                 className="fixed inset-x-0 bottom-0 z-[60]"
-                initial={{ y: 0 }}
-                animate={{ y: 0 }}
             >
                 <AnimatePresence>
                     {isExpanded && (
@@ -281,39 +293,94 @@ export default function BottomSheet() {
                                         </svg>
                                     </button>
                                     <h2 className="text-lg font-medium text-gray-700">새 기억 카드 생성</h2>
-                                    <motion.button
-                                        type="button"
-                                        onClick={handleSubmit}
-                                        disabled={!text.trim() || isLoading}
-                                        className="text-[#7969F7] disabled:text-gray-300 disabled:cursor-not-allowed"
-                                        whileHover={{ scale: 1.05 }}
-                                        whileTap={{ scale: 0.95 }}
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                        </svg>
-                                    </motion.button>
+                                    {!showAdditionalMemoryInput && (
+                                        <motion.button
+                                            type="button"
+                                            onClick={handleSubmit}
+                                            disabled={!text.trim() || isLoading}
+                                            className="text-[#7969F7] disabled:text-gray-300 disabled:cursor-not-allowed"
+                                            whileHover={{ scale: 1.05 }}
+                                            whileTap={{ scale: 0.95 }}
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                            </svg>
+                                        </motion.button>
+                                    )}
+                                    {showAdditionalMemoryInput && (
+                                        <div className="w-7"></div>
+                                    )}
                                 </div>
 
                                 <form onSubmit={handleSubmit} className="flex-1 flex flex-col p-4">
                                     <div className="text-[#7C6FFB] font-medium text-sm mb-2">내 것으로 만들고 싶은 아이디어</div>
-                                    <textarea
-                                        ref={textareaRef}
-                                        value={text}
-                                        onChange={(e) => setText(e.target.value)}
-                                        placeholder="여기에 타이핑하거나 붙여넣으세요..."
-                                        className="flex-1 w-full resize-none border-none focus:outline-none focus:ring-0 text-base mb-4"
-                                        disabled={isLoading}
-                                    />
+                                    <div
+                                        className="flex-1 flex flex-col mb-4"
+                                    >
+                                        {showAdditionalMemoryInput ? (
+                                            <div
+                                                className="w-full border border-gray-200 rounded-lg p-3 bg-gray-50 text-base cursor-pointer"
+                                                style={{ minHeight: "80px" }}
+                                                onClick={() => setShowAdditionalMemoryInput(false)}
+                                            >
+                                                <p className="text-gray-700 whitespace-pre-wrap">{text}</p>
+                                                <div className="mt-2 text-xs text-[#7969F7] flex items-center">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                                    </svg>
+                                                    수정
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <textarea
+                                                ref={textareaRef}
+                                                value={text}
+                                                onChange={(e) => setText(e.target.value)}
+                                                placeholder="여기에 타이핑하거나 붙여넣으세요..."
+                                                className="w-full resize-none border-none focus:outline-none focus:ring-0 text-base"
+                                                disabled={isLoading}
+                                                style={{
+                                                    height: "100%",
+                                                    minHeight: "150px"
+                                                }}
+                                            />
+                                        )}
+                                    </div>
 
-                                    <div className="text-[#7C6FFB] font-medium text-sm mb-2">특히 더 무엇을 기억하고 싶나요?</div>
-                                    <textarea
-                                        value={additionalMemory}
-                                        onChange={(e) => setAdditionalMemory(e.target.value)}
-                                        placeholder="특별히 기억하고 싶은 부분이나 중요한 포인트를 적어주세요..."
-                                        className="w-full h-24 resize-none border border-gray-200 rounded-lg p-2 focus:outline-none focus:ring-1 focus:ring-[#7C6FFB] text-base"
-                                        disabled={isLoading}
-                                    />
+                                    <AnimatePresence mode="wait" initial={false}>
+                                        {showAdditionalMemoryInput && (
+                                            <motion.div
+                                                key="additional-memory-input"
+                                                initial={{ opacity: 0, scale: 0.9 }}
+                                                animate={{ opacity: 1, scale: 1 }}
+                                                exit={{ opacity: 0, scale: 0.9 }}
+                                                transition={{
+                                                    duration: 0.2,
+                                                    ease: "easeInOut"
+                                                }}
+                                                className="flex flex-col"
+                                            >
+                                                <textarea
+                                                    ref={additionalMemoryRef}
+                                                    value={additionalMemory}
+                                                    onChange={(e) => setAdditionalMemory(e.target.value)}
+                                                    placeholder="특별히 기억하고 싶은 부분을 적어주세요 (빈칸으로 남겨도 괜찮습니다)"
+                                                    className="w-full h-24 resize-none border border-gray-200 rounded-lg p-2 focus:outline-none focus:ring-1 focus:ring-[#7C6FFB] text-base"
+                                                    disabled={isLoading}
+                                                />
+                                                <div className="flex justify-end mt-4">
+                                                    <motion.button
+                                                        type="submit"
+                                                        className="px-6 py-2 bg-gradient-to-r from-[#7969F7] to-[#A99BFF] text-white rounded-full shadow-md"
+                                                        whileHover={{ scale: 1.05 }}
+                                                        whileTap={{ scale: 0.95 }}
+                                                    >
+                                                        생성하기
+                                                    </motion.button>
+                                                </div>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
                                 </form>
                             </div>
                         )}
