@@ -33,6 +33,7 @@ type PageProps = {
     id: string
     groupId: string
   }
+  searchParams: { [key: string]: string | string[] | undefined }
 }
 
 export default async function Page(props: PageProps) {
