@@ -57,12 +57,12 @@ export async function POST(req: Request) {
                 messages: [
                     {
                         role: "system",
-                        content: "당신은 텍스트의 핵심을 정확히 파악하여 간결하고 명확한 제목을 생성하는 전문가입니다. 주어진 텍스트를 분석하고 15자 이내의 핵심적인 제목만 출력하세요. 따옴표나 기타 부가 설명 없이 제목 텍스트만 반환해야 합니다."
+                        content: "당신은 텍스트의 핵심을 정확히 파악하여 간결하고 명확한 제목을 생성하는 전문가입니다. 주어진 텍스트를 분석하고 30자 이내의 핵심적인 제목만 출력하세요. 따옴표나 기타 부가 설명 없이 제목 텍스트만 반환해야 합니다."
                     },
                     { role: "user", content: text }
                 ],
                 temperature: 0,
-                max_tokens: 50
+                max_tokens: 100
             }), TIMEOUT);
 
             title = titleCompletion.choices[0].message.content || ''
