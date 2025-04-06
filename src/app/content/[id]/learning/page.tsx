@@ -106,22 +106,27 @@ export default function LearningPage() {
     }
 
     // 난이도 선택
-    const handleDifficulty = async (level: 'again' | 'hard' | 'good' | 'easy') => {
+    const handleDifficulty = (level: 'again' | 'hard' | 'good' | 'easy') => {
         if (!currentGroup || !currentChunk) return
 
         // 마지막 카드인 경우 그룹 상세 페이지로 이동
         if (currentIndex === currentGroup.chunks.length - 1) {
-            // 바로 router.push를 하지 않고 약간의 딜레이를 줌
-            setTimeout(() => {
-                router.push(`/content/${contentId}`)
-            }, 100)
+            goToGroupDetail()
             return
         }
 
         // 다음 청크로 이동
         const nextChunk = currentGroup.chunks[currentIndex + 1]
-        router.push(`/content/${contentId}/learning?chunk=${nextChunk.id}&group=${currentGroup.id}`)
+        setCurrentChunk(nextChunk)
+        setCurrentIndex(currentIndex + 1)
         setIsFlipped(false)
+
+        // URL 업데이트 (페이지 새로고침 없이)
+        window.history.pushState(
+            {},
+            '',
+            `/content/${contentId}/learning?chunk=${nextChunk.id}&group=${currentGroup.id}`
+        )
     }
 
     // 마스킹된 텍스트 처리 함수
@@ -187,17 +192,16 @@ export default function LearningPage() {
                 </div>
 
                 {/* 카드 표시 영역 */}
-                <div className="flex-1 flex flex-col justify-center py-8">
+                <div className="flex-1 flex flex-col justify-center py-8 overflow-hidden">
                     <AnimatePresence mode="wait">
                         <motion.div
-                            key={isFlipped ? 'back' : 'front'}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -20 }}
+                            key={currentChunk.id}
+                            initial={{ opacity: 0, x: 200 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -200 }}
                             transition={{
-                                duration: 0.3,
                                 type: "spring",
-                                stiffness: 500,
+                                stiffness: 300,
                                 damping: 30
                             }}
                             className="w-full"
@@ -228,34 +232,46 @@ export default function LearningPage() {
                         // 뒷면: 난이도 버튼들
                         <div className="space-y-2">
                             <p className="text-center text-gray-600 text-sm mb-4">
-                                난이도에 따른 복습 간격을 선택하면<br />
-                                다음 카드로 넘어갑니다.<br />
-                                복습 간격은 최적으로 계속 조정됩니다.
+                                {currentIndex === currentGroup.chunks.length - 1 ? (
+                                    "마지막 카드입니다."
+                                ) : (
+                                    <>
+                                        난이도에 따른 복습 간격을 선택하면<br />
+                                        다음 카드로 넘어갑니다.<br />
+                                        복습 간격은 최적으로 계속 조정됩니다.
+                                    </>
+                                )}
                             </p>
-                            <button
-                                onClick={() => handleDifficulty('again')}
-                                className="w-full bg-white rounded-xl border border-[#D4C4B7] py-3 text-gray-800 hover:bg-gray-50 transition-colors shadow-lg"
-                            >
-                                다시 (&lt;10분)
-                            </button>
-                            <button
-                                onClick={() => handleDifficulty('hard')}
-                                className="w-full bg-white rounded-xl border border-[#D4C4B7] py-3 text-gray-800 hover:bg-gray-50 transition-colors shadow-lg"
-                            >
-                                어려움 (&lt;20분)
-                            </button>
-                            <button
-                                onClick={() => handleDifficulty('good')}
-                                className="w-full bg-white rounded-xl border border-[#D4C4B7] py-3 text-gray-800 hover:bg-gray-50 transition-colors shadow-lg"
-                            >
-                                알맞음 (2일)
-                            </button>
-                            <button
-                                onClick={() => handleDifficulty('easy')}
-                                className="w-full bg-white rounded-xl border border-[#D4C4B7] py-3 text-gray-800 hover:bg-gray-50 transition-colors shadow-lg"
-                            >
-                                쉬움 (3일)
-                            </button>
+                            <div className="grid grid-cols-4 gap-2">
+                                <button
+                                    onClick={() => handleDifficulty('again')}
+                                    className="flex flex-col items-center justify-center p-4 rounded-xl bg-red-50 hover:bg-red-100 transition-colors"
+                                >
+                                    <span className="text-red-500 font-medium">Again</span>
+                                    <span className="text-red-400 text-sm">1m</span>
+                                </button>
+                                <button
+                                    onClick={() => handleDifficulty('hard')}
+                                    className="flex flex-col items-center justify-center p-4 rounded-xl bg-orange-50 hover:bg-orange-100 transition-colors"
+                                >
+                                    <span className="text-orange-500 font-medium">Hard</span>
+                                    <span className="text-orange-400 text-sm">8m</span>
+                                </button>
+                                <button
+                                    onClick={() => handleDifficulty('good')}
+                                    className="flex flex-col items-center justify-center p-4 rounded-xl bg-green-50 hover:bg-green-100 transition-colors"
+                                >
+                                    <span className="text-green-500 font-medium">Good</span>
+                                    <span className="text-green-400 text-sm">15m</span>
+                                </button>
+                                <button
+                                    onClick={() => handleDifficulty('easy')}
+                                    className="flex flex-col items-center justify-center p-4 rounded-xl bg-blue-50 hover:bg-blue-100 transition-colors"
+                                >
+                                    <span className="text-blue-500 font-medium">Easy</span>
+                                    <span className="text-blue-400 text-sm">4d</span>
+                                </button>
+                            </div>
                         </div>
                     )}
                 </div>
