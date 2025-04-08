@@ -5,42 +5,21 @@ import GroupDetail from '@/components/GroupDetail'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/utils/supabase/server'
 
-type Chunk = {
-  id: string
-  summary: string
-  masked_text: string
-}
+export default async function Page(props: any) {
+  // props에서 params와 searchParams 추출
+  const { params, searchParams } = props;
 
-type ContentGroup = {
-  id: string
-  title: string
-  original_text: string
-  chunks: Chunk[]
-}
+  // 타입 안전성 보장을 위해 타입 가드 추가
+  if (!params || typeof params !== 'object' || !('id' in params) || !('groupId' in params)) {
+    console.error('Invalid params structure:', params);
+    notFound();
+  }
 
-type Content = {
-  id: string
-  title: string
-  user_id: string
-  original_text: string
-  created_at: string
-  status: string
-}
-
-// Props 타입 정의 추가
-type Props = {
-  params: { id: string; groupId: string };
-  searchParams: { [key: string]: string | string[] | undefined };
-};
-
-export default async function Page({ params, searchParams }: Props) {
-  // params를 비동기적으로 처리 (Vercel 빌드 오류 방지 위해 유지)
-  const resolvedParams = await Promise.resolve(params);
-  const contentId = resolvedParams.id;
-  const groupId = resolvedParams.groupId;
+  const contentId = params.id as string;
+  const groupId = params.groupId as string;
 
   if (!contentId || !groupId) {
-    console.error('Invalid ID params:', resolvedParams)
+    console.error('Invalid ID params:', params)
     notFound()
   }
 
