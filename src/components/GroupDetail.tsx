@@ -76,50 +76,45 @@ export default function GroupDetail({ content, group: initialGroup }: { content:
         }
     }, [supabase])
 
-    // 그룹 정보 로드
+    // 그룹 데이터 가져오기
     useEffect(() => {
-        const fetchGroups = async () => {
-            if (!content?.id) return
-
+        async function fetchGroups() {
             setIsLoading(true)
             try {
                 const { data, error } = await supabase
                     .from('content_groups')
                     .select('*, chunks:content_chunks(*)')
                     .eq('content_id', content.id)
-                    .order('position')
+                    .order('id')
 
                 if (error) {
-                    console.error('그룹 정보 가져오기 오류:', error)
+                    console.error('Error fetching groups:', error)
                     return
                 }
 
                 if (data && data.length > 0) {
-                    setGroups(data as ContentGroup[])
+                    setGroups(data)
 
-                    // 이미 props로 전달된 group이 있으면 그것을 사용
-                    // 없으면 첫 번째 그룹을 사용
-                    if (initialGroup?.id) {
-                        // 전달된 그룹과 일치하는 그룹을 찾아 설정
-                        const matchedGroup = data.find(g => g.id === initialGroup.id)
-                        if (matchedGroup) {
-                            setCurrentGroup(matchedGroup)
-                        } else {
-                            setCurrentGroup(data[0])
+                    // 저장된 그룹 ID가 있는지 확인
+                    const savedGroupId = localStorage.getItem(`content_${content.id}_selected_group`)
+
+                    if (savedGroupId) {
+                        // 저장된 그룹 ID가 현재 그룹 목록에 있는지 확인
+                        const savedGroup = data.find(g => g.id.toString() === savedGroupId)
+                        if (savedGroup) {
+                            setCurrentGroup(savedGroup)
                         }
-                    } else {
-                        setCurrentGroup(data[0])
                     }
                 }
             } catch (error) {
-                console.error('그룹 정보 가져오기 오류:', error)
+                console.error('Error:', error)
             } finally {
                 setIsLoading(false)
             }
         }
 
         fetchGroups()
-    }, [content?.id, initialGroup?.id, supabase])
+    }, [content.id, supabase, initialGroup?.id])
 
     // FCM 토큰 요청 및 알림 권한 획득
     useEffect(() => {
@@ -376,6 +371,9 @@ export default function GroupDetail({ content, group: initialGroup }: { content:
     const handleGroupSelect = (group: ContentGroup) => {
         setCurrentGroup(group);
         setShowGroupSelector(false);
+
+        // 선택한 그룹 ID를 localStorage에 저장
+        localStorage.setItem(`content_${content.id}_selected_group`, group.id.toString());
     };
 
     if (!currentGroup) {
@@ -451,8 +449,8 @@ export default function GroupDetail({ content, group: initialGroup }: { content:
                                             key={group.id}
                                             onClick={() => handleGroupSelect(group)}
                                             className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors flex flex-col items-start h-auto min-h-[70px] w-[calc(50%-0.5rem)] ${currentGroup?.id === group.id
-                                                    ? 'bg-[#E8D9C5] font-bold'
-                                                    : 'bg-white/60 text-gray-700 hover:bg-white/80 border border-gray-200'
+                                                ? 'bg-[#E8D9C5] font-bold'
+                                                : 'bg-white/60 text-gray-700 hover:bg-white/80 border border-gray-200'
                                                 }`}
                                         >
                                             <div className="line-clamp-2 text-left mb-1 w-full">
