@@ -34,12 +34,13 @@ export default async function Page({
   params: { id: string; groupId: string };
   searchParams: { [key: string]: string | string[] | undefined };
 }) {
-  // params를 직접 사용
-  const contentId = params.id
-  const groupId = params.groupId
+  // params를 비동기적으로 처리
+  const resolvedParams = await Promise.resolve(params);
+  const contentId = resolvedParams.id;
+  const groupId = resolvedParams.groupId;
 
   if (!contentId || !groupId) {
-    console.error('Invalid ID params:', params)
+    console.error('Invalid ID params:', resolvedParams)
     notFound()
   }
 

@@ -230,7 +230,6 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                                     <Link
                                         href={`/content/${content.id}/groups/${group.id}`}
                                         className="flex-1 flex flex-col"
-                                        onClick={() => handleGroupClick(group.id)}
                                     >
                                         <h3 className="text-lg font-medium text-gray-800 mb-2">{group.title}</h3>
                                     </Link>
