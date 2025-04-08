@@ -171,9 +171,33 @@ export default function ContentList({ contents, showTabs = false, mutate: extern
         }
     };
 
-    const handleContentClick = (contentId: string) => {
+    const handleContentClick = async (contentId: string) => {
         setIsLoading(true)
-        router.push(`/content/${contentId}/groups`)
+        try {
+            // Supabase 클라이언트를 사용하여 그룹 정보 가져오기
+            const { data: groups, error } = await supabase
+                .from('content_groups')
+                .select('id, title')
+                .eq('content_id', contentId)
+                .order('id')
+
+            if (error) {
+                throw error
+            }
+
+            if (groups && groups.length > 0) {
+                // 첫 번째 그룹의 디테일 페이지로 이동
+                router.push(`/content/${contentId}/groups/${groups[0].id}`)
+            } else {
+                // 그룹이 없는 경우 알림 표시
+                alert('이 콘텐츠에는 그룹이 없습니다.')
+                setIsLoading(false)
+            }
+        } catch (error) {
+            console.error('그룹 정보를 가져오는 중 오류 발생:', error)
+            alert('그룹 정보를 가져오는 중 오류가 발생했습니다.')
+            setIsLoading(false)
+        }
     }
 
     const displayContents = processedContents.length > 0 ? processedContents : contents;
