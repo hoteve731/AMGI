@@ -13,7 +13,7 @@ type Chunk = {
     group_id: string
     summary: string
     masked_text: string
-    order: number
+    position: number
 }
 
 type ContentGroup = {
@@ -21,6 +21,7 @@ type ContentGroup = {
     title: string
     original_text: string
     chunks: Chunk[]
+    position: number
 }
 
 type Content = {
@@ -38,14 +39,15 @@ type NotificationInfo = {
     status: 'pending' | 'sent' | 'failed';
 }
 
-export default function GroupDetail({ content, group }: { content: Content; group: ContentGroup }) {
+export default function GroupDetail({ content, group: initialGroup }: { content: Content; group: ContentGroup }) {
     const router = useRouter()
     const [isLoading, setIsLoading] = useState(false)
     const [groups, setGroups] = useState<ContentGroup[]>([])
-    const [currentGroup, setCurrentGroup] = useState<ContentGroup>(group) // Initialize with the group prop
+    const [currentGroup, setCurrentGroup] = useState<ContentGroup | null>(initialGroup)
     const [showOriginalText, setShowOriginalText] = useState(false)
     const [notifications, setNotifications] = useState<NotificationInfo[]>([])
     const [fcmToken, setFcmToken] = useState<string | null>(null)
+    const [showGroupSelector, setShowGroupSelector] = useState(false)
     const supabase = createClientComponentClient()
 
     // 세션 상태 관리 추가
@@ -77,7 +79,7 @@ export default function GroupDetail({ content, group }: { content: Content; grou
     // 그룹 정보 로드
     useEffect(() => {
         const fetchGroups = async () => {
-            if (!content.id) return
+            if (!content?.id) return
 
             setIsLoading(true)
             try {
@@ -85,7 +87,7 @@ export default function GroupDetail({ content, group }: { content: Content; grou
                     .from('content_groups')
                     .select('*, chunks:content_chunks(*)')
                     .eq('content_id', content.id)
-                    .order('id')
+                    .order('position')
 
                 if (error) {
                     console.error('그룹 정보 가져오기 오류:', error)
@@ -93,13 +95,13 @@ export default function GroupDetail({ content, group }: { content: Content; grou
                 }
 
                 if (data && data.length > 0) {
-                    setGroups(data)
+                    setGroups(data as ContentGroup[])
 
                     // 이미 props로 전달된 group이 있으면 그것을 사용
                     // 없으면 첫 번째 그룹을 사용
-                    if (group && group.id) {
+                    if (initialGroup?.id) {
                         // 전달된 그룹과 일치하는 그룹을 찾아 설정
-                        const matchedGroup = data.find(g => g.id === group.id)
+                        const matchedGroup = data.find(g => g.id === initialGroup.id)
                         if (matchedGroup) {
                             setCurrentGroup(matchedGroup)
                         } else {
@@ -109,15 +111,15 @@ export default function GroupDetail({ content, group }: { content: Content; grou
                         setCurrentGroup(data[0])
                     }
                 }
-            } catch (err) {
-                console.error('그룹 정보 가져오기 중 예외 발생:', err)
+            } catch (error) {
+                console.error('그룹 정보 가져오기 오류:', error)
             } finally {
                 setIsLoading(false)
             }
         }
 
         fetchGroups()
-    }, [content.id, group, supabase])
+    }, [content?.id, initialGroup?.id, supabase])
 
     // FCM 토큰 요청 및 알림 권한 획득
     useEffect(() => {
@@ -250,14 +252,15 @@ export default function GroupDetail({ content, group }: { content: Content; grou
             }
 
             // 각 청크별로 알림 스케줄링
-            const promises = currentGroup.chunks.map(async (chunk, index) => {
+            const promises = currentGroup?.chunks?.map(async (chunk: Chunk, index: number) => {
+                if (!currentGroup) return null;
                 const scheduledTime = new Date(Date.now() + (index + 1) * 10 * 1000)
                 const notificationBody = `${currentGroup.title}의 카드 ${index + 1}을 복습할 시간입니다.`
 
                 const result = await scheduleNotification(
                     content.id,
                     chunk.id,
-                    '기억을 꺼낼 시간이에요 🧠',
+                    '기억을 꺼낼 시간이에요 ',
                     notificationBody,
                     scheduledTime
                 )
@@ -275,7 +278,7 @@ export default function GroupDetail({ content, group }: { content: Content; grou
                                 user_id: userId,
                                 content_id: content.id,
                                 chunk_id: chunk.id,
-                                title: '기억을 꺼낼 시간이에요 🧠',
+                                title: '기억을 꺼낼 시간이에요 ',
                                 body: notificationBody,
                                 scheduled_time: scheduledTime.toISOString(),
                                 status: 'pending'
@@ -292,7 +295,7 @@ export default function GroupDetail({ content, group }: { content: Content; grou
                     localNotifications.push({
                         content_id: content.id,
                         chunk_id: chunk.id,
-                        title: '기억을 꺼낼 시간이에요 🧠',
+                        title: '기억을 꺼낼 시간이에요 ',
                         body: notificationBody,
                         scheduled_time: scheduledTime.toISOString()
                     })
@@ -369,6 +372,12 @@ export default function GroupDetail({ content, group }: { content: Content; grou
     // 활성화된 알림 개수
     const activeNotificationsCount = notifications.filter(n => n.status === 'pending').length;
 
+    // 그룹 선택 핸들러
+    const handleGroupSelect = (group: ContentGroup) => {
+        setCurrentGroup(group);
+        setShowGroupSelector(false);
+    };
+
     if (!currentGroup) {
         return (
             <main className="flex min-h-screen flex-col bg-gradient-to-b from-[#F8F4EF] to-[#E8D9C5]">
@@ -391,171 +400,9 @@ export default function GroupDetail({ content, group }: { content: Content; grou
                 </div>
 
                 <div className="flex-1 max-w-2xl mx-auto w-full p-4">
-                    {/* Content title and timestamp */}
-                    <div className="space-y-2 mb-6">
-                        <h1 className="text-3xl font-bold text-gray-800">{content.title}</h1>
-                        <div className="text-sm text-gray-500">
-                            {new Date(content.created_at).toLocaleDateString('ko-KR')} 시작
-                        </div>
-                    </div>
-
-                    {/* Group count subtitle and tabs */}
-                    <div className="mb-6">
-                        <div className="flex justify-between items-center mb-3">
-                            <h2 className="text-xl font-semibold text-gray-700">기억 카드 그룹 {groups.length}개</h2>
-                        </div>
-
-                        {/* Group tabs */}
-                        {groups.length > 1 && (
-                            <div className="mb-4">
-                                <div className="flex flex-wrap gap-2">
-                                    {groups.map((group) => (
-                                        <button
-                                            key={group.id}
-                                            onClick={() => setCurrentGroup(group)}
-                                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${currentGroup?.id === group.id
-                                                ? 'bg-purple-600 text-white'
-                                                : 'bg-white/60 text-gray-700 hover:bg-white/80'
-                                                }`}
-                                        >
-                                            {group.title}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Source text toggle - moved below tabs */}
-                        {currentGroup && (
-                            <div className="flex flex-col">
-                                <button
-                                    onClick={toggleOriginalText}
-                                    className={`w-full bg-white/60 backdrop-blur-md rounded-xl p-4 flex items-center justify-between border border-white/20 ${showOriginalText ? 'rounded-b-none border-b-0' : ''
-                                        }`}
-                                >
-                                    <div className="flex items-center">
-                                        <svg
-                                            className={`w-5 h-5 text-gray-600 transition-transform mr-2 ${showOriginalText ? 'transform rotate-90' : ''
-                                                }`}
-                                            fill="none"
-                                            viewBox="0 0 24 24"
-                                            stroke="currentColor"
-                                        >
-                                            <path
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                                strokeWidth={2}
-                                                d="M9 5l7 7-7 7"
-                                            />
-                                        </svg>
-                                        <span className="text-lg font-medium text-gray-800">소스 텍스트</span>
-                                    </div>
-                                    <div></div>
-                                </button>
-
-                                <AnimatePresence>
-                                    {showOriginalText && (
-                                        <motion.div
-                                            initial={{ opacity: 0, height: 0 }}
-                                            animate={{ opacity: 1, height: "auto" }}
-                                            exit={{ opacity: 0, height: 0 }}
-                                            transition={{ duration: 0.3 }}
-                                            className="overflow-hidden"
-                                        >
-                                            <div className="bg-white/40 backdrop-blur-md rounded-xl rounded-t-none p-4 border border-white/20 border-t-0">
-                                                <p className="text-gray-600 text-sm whitespace-pre-wrap">{currentGroup.original_text}</p>
-                                            </div>
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Memory cards */}
-                    {currentGroup && (
-                        <div className="space-y-4 mb-6">
-                            <div className="flex justify-between items-center">
-                                <h3 className="text-xl font-semibold text-gray-700">기억 카드</h3>
-                                <div className="text-sm text-gray-500">총 {currentGroup.chunks?.length || 0}개</div>
-                            </div>
-
-                            <div className="space-y-4">
-                                {currentGroup.chunks?.map((chunk, index) => {
-                                    const notification = getNotificationForChunk(chunk.id);
-                                    return (
-                                        <div
-                                            key={chunk.id}
-                                            onClick={() => handleChunkClick(chunk.id)}
-                                            className="
-                                                p-4 
-                                                bg-white/80
-                                                backdrop-blur-md 
-                                                rounded-xl
-                                                border
-                                                border-white/20
-                                                hover:bg-white/90
-                                                transition-colors
-                                                [-webkit-backdrop-filter:blur(20px)]
-                                                [backdrop-filter:blur(20px)]
-                                                relative
-                                                z-0
-                                                cursor-pointer
-                                            "
-                                        >
-                                            <div className="flex justify-between items-center">
-                                                <h4 className="text-lg font-medium text-gray-800">카드 {index + 1}</h4>
-                                                {notification && (
-                                                    <div className="text-sm font-medium text-purple-600">
-                                                        {formatTimeRemaining(notification.scheduledFor)} 알림
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <p className="mt-2 text-gray-600">{chunk.summary}</p>
-                                            <div className="mt-3 p-3 bg-gray-100 rounded-lg">
-                                                <p className="text-gray-700 whitespace-pre-wrap">{chunk.masked_text}</p>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Notification schedule */}
-                    <div className="mb-6 p-4 bg-white/80 backdrop-blur-md rounded-xl border border-white/20">
-                        <div className="flex justify-between items-center mb-3">
-                            <h3 className="text-lg font-semibold text-gray-700">알림 스케줄</h3>
-                            <div className="text-sm font-medium px-2 py-1 bg-blue-100 text-blue-800 rounded-full">
-                                {activeNotificationsCount}개 예약됨
-                            </div>
-                        </div>
-                        <p className="text-gray-600 text-sm mb-4">
-                            {activeNotificationsCount > 0
-                                ? '아래 카드들의 알림이 예약되어 있습니다. 각 카드에 표시된 시간에 알림을 받게 됩니다.'
-                                : '아직 예약된 알림이 없습니다. 학습 시작 버튼을 눌러 알림을 설정하세요.'}
-                        </p>
-                        <div className="flex flex-col space-y-3">
-                            <button
-                                onClick={handleStartLearning}
-                                className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition-colors flex items-center justify-center"
-                            >
-                                <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                                지금 학습 시작하기
-                            </button>
-                            <button
-                                onClick={scheduleNotifications}
-                                className="w-full py-3 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors flex items-center justify-center"
-                            >
-                                <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                                </svg>
-                                복습 알림 설정
-                            </button>
-                        </div>
+                    <div className="p-8 text-center">
+                        <h2 className="text-xl font-semibold text-gray-700 mb-2">그룹 정보를 불러올 수 없습니다</h2>
+                        <p className="text-gray-600">잠시 후 다시 시도해주세요.</p>
                     </div>
                 </div>
             </main>
@@ -565,6 +412,66 @@ export default function GroupDetail({ content, group }: { content: Content; grou
     return (
         <main className="flex min-h-screen flex-col bg-gradient-to-b from-[#F8F4EF] to-[#E8D9C5]">
             {isLoading && <LoadingOverlay />}
+            <AnimatePresence>
+                {showGroupSelector && (
+                    <>
+                        <motion.div
+                            className="fixed inset-0 bg-white/70 backdrop-blur-sm z-40"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setShowGroupSelector(false)}
+                        />
+                        <motion.div
+                            className="fixed inset-x-0 top-12 p-4 bg-white shadow-lg rounded-b-xl z-50"
+                            initial={{ y: "-100%" }}
+                            animate={{ y: 0 }}
+                            exit={{ y: "-100%" }}
+                            transition={{
+                                type: "spring",
+                                stiffness: 300,
+                                damping: 30
+                            }}
+                        >
+                            <div className="max-w-2xl mx-auto">
+                                <div className="flex justify-between items-center mb-3">
+                                    <h3 className="text-lg font-semibold text-gray-800">모든 그룹</h3>
+                                    <button
+                                        onClick={() => setShowGroupSelector(false)}
+                                        className="text-gray-500 hover:text-gray-700"
+                                    >
+                                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                    {groups.map((group: ContentGroup) => (
+                                        <button
+                                            key={group.id}
+                                            onClick={() => handleGroupSelect(group)}
+                                            className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors flex flex-col items-start h-auto min-h-[70px] w-[calc(50%-0.5rem)] ${currentGroup?.id === group.id
+                                                    ? 'bg-[#E8D9C5] font-bold'
+                                                    : 'bg-white/60 text-gray-700 hover:bg-white/80 border border-gray-200'
+                                                }`}
+                                        >
+                                            <div className="line-clamp-2 text-left mb-1 w-full">
+                                                {group.title}
+                                            </div>
+                                            <div className="flex items-center text-xs mt-1">
+                                                <svg className="w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                </svg>
+                                                <span>기억카드 <span className="font-bold">{group.chunks?.length || 0}</span>개</span>
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
             <div className="sticky top-0 bg-[#F8F4EF] border-b border-[#D4C4B7] h-12 z-50">
                 <button
                     onClick={() => router.push('/')}
@@ -586,133 +493,122 @@ export default function GroupDetail({ content, group }: { content: Content; grou
                 {/* 콘텐츠 제목 및 타임스탬프 */}
                 <div className="space-y-2 mb-6">
                     <h1 className="text-3xl font-bold text-gray-800">{content.title}</h1>
-                    <div className="text-sm text-gray-500">
-                        {new Date(content.created_at).toLocaleDateString('ko-KR')} 시작
+                    <div className="flex justify-between items-center">
+                        <div className="text-sm text-gray-500">
+                            {new Date(content.created_at).toLocaleDateString('ko-KR')} 시작
+                        </div>
+                        {groups.length > 1 && (
+                            <button
+                                onClick={() => setShowGroupSelector(true)}
+                                className="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded-full font-medium hover:bg-purple-200 transition-colors"
+                            >
+                                모든 그룹 보기
+                            </button>
+                        )}
                     </div>
                 </div>
 
                 {/* 그룹 개수 서브타이틀 및 탭 */}
                 <div className="mb-6">
-                    <div className="flex justify-between items-center mb-3">
-                        <h2 className="text-xl font-semibold text-gray-700">기억 카드 그룹 <span className="font-bold">{groups.length}</span>개</h2>
+                    {/* 현재 그룹 제목 (크게 표시) */}
+                    <div className="mb-6">
+                        <h2 className="text-2xl font-bold text-gray-800">{currentGroup?.title}</h2>
                     </div>
 
-                    {/* 그룹 탭 */}
-                    {groups.length > 1 && (
-                        <div className="mb-4">
-                            <div className="flex flex-wrap gap-2">
-                                {groups.map((group) => (
-                                    <button
-                                        key={group.id}
-                                        onClick={() => setCurrentGroup(group)}
-                                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${currentGroup?.id === group.id
-                                            ? 'bg-purple-600 text-white'
-                                            : 'bg-white/60 text-gray-700 hover:bg-white/80'
-                                            }`}
-                                    >
-                                        {group.title}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
                     {/* 소스 텍스트 토글 - 탭 아래로 이동 */}
-                    {currentGroup && (
-                        <div className="flex flex-col">
-                            <button
-                                onClick={toggleOriginalText}
-                                className={`w-full bg-white/60 backdrop-blur-md rounded-xl p-4 flex items-center justify-between border border-white/20 ${showOriginalText ? 'rounded-b-none border-b-0' : ''
-                                    }`}
-                            >
-                                <div className="flex items-center">
-                                    <svg
-                                        className={`w-5 h-5 text-gray-600 transition-transform mr-2 ${showOriginalText ? 'transform rotate-90' : ''
-                                            }`}
-                                        fill="none"
-                                        viewBox="0 0 24 24"
-                                        stroke="currentColor"
-                                    >
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M9 5l7 7-7 7"
-                                        />
-                                    </svg>
-                                    <span className="text-lg font-medium text-gray-800">소스 텍스트 보기</span>
-                                </div>
-                                <div></div>
-                            </button>
+                    <div className="flex flex-col">
+                        <button
+                            onClick={toggleOriginalText}
+                            className={`w-full bg-white/60 backdrop-blur-md rounded-xl p-4 flex items-center justify-between border border-white/20 ${showOriginalText ? 'rounded-b-none border-b-0' : ''
+                                }`}
+                        >
+                            <div className="flex items-center">
+                                <svg
+                                    className={`w-5 h-5 text-gray-600 transition-transform mr-2 ${showOriginalText ? 'transform rotate-90' : ''
+                                        }`}
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M9 5l7 7-7 7"
+                                    />
+                                </svg>
+                                <span className="text-lg font-medium text-gray-800">소스 텍스트 보기</span>
+                            </div>
+                            <div></div>
+                        </button>
 
-                            <AnimatePresence>
-                                {showOriginalText && (
-                                    <motion.div
-                                        initial={{ opacity: 0, height: 0 }}
-                                        animate={{ opacity: 1, height: "auto" }}
-                                        exit={{ opacity: 0, height: 0 }}
-                                        transition={{ duration: 0.3 }}
-                                        className="overflow-hidden"
-                                    >
-                                        <div className="bg-white/40 backdrop-blur-md rounded-xl rounded-t-none p-4 border border-white/20 border-t-0">
-                                            <p className="text-gray-600 text-sm whitespace-pre-wrap">{currentGroup.original_text}</p>
-                                        </div>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-                        </div>
-                    )}
+                        <AnimatePresence>
+                            {showOriginalText && (
+                                <motion.div
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: "auto" }}
+                                    exit={{ opacity: 0, height: 0 }}
+                                    transition={{ duration: 0.3 }}
+                                    className="overflow-hidden"
+                                >
+                                    <div className="bg-white/40 backdrop-blur-md rounded-xl rounded-t-none p-4 border border-white/20 border-t-0">
+                                        <p className="text-gray-600 text-sm whitespace-pre-wrap">
+                                            {currentGroup.original_text || '원본 텍스트를 불러올 수 없습니다.'}
+                                        </p>
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
                 </div>
 
                 {/* 메모리 카드 */}
-                {currentGroup && currentGroup.chunks && (
-                    <div className="space-y-4 mb-6">
-                        <div className="flex justify-between items-center">
-                            <h3 className="text-xl font-semibold text-gray-700">기억 카드</h3>
-                            <div className="text-sm text-gray-500">총 <span className="font-bold">{currentGroup.chunks.length}</span>개</div>
-                        </div>
-
-                        <div className="space-y-4">
-                            {currentGroup.chunks.map((chunk, index) => {
-                                const notification = getNotificationForChunk(chunk.id);
-                                return (
-                                    <div
-                                        key={chunk.id}
-                                        onClick={() => handleChunkClick(chunk.id)}
-                                        className="
-                                            p-4 
-                                            bg-white/80
-                                            backdrop-blur-md 
-                                            rounded-xl
-                                            border
-                                            border-white/20
-                                            hover:bg-white/90
-                                            transition-colors
-                                            [-webkit-backdrop-filter:blur(20px)]
-                                            [backdrop-filter:blur(20px)]
-                                            relative
-                                            z-0
-                                            cursor-pointer
-                                        "
-                                    >
-                                        <div className="flex justify-between items-center">
-                                            <h4 className="text-lg font-medium text-gray-800">카드 {index + 1}</h4>
-                                            {notification && (
-                                                <div className="text-sm font-medium text-purple-600">
-                                                    {formatTimeRemaining(notification.scheduledFor)} 알림
-                                                </div>
-                                            )}
-                                        </div>
-                                        <p className="mt-2 text-gray-600">{chunk.summary}</p>
-                                        <div className="mt-3 p-3 bg-gray-100 rounded-lg">
-                                            <p className="text-gray-700 whitespace-pre-wrap">{chunk.masked_text}</p>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
+                <div className="space-y-4 mb-6">
+                    <div className="flex justify-between items-center">
+                        <h3 className="text-xl font-semibold text-gray-700">기억 카드</h3>
+                        <div className="text-sm text-gray-500">총 <span className="font-bold">{currentGroup.chunks?.length || 0}</span>개</div>
                     </div>
-                )}
+
+                    <div className="space-y-4">
+                        {currentGroup.chunks?.map((chunk: Chunk, index: number) => {
+                            const notification = getNotificationForChunk(chunk.id);
+                            return (
+                                <div
+                                    key={chunk.id}
+                                    onClick={() => handleChunkClick(chunk.id)}
+                                    className="
+                                    p-4 
+                                    bg-white/80
+                                    backdrop-blur-md 
+                                    rounded-xl
+                                    border
+                                    border-white/20
+                                    hover:bg-white/90
+                                    transition-colors
+                                    [-webkit-backdrop-filter:blur(20px)]
+                                    [backdrop-filter:blur(20px)]
+                                    relative
+                                    z-0
+                                    cursor-pointer
+                                "
+                                >
+                                    <div className="flex justify-between items-center">
+                                        <h4 className="text-lg font-medium text-gray-800">카드 {index + 1}</h4>
+                                        {notification && (
+                                            <div className="text-sm font-medium text-purple-600">
+                                                {formatTimeRemaining(notification.scheduledFor)} 알림
+                                            </div>
+                                        )}
+                                    </div>
+                                    <p className="mt-2 text-gray-600">{chunk.summary}</p>
+                                    <div className="mt-3 p-3 bg-gray-100 rounded-lg">
+                                        <p className="text-gray-700 whitespace-pre-wrap">{chunk.masked_text}</p>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
 
                 {/* 알림 스케줄 */}
                 <div className="mb-6 p-4 bg-white/80 backdrop-blur-md rounded-xl border border-white/20">
