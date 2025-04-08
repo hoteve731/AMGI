@@ -27,14 +27,14 @@ type Content = {
   status: string
 }
 
-export default async function Page({
-  params,
-  searchParams,
-}: {
+// Props 타입 정의 추가
+type Props = {
   params: { id: string; groupId: string };
   searchParams: { [key: string]: string | string[] | undefined };
-}) {
-  // params를 비동기적으로 처리
+};
+
+export default async function Page({ params, searchParams }: Props) {
+  // params를 비동기적으로 처리 (Vercel 빌드 오류 방지 위해 유지)
   const resolvedParams = await Promise.resolve(params);
   const contentId = resolvedParams.id;
   const groupId = resolvedParams.groupId;
