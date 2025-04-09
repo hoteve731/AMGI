@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 type Chunk = {
     id: string
     group_id: string
+    summary: string
     masked_text: string
 }
 
@@ -33,9 +34,10 @@ export default function LearningPage() {
     const [isFlipped, setIsFlipped] = useState(false)
     const [isLoading, setIsLoading] = useState(true)
 
-    // 그룹 상세 페이지로 이동
+    // 해당 그룹 디테일 페이지로 이동
     const goToGroupDetail = () => {
-        router.push(`/content/${contentId}`)
+        if (!groupId) return
+        router.push(`/content/${contentId}/groups/${groupId}`)
     }
 
     // 그룹과 청크 데이터 로드
@@ -45,9 +47,7 @@ export default function LearningPage() {
             return
         }
 
-        setIsLoading(true)
         try {
-            // 그룹 정보 가져오기
             const { data: groupData, error: groupError } = await supabase
                 .from('content_groups')
                 .select(`
@@ -56,6 +56,7 @@ export default function LearningPage() {
                     chunks:content_chunks (
                         id,
                         group_id,
+                        summary,
                         masked_text
                     )
                 `)
@@ -87,11 +88,11 @@ export default function LearningPage() {
             setCurrentIndex(targetIndex)
             console.log('학습 데이터 로드 완료:', { group: groupData, chunk: targetChunk, index: targetIndex })
 
+            setIsLoading(false)
         } catch (error: any) {
             console.error('데이터 로드 실패:', error)
             alert(error.message)
             goToGroupDetail()
-        } finally {
             setIsLoading(false)
         }
     }, [contentId, groupId, chunkId, router, supabase])
@@ -109,7 +110,7 @@ export default function LearningPage() {
     const handleDifficulty = (level: 'again' | 'hard' | 'good' | 'easy') => {
         if (!currentGroup || !currentChunk) return
 
-        // 마지막 카드인 경우 그룹 상세 페이지로 이동
+        // 마지막 카드인 경우 그룹 리스트 페이지로 이동
         if (currentIndex === currentGroup.chunks.length - 1) {
             goToGroupDetail()
             return
@@ -130,22 +131,9 @@ export default function LearningPage() {
     }
 
     // 마스킹된 텍스트 처리 함수
-    const processMaskedText = (text: string, isFlipped: boolean) => {
-        if (isFlipped) {
-            // 뒷면: 볼드+보라색으로 하이라이트
-            return text.replace(/\*\*(.*?)\*\*/g, '<span class="font-bold text-purple-600">$1</span>')
-        } else {
-            // 앞면: 검은 사각형으로 가림
-            return text.replace(/\*\*(.*?)\*\*/g, '<div class="inline-block w-10 h-4 bg-black"></div>')
-        }
-    }
-
-    if (isLoading) {
-        return (
-            <div className="flex justify-center items-center h-screen">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-            </div>
-        )
+    const processMaskedText = (text: string) => {
+        // 항상 볼드 처리 (앞/뒷면 구분 없이)
+        return text.replace(/\*\*(.*?)\*\*/g, '<span class="font-bold text-purple-600">$1</span>')
     }
 
     if (!currentGroup || !currentChunk) {
@@ -156,7 +144,7 @@ export default function LearningPage() {
                     onClick={goToGroupDetail}
                     className="mt-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
                 >
-                    뒤로가기
+                    뒤로
                 </button>
             </div>
         )
@@ -168,17 +156,12 @@ export default function LearningPage() {
             <div className="sticky top-0 bg-[#F8F4EF] border-b border-[#D4C4B7] h-12 z-50">
                 <button
                     onClick={goToGroupDetail}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-800"
+                    className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center text-gray-600 hover:text-gray-900 transition-all duration-200 group"
                 >
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="w-5 h-5 group-hover:scale-110 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                     </svg>
-                </button>
-                <button
-                    onClick={goToGroupDetail}
-                    className="absolute left-10 top-1/2 -translate-y-1/2 text-gray-800 font-medium hover:text-gray-600"
-                >
-                    뒤로가기
+                    <span className="ml-2 font-medium group-hover:font-semibold transition-all duration-200">뒤로</span>
                 </button>
             </div>
 
@@ -206,11 +189,11 @@ export default function LearningPage() {
                             }}
                             className="w-full"
                         >
-                            <div className="w-full min-h-[200px] bg-white rounded-xl border border-[#D4C4B7] p-6 shadow-lg">
+                            <div className="w-full min-h-[200px] bg-white/90 backdrop-blur-md rounded-xl border border-[#D4C4B7] p-6 shadow-lg">
                                 <div
                                     className="text-gray-800 text-lg"
                                     dangerouslySetInnerHTML={{
-                                        __html: processMaskedText(currentChunk.masked_text, isFlipped)
+                                        __html: processMaskedText(isFlipped ? currentChunk.masked_text : currentChunk.summary)
                                     }}
                                 />
                             </div>

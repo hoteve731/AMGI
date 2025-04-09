@@ -185,7 +185,7 @@ export default function GroupDetail({ content, group: initialGroup }: { content:
 
     const handleChunkClick = (chunkId: string) => {
         setIsLoading(true)
-        router.push(`/content/${content.id}/learning?chunk=${chunkId}`)
+        router.push(`/content/${content.id}/learning?chunk=${chunkId}&group=${currentGroup?.id}`)
     }
 
     const toggleOriginalText = () => {
