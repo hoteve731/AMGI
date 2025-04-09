@@ -459,15 +459,6 @@ export default function GroupDetail({ content, group: initialGroup }: { content:
                     >
                         홈
                     </button>
-                    <button
-                        onClick={handleDeleteContent}
-                        disabled={isDeletingContent}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
-                    >
-                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                    </button>
                 </div>
 
                 <div className="flex-1 max-w-2xl mx-auto w-full p-4">
@@ -506,7 +497,7 @@ export default function GroupDetail({ content, group: initialGroup }: { content:
                         >
                             <div className="max-w-2xl mx-auto">
                                 <div className="flex justify-between items-center mb-3">
-                                    <h3 className="text-lg font-semibold text-gray-800">모든 그룹</h3>
+
                                     <button
                                         onClick={() => setShowGroupSelector(false)}
                                         className="text-gray-500 hover:text-gray-700"
@@ -533,7 +524,7 @@ export default function GroupDetail({ content, group: initialGroup }: { content:
                                                 <svg className="w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                                 </svg>
-                                                <span>기억카드 <span className="font-bold">{group.chunks?.length || 0}</span>개</span>
+                                                <span>기억카드 <span className="font-bold">{group.chunks?.length || 0}</span></span>
                                             </div>
                                         </button>
                                     ))}
@@ -545,132 +536,103 @@ export default function GroupDetail({ content, group: initialGroup }: { content:
             </AnimatePresence>
             <div className="sticky top-0 bg-[#F8F4EF] border-b border-[#D4C4B7] h-12 z-50">
                 <button
-                    onClick={() => router.push('/')}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-800"
+                    onClick={() => router.push(`/content/${content.id}/groups`)}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center text-gray-600 hover:text-gray-900 transition-all duration-200 group"
                 >
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="w-5 h-5 group-hover:scale-110 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                     </svg>
+                    <span className="ml-2 font-medium group-hover:font-semibold transition-all duration-200">그룹</span>
                 </button>
-                <button
-                    onClick={() => router.push('/')}
-                    className="absolute left-10 top-1/2 -translate-y-1/2 text-gray-800 font-medium hover:text-gray-600"
-                >
-                    홈
-                </button>
-                <button
-                    onClick={handleDeleteContent}
-                    disabled={isDeletingContent}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
-                >
-                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                </button>
+
+                {groups.length > 1 && (
+                    <button
+                        onClick={() => setShowGroupSelector(true)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 px-4 py-1.5 bg-[#8B4513]/60 backdrop-blur-md text-white rounded-full flex items-center hover:bg-[#8B4513]/90 transition-colors"
+                    >
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
+                        </svg>
+                        <span className="ml-1 font-semibold text-sm">그룹 리스트</span>
+                    </button>
+                )}
             </div>
 
             <div className="flex-1 max-w-2xl mx-auto w-full p-4">
-                {/* 콘텐츠 제목 및 타임스탬프 */}
-                <div className="space-y-2 mb-6">
-                    <h1 className="text-3xl font-bold text-gray-800">{content.title}</h1>
-                    <div className="flex justify-between items-center">
-                        <div className="text-sm text-gray-500">
-                            {new Date(content.created_at).toLocaleDateString('ko-KR')} 시작
-                        </div>
-                        {groups.length > 1 && (
-                            <button
-                                onClick={() => setShowGroupSelector(true)}
-                                className="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded-full font-medium hover:bg-purple-200 transition-colors"
-                            >
-                                모든 그룹 보기
-                            </button>
-                        )}
-                    </div>
-                </div>
-
                 {/* 그룹 개수 서브타이틀 및 탭 */}
                 <div className="mb-6">
                     {/* 현재 그룹 제목 (크게 표시) */}
                     <div className="mb-6">
                         <div className="flex justify-between items-center">
                             <h2 className="text-2xl font-bold text-gray-800">{currentGroup?.title}</h2>
-                            <button
-                                onClick={handleDeleteGroup}
-                                disabled={isDeletingGroup}
-                                className="px-3 py-1 text-sm text-red-500 border border-red-300 rounded-full hover:bg-red-50 transition-colors flex items-center"
-                            >
-                                {isDeletingGroup ? (
-                                    <div className="flex space-x-1 items-center">
-                                        <svg className="animate-spin h-4 w-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                        </svg>
-                                        삭제 중...
-                                    </div>
-                                ) : (
-                                    <>
-                                        <svg className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                        </svg>
-                                        그룹 삭제
-                                    </>
-                                )}
-                            </button>
                         </div>
-                    </div>
-
-                    {/* 소스 텍스트 토글 - 탭 아래로 이동 */}
-                    <div className="flex flex-col">
-                        <button
-                            onClick={toggleOriginalText}
-                            className={`w-full bg-white/60 backdrop-blur-md rounded-xl p-4 flex items-center justify-between border border-white/20 ${showOriginalText ? 'rounded-b-none border-b-0' : ''
-                                }`}
-                        >
-                            <div className="flex items-center">
-                                <svg
-                                    className={`w-5 h-5 text-gray-600 transition-transform mr-2 ${showOriginalText ? 'transform rotate-90' : ''
-                                        }`}
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M9 5l7 7-7 7"
-                                    />
-                                </svg>
-                                <span className="text-lg font-medium text-gray-800">소스 텍스트 보기</span>
-                            </div>
-                            <div></div>
-                        </button>
-
-                        <AnimatePresence>
-                            {showOriginalText && (
-                                <motion.div
-                                    initial={{ opacity: 0, height: 0 }}
-                                    animate={{ opacity: 1, height: "auto" }}
-                                    exit={{ opacity: 0, height: 0 }}
-                                    transition={{ duration: 0.3 }}
-                                    className="overflow-hidden"
-                                >
-                                    <div className="bg-white/40 backdrop-blur-md rounded-xl rounded-t-none p-4 border border-white/20 border-t-0">
-                                        <p className="text-gray-600 text-sm whitespace-pre-wrap">
-                                            {currentGroup.original_text || '원본 텍스트를 불러올 수 없습니다.'}
-                                        </p>
-                                    </div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
                     </div>
                 </div>
 
+                {/* 소스 텍스트 토글 - 탭 아래로 이동 */}
+                <div className="flex flex-col mb-8">
+                    <button
+                        onClick={toggleOriginalText}
+                        className={`w-full bg-white/60 backdrop-blur-md rounded-xl p-4 flex items-center justify-between border border-white/20 ${showOriginalText ? 'rounded-b-none border-b-0' : ''
+                            }`}
+                    >
+                        <div className="flex items-center">
+                            <svg
+                                className={`w-5 h-5 text-gray-600 transition-transform mr-2 ${showOriginalText ? 'transform rotate-90' : ''
+                                    }`}
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M9 5l7 7-7 7"
+                                />
+                            </svg>
+                            <span className="text-lg font-medium text-gray-800">원본 텍스트</span>
+                        </div>
+                        <div></div>
+                    </button>
+
+                    <AnimatePresence>
+                        {showOriginalText && (
+                            <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: "auto" }}
+                                exit={{ opacity: 0, height: 0 }}
+                                transition={{ duration: 0.3 }}
+                                className="overflow-hidden"
+                            >
+                                <div className="bg-white/40 backdrop-blur-md rounded-xl rounded-t-none p-4 border border-white/20 border-t-0">
+                                    <p className="text-gray-600 text-sm whitespace-pre-wrap">
+                                        {currentGroup.original_text || '원본 텍스트를 불러올 수 없습니다.'}
+                                    </p>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
                 {/* 메모리 카드 */}
                 <div className="space-y-4 mb-6">
                     <div className="flex justify-between items-center">
-                        <h3 className="text-xl font-semibold text-gray-700">기억 카드</h3>
-                        <div className="text-sm text-gray-500">총 <span className="font-bold">{currentGroup.chunks?.length || 0}</span>개</div>
+                        <div className="flex items-center">
+                            <svg
+                                className="w-5 h-5 mr-1 text-gray-600"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                />
+                            </svg>
+                            <h3 className="text-xl font-bold text-gray-800">기억카드<span className="text-sm font-normal text-gray-500 ml-1">({currentGroup.chunks?.length || 0})</span></h3>
+                        </div>
                     </div>
 
                     <div className="space-y-4">
@@ -733,7 +695,7 @@ export default function GroupDetail({ content, group: initialGroup }: { content:
                             className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition-colors flex items-center justify-center"
                         >
                             <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3.197-2.132a1 1 0 000-1.664z" />
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                             지금 학습 시작하기
