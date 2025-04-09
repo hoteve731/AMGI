@@ -50,6 +50,7 @@ export default function ContentDetail({
 }) {
     const [showOriginal, setShowOriginal] = useState(false)
     const [contentStatus, setContentStatus] = useState(content.status)
+    const [isDeleting, setIsDeleting] = useState(false)
     const router = useRouter()
     const supabase = createClientComponentClient()
     const { mutate } = useSWRConfig()
@@ -81,6 +82,38 @@ export default function ContentDetail({
         }
     };
 
+    const handleDeleteContent = async () => {
+        if (!confirm('정말로 이 콘텐츠를 삭제하시겠습니까? 모든 그룹과 기억 카드가 삭제되며, 이 작업은 되돌릴 수 없습니다.')) {
+            return
+        }
+
+        setIsDeleting(true)
+        try {
+            const response = await fetch('/api/contents', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ id: content.id }),
+            })
+
+            if (!response.ok) {
+                throw new Error('콘텐츠 삭제 중 오류가 발생했습니다.')
+            }
+
+            // SWR 캐시 업데이트
+            mutate('/api/contents')
+
+            // 홈으로 이동
+            router.push('/')
+        } catch (error) {
+            console.error('콘텐츠 삭제 중 오류:', error)
+            alert('콘텐츠 삭제 중 오류가 발생했습니다.')
+        } finally {
+            setIsDeleting(false)
+        }
+    };
+
     return (
         <main className="flex min-h-screen flex-col bg-gradient-to-b from-[#F8F4EF] to-[#E8D9C5]">
             <div className="sticky top-0 bg-[#F8F4EF] border-b border-[#D4C4B7] h-12">
@@ -90,6 +123,14 @@ export default function ContentDetail({
                 >
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                </button>
+                <button
+                    onClick={handleDeleteContent}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500 transition-colors"
+                >
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
                 </button>
             </div>

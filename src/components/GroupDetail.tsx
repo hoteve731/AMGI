@@ -376,6 +376,70 @@ export default function GroupDetail({ content, group: initialGroup }: { content:
         localStorage.setItem(`content_${content.id}_selected_group`, group.id.toString());
     };
 
+    const [isDeletingGroup, setIsDeletingGroup] = useState(false)
+
+    const handleDeleteGroup = async () => {
+        if (!currentGroup) return;
+
+        if (!confirm('정말로 이 그룹을 삭제하시겠습니까? 모든 기억 카드가 삭제되며, 이 작업은 되돌릴 수 없습니다.')) {
+            return;
+        }
+
+        setIsDeletingGroup(true);
+        try {
+            const response = await fetch('/api/groups', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ id: currentGroup.id }),
+            });
+
+            if (!response.ok) {
+                throw new Error('그룹 삭제 중 오류가 발생했습니다.');
+            }
+
+            // 콘텐츠 페이지로 이동
+            router.push(`/content/${content.id}`);
+        } catch (error) {
+            console.error('그룹 삭제 중 오류:', error);
+            alert('그룹 삭제 중 오류가 발생했습니다.');
+        } finally {
+            setIsDeletingGroup(false);
+        }
+    };
+
+    const [isDeletingContent, setIsDeletingContent] = useState(false)
+
+    const handleDeleteContent = async () => {
+        if (!confirm('정말로 이 콘텐츠를 삭제하시겠습니까? 모든 그룹과 기억 카드가 삭제되며, 이 작업은 되돌릴 수 없습니다.')) {
+            return
+        }
+
+        setIsDeletingContent(true)
+        try {
+            const response = await fetch('/api/contents', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ id: content.id }),
+            })
+
+            if (!response.ok) {
+                throw new Error('콘텐츠 삭제 중 오류가 발생했습니다.')
+            }
+
+            // 홈으로 이동
+            router.push('/')
+        } catch (error) {
+            console.error('콘텐츠 삭제 중 오류:', error)
+            alert('콘텐츠 삭제 중 오류가 발생했습니다.')
+        } finally {
+            setIsDeletingContent(false)
+        }
+    }
+
     if (!currentGroup) {
         return (
             <main className="flex min-h-screen flex-col bg-gradient-to-b from-[#F8F4EF] to-[#E8D9C5]">
@@ -394,6 +458,15 @@ export default function GroupDetail({ content, group: initialGroup }: { content:
                         className="absolute left-10 top-1/2 -translate-y-1/2 text-gray-800 font-medium hover:text-gray-600"
                     >
                         홈
+                    </button>
+                    <button
+                        onClick={handleDeleteContent}
+                        disabled={isDeletingContent}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
+                    >
+                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
                     </button>
                 </div>
 
@@ -485,6 +558,15 @@ export default function GroupDetail({ content, group: initialGroup }: { content:
                 >
                     홈
                 </button>
+                <button
+                    onClick={handleDeleteContent}
+                    disabled={isDeletingContent}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
+                >
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                </button>
             </div>
 
             <div className="flex-1 max-w-2xl mx-auto w-full p-4">
@@ -510,7 +592,31 @@ export default function GroupDetail({ content, group: initialGroup }: { content:
                 <div className="mb-6">
                     {/* 현재 그룹 제목 (크게 표시) */}
                     <div className="mb-6">
-                        <h2 className="text-2xl font-bold text-gray-800">{currentGroup?.title}</h2>
+                        <div className="flex justify-between items-center">
+                            <h2 className="text-2xl font-bold text-gray-800">{currentGroup?.title}</h2>
+                            <button
+                                onClick={handleDeleteGroup}
+                                disabled={isDeletingGroup}
+                                className="px-3 py-1 text-sm text-red-500 border border-red-300 rounded-full hover:bg-red-50 transition-colors flex items-center"
+                            >
+                                {isDeletingGroup ? (
+                                    <div className="flex space-x-1 items-center">
+                                        <svg className="animate-spin h-4 w-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        삭제 중...
+                                    </div>
+                                ) : (
+                                    <>
+                                        <svg className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                        그룹 삭제
+                                    </>
+                                )}
+                            </button>
+                        </div>
                     </div>
 
                     {/* 소스 텍스트 토글 - 탭 아래로 이동 */}
