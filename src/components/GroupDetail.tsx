@@ -444,12 +444,22 @@ export default function GroupDetail({ content, group: initialGroup }: { content:
     const formatBoldText = (text: string) => {
         if (!text) return '';
 
+        // First handle the {{masked}} text pattern
+        const maskedPattern = /\{\{([^{}]+)\}\}/g;
+        const textWithMaskedFormatting = text.replace(maskedPattern,
+            '<span class="bg-black text-white px-1 py-0.5 rounded">$1</span>');
+
+        // Then handle the **bold** text pattern
         // Split the text by the pattern **text** and preserve the delimiters
-        const parts = text.split(/(\*\*[^*]+\*\*)/g);
+        const parts = textWithMaskedFormatting.split(/(\*\*[^*]+\*\*)|(<span class="bg-black text-white px-1 py-0.5 rounded">[^<]+<\/span>)/g);
 
         return parts.map((part, index) => {
-            // Check if the part matches the pattern **text**
-            if (part.startsWith('**') && part.endsWith('**')) {
+            // Check if the part is already a masked span
+            if (part && part.startsWith('<span class="bg-black text-white px-1 py-0.5 rounded">')) {
+                return <span key={index} dangerouslySetInnerHTML={{ __html: part }} />;
+            }
+            // Check if the part matches the bold pattern **text**
+            else if (part && part.startsWith('**') && part.endsWith('**')) {
                 // Extract the text between ** and **
                 const boldText = part.slice(2, -2);
                 return <strong key={index}>{boldText}</strong>;

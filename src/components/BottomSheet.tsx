@@ -91,7 +91,20 @@ export default function BottomSheet() {
                 // 각 그룹에 대해 순차적으로 청크 생성 API 호출
                 for (const groupId of data.group_ids) {
                     try {
+                        // 일반 청크 생성
                         await fetch('/api/process-chunks', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                content_id: data.content_id,
+                                group_id: groupId
+                            }),
+                        });
+
+                        // Cloze 청크 생성
+                        await fetch('/api/process-cloze-chunks', {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',

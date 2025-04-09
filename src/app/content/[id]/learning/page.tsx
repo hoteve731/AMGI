@@ -132,8 +132,12 @@ export default function LearningPage() {
 
     // 마스킹된 텍스트 처리 함수
     const processMaskedText = (text: string) => {
-        // 항상 볼드 처리 (앞/뒷면 구분 없이) - 검은색으로 변경
-        return text.replace(/\*\*(.*?)\*\*/g, '<span class="font-bold text-black">$1</span>')
+        // First handle masked text within {{}}
+        const maskedText = text.replace(/\{\{([^{}]+)\}\}/g,
+            '<span class="inline-block bg-black w-10 h-4 rounded"></span>');
+
+        // Then handle bold text with **
+        return maskedText.replace(/\*\*(.*?)\*\*/g, '<span class="font-bold text-black">$1</span>')
     }
 
     // 로딩 중에는 아무것도 렌더링하지 않음

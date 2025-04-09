@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import { createClient } from '@/utils/supabase/server'
-import { generateNormalChunksPrompt } from '@/prompt_generator'
+import { generateClozeChunksPrompt } from '@/prompt_generator'
 
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
@@ -76,12 +76,12 @@ export async function POST(req: Request) {
 
         const additionalMemory = contentData?.additional_memory || '';
 
-        // 3. 청크 생성
+        // 3. Cloze 청크 생성
         try {
-            console.log(`Generating normal chunks for group: ${groupData.title}`)
+            console.log(`Generating cloze chunks for group: ${groupData.title}`)
 
-            // 프롬프트 생성기를 사용하여 일반 청크 시스템 프롬프트 생성
-            const chunkSystemPrompt = generateNormalChunksPrompt(additionalMemory);
+            // 프롬프트 생성기를 사용하여 Cloze 청크 시스템 프롬프트 생성
+            const chunkSystemPrompt = generateClozeChunksPrompt(additionalMemory);
 
             const chunksCompletion = await withTimeout(openai.chat.completions.create({
                 model: "gpt-4o-mini-2024-07-18",
@@ -97,7 +97,7 @@ export async function POST(req: Request) {
             }), TIMEOUT);
 
             const chunksText = chunksCompletion.choices[0].message.content || ''
-            console.log(`Chunks generated for group ${groupData.title}:`, chunksText)
+            console.log(`Cloze chunks generated for group ${groupData.title}:`, chunksText)
 
             // 청크 텍스트 파싱 - 개선된 접근 방식
             // 카드 n: 패턴으로 시작하는 모든 텍스트를 찾아 분리
@@ -117,7 +117,7 @@ export async function POST(req: Request) {
                     const maskedText = cardContentMatch[2].trim();
 
                     // 요약과 마스킹된 텍스트가 올바르게 추출되었는지 로그로 확인
-                    console.log(`Parsed chunk ${chunkPosition} for group ${groupData.title}:`,
+                    console.log(`Parsed cloze chunk ${chunkPosition} for group ${groupData.title}:`,
                         { summary, maskedTextPreview: maskedText.substring(0, 50) + '...' });
 
                     chunks.push({
@@ -125,12 +125,12 @@ export async function POST(req: Request) {
                         summary,
                         masked_text: maskedText,
                         position: chunkPosition,
-                        chunk_type: 'normal' // 일반 타입 지정
+                        chunk_type: 'cloze' // cloze 타입 지정
                     });
                 }
             }
 
-            console.log(`Total chunks parsed for group ${groupData.title}:`, chunks.length);
+            console.log(`Total cloze chunks parsed for group ${groupData.title}:`, chunks.length);
 
             // 청크 저장
             if (chunks.length > 0) {
@@ -145,13 +145,25 @@ export async function POST(req: Request) {
                     .from('content_chunks')
                     .insert([{
                         group_id,
-                        summary: "전체 내용 (일반)",
+                        summary: "전체 내용 (Cloze)",
                         masked_text: groupData.original_text,
                         position: 1,
-                        chunk_type: 'normal' // 일반 타입 지정
+                        chunk_type: 'cloze' // cloze 타입 지정
                     }])
 
                 if (fallbackChunkError) throw fallbackChunkError
+
+                return NextResponse.json({
+                    success: true,
+                    group_id,
+                    chunks: [{
+                        group_id,
+                        summary: "전체 내용 (Cloze)",
+                        masked_text: groupData.original_text,
+                        position: 1,
+                        chunk_type: 'cloze' // cloze 타입 지정
+                    }]
+                })
             }
 
             // 모든 그룹의 청크 생성이 완료되었는지 확인
@@ -214,7 +226,7 @@ export async function POST(req: Request) {
                 chunks_count: chunks.length
             })
         } catch (error) {
-            console.error(`Chunks generation error for group ${groupData.title}:`, error)
+            console.error(`Cloze chunks generation error for group ${groupData.title}:`, error)
 
             // 청크 생성 실패 시 기본 청크 하나 생성
             try {
@@ -222,10 +234,10 @@ export async function POST(req: Request) {
                     .from('content_chunks')
                     .insert([{
                         group_id,
-                        summary: "전체 내용 (일반)",
+                        summary: "전체 내용 (Cloze)",
                         masked_text: groupData.original_text,
                         position: 1,
-                        chunk_type: 'normal' // 일반 타입 지정
+                        chunk_type: 'cloze' // cloze 타입 지정
                     }])
 
                 if (fallbackChunkError) throw fallbackChunkError
@@ -233,25 +245,27 @@ export async function POST(req: Request) {
                 return NextResponse.json({
                     success: true,
                     group_id,
-                    chunks_count: 1,
-                    fallback: true
+                    chunks: [{
+                        group_id,
+                        summary: "전체 내용 (Cloze)",
+                        masked_text: groupData.original_text,
+                        position: 1,
+                        chunk_type: 'cloze' // cloze 타입 지정
+                    }]
                 })
-            } catch (fallbackError) {
-                console.error(`Fallback chunk creation error for group ${groupData.title}:`, fallbackError)
-
-                return NextResponse.json(
-                    { error: '청크 생성 중 오류가 발생했습니다.', details: fallbackError },
-                    { status: 500 }
-                )
+            } catch (error) {
+                console.error('Fallback chunk creation error:', error)
+                return NextResponse.json({
+                    success: false,
+                    error: 'Fallback chunk creation failed'
+                })
             }
         }
     } catch (error) {
-        console.error('General error:', error)
-        const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.'
-
-        return NextResponse.json(
-            { error: `서버 처리 중 오류: ${errorMessage}` },
-            { status: 500 }
-        )
+        console.error('Error:', error)
+        return NextResponse.json({
+            success: false,
+            error: 'Internal Server Error'
+        })
     }
 }
