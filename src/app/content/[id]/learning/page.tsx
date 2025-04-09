@@ -132,8 +132,13 @@ export default function LearningPage() {
 
     // 마스킹된 텍스트 처리 함수
     const processMaskedText = (text: string) => {
-        // 항상 볼드 처리 (앞/뒷면 구분 없이)
-        return text.replace(/\*\*(.*?)\*\*/g, '<span class="font-bold text-purple-600">$1</span>')
+        // 항상 볼드 처리 (앞/뒷면 구분 없이) - 검은색으로 변경
+        return text.replace(/\*\*(.*?)\*\*/g, '<span class="font-bold text-black">$1</span>')
+    }
+
+    // 로딩 중에는 아무것도 렌더링하지 않음
+    if (isLoading) {
+        return null;
     }
 
     if (!currentGroup || !currentChunk) {
@@ -167,53 +172,58 @@ export default function LearningPage() {
 
             <div className="flex-1 max-w-2xl mx-auto w-full p-4 flex flex-col min-h-[calc(100vh-3rem)]">
                 {/* 그룹 제목 */}
-                <h1 className="text-2xl font-bold text-gray-800 mb-4 text-center">{currentGroup.title}</h1>
+                <h1 className="text-2xl font-bold text-gray-800 mb-8 mt-8 text-center">{currentGroup.title}</h1>
 
-                {/* 카드 인덱스 표시 */}
-                <div className="text-sm text-gray-600 mb-4 text-center">
-                    {currentIndex + 1}/{currentGroup.chunks.length}
-                </div>
-
-                {/* 카드 표시 영역 */}
-                <div className="flex-1 flex flex-col justify-center py-8 overflow-hidden">
-                    <AnimatePresence mode="wait">
-                        <motion.div
-                            key={currentChunk.id}
-                            initial={{ opacity: 0, x: 200 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: -200 }}
-                            transition={{
-                                type: "spring",
-                                stiffness: 300,
-                                damping: 30
-                            }}
-                            className="w-full"
-                        >
-                            <div className="w-full min-h-[200px] bg-white/90 backdrop-blur-md rounded-xl border border-[#D4C4B7] p-6 shadow-lg">
-                                <div
-                                    className="text-gray-800 text-lg"
-                                    dangerouslySetInnerHTML={{
-                                        __html: processMaskedText(isFlipped ? currentChunk.masked_text : currentChunk.summary)
-                                    }}
-                                />
+                {/* 카드 표시 영역 - 절대 위치로 고정 */}
+                <div className="relative flex-1 overflow-hidden">
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        {/* 카드 인덱스 표시 - 카드 바로 위로 이동 */}
+                        <div className="text-lg mb-4 text-center">
+                            <div className="inline-flex items-center justify-center bg-[#8B4513]/60 backdrop-blur-md rounded-full px-4 py-1.5">
+                                <span className="font-bold text-white">{currentIndex + 1}</span>
+                                <span className="font-bold text-white/50">/{currentGroup.chunks.length}</span>
                             </div>
-                        </motion.div>
-                    </AnimatePresence>
+                        </div>
+
+                        <AnimatePresence mode="wait">
+                            <motion.div
+                                key={currentChunk.id}
+                                initial={{ opacity: 0, x: 200 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -200 }}
+                                transition={{
+                                    type: "spring",
+                                    stiffness: 300,
+                                    damping: 30
+                                }}
+                                className="w-full max-w-md"
+                            >
+                                <div className="w-full min-h-[200px] bg-white/90 backdrop-blur-md rounded-xl border border-[#D4C4B7] p-6 shadow-lg">
+                                    <div
+                                        className="text-gray-800 text-lg"
+                                        dangerouslySetInnerHTML={{
+                                            __html: processMaskedText(isFlipped ? currentChunk.masked_text : currentChunk.summary)
+                                        }}
+                                    />
+                                </div>
+                            </motion.div>
+                        </AnimatePresence>
+                    </div>
                 </div>
 
-                {/* 하단 버튼 영역 */}
-                <div className="mt-auto pt-4">
+                {/* 하단 버튼 영역 - 고정 높이 */}
+                <div className="mt-auto pt-4 h-[150px]">
                     {!isFlipped ? (
                         // 앞면: 정답 보기 버튼
                         <button
                             onClick={handleFlip}
-                            className="w-full bg-white rounded-xl border border-[#D4C4B7] py-4 text-gray-800 font-medium hover:bg-gray-50 transition-colors shadow-lg"
+                            className="w-full bg-white rounded-xl border border-[#D4C4B7] py-4 text-gray-800 font-medium hover:bg-gray-50 transition-colors shadow-lg mb-8"
                         >
                             정답 보기
                         </button>
                     ) : (
                         // 뒷면: 난이도 버튼들
-                        <div className="space-y-2">
+                        <div>
                             <p className="text-center text-gray-600 text-sm mb-4">
                                 {currentIndex === currentGroup.chunks.length - 1 ? (
                                     "마지막 카드입니다."
@@ -225,7 +235,7 @@ export default function LearningPage() {
                                     </>
                                 )}
                             </p>
-                            <div className="grid grid-cols-4 gap-2">
+                            <div className="grid grid-cols-4 gap-2 mb-8">
                                 <button
                                     onClick={() => handleDifficulty('again')}
                                     className="flex flex-col items-center justify-center p-4 rounded-xl bg-red-50 hover:bg-red-100 transition-colors"
