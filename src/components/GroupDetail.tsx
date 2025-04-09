@@ -440,6 +440,24 @@ export default function GroupDetail({ content, group: initialGroup }: { content:
         }
     }
 
+    // Helper function to format text with double asterisks (**) as bold text
+    const formatBoldText = (text: string) => {
+        if (!text) return '';
+
+        // Split the text by the pattern **text** and preserve the delimiters
+        const parts = text.split(/(\*\*[^*]+\*\*)/g);
+
+        return parts.map((part, index) => {
+            // Check if the part matches the pattern **text**
+            if (part.startsWith('**') && part.endsWith('**')) {
+                // Extract the text between ** and **
+                const boldText = part.slice(2, -2);
+                return <strong key={index}>{boldText}</strong>;
+            }
+            return part;
+        });
+    };
+
     if (!currentGroup) {
         return (
             <main className="flex min-h-screen flex-col bg-gradient-to-b from-[#F8F4EF] to-[#E8D9C5]">
@@ -537,30 +555,69 @@ export default function GroupDetail({ content, group: initialGroup }: { content:
                     <span className="ml-2 font-medium group-hover:font-semibold transition-all duration-200">그룹</span>
                 </button>
 
+                <button
+                    onClick={handleDeleteGroup}
+                    disabled={isDeletingGroup}
+                    className="absolute right-16 top-1/2 -translate-y-1/2 h-8 w-8 bg-[#8B4513]/60 backdrop-blur-md text-white rounded-full flex items-center justify-center hover:bg-red-500/90 transition-colors disabled:opacity-50"
+                    aria-label="그룹 삭제"
+                >
+                    {isDeletingGroup ? (
+                        <div className="flex space-x-1">
+                            {[0, 1, 2, 3, 4].map((i) => (
+                                <motion.div
+                                    key={i}
+                                    className="w-1.5 h-1.5 bg-white rounded-full"
+                                    animate={{
+                                        y: ["0%", "-100%"],
+                                    }}
+                                    transition={{
+                                        type: "spring",
+                                        stiffness: 300,
+                                        damping: 15,
+                                        mass: 0.8,
+                                        repeat: Infinity,
+                                        repeatType: "reverse",
+                                        delay: i * 0.1,
+                                    }}
+                                />
+                            ))}
+                        </div>
+                    ) : (
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                    )}
+                </button>
+
                 {groups.length > 1 && (
                     <button
                         onClick={() => setShowGroupSelector(!showGroupSelector)}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 px-4 py-1.5 bg-[#8B4513]/60 backdrop-blur-md text-white rounded-full flex items-center hover:bg-[#8B4513]/90 transition-colors"
+                        className="absolute right-4 top-1/2 -translate-y-1/2 h-8 w-8 bg-[#8B4513]/60 backdrop-blur-md text-white rounded-full flex items-center justify-center hover:bg-[#8B4513]/90 transition-colors"
+                        aria-label={showGroupSelector ? "닫기" : "그룹 리스트"}
                     >
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            {showGroupSelector ? (
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            ) : (
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
-                            )}
-                        </svg>
-                        <span className="ml-1 font-semibold text-sm">{showGroupSelector ? '닫기' : '그룹 리스트'}</span>
+                        <motion.div
+                            animate={{ rotate: showGroupSelector ? 90 : 0 }}
+                            transition={{ duration: 0.3, ease: "easeInOut" }}
+                        >
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                {showGroupSelector ? (
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                ) : (
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
+                                )}
+                            </svg>
+                        </motion.div>
                     </button>
                 )}
             </div>
 
             <div className="flex-1 max-w-2xl mx-auto w-full p-4">
                 {/* 그룹 개수 서브타이틀 및 탭 */}
-                <div className="mb-6">
+                <div className="mt-4 mb-6">
                     {/* 현재 그룹 제목 (크게 표시) */}
-                    <div className="mb-6">
+                    <div>
                         <div className="flex justify-between items-center">
-                            <h2 className="text-2xl font-bold text-gray-800">{currentGroup?.title}</h2>
+                            <h2 className="text-3xl font-bold text-gray-800">{currentGroup?.title}</h2>
                         </div>
                     </div>
                 </div>
@@ -655,16 +712,15 @@ export default function GroupDetail({ content, group: initialGroup }: { content:
                                 "
                                 >
                                     <div className="flex justify-between items-center">
-                                        <h4 className="text-lg font-medium text-gray-800">카드 {index + 1}</h4>
                                         {notification && (
                                             <div className="text-sm font-medium text-purple-600">
                                                 {formatTimeRemaining(notification.scheduledFor)} 알림
                                             </div>
                                         )}
                                     </div>
-                                    <p className="mt-2 text-gray-600">{chunk.summary}</p>
+                                    <p className="mt-2 text-gray-600">{formatBoldText(chunk.summary)}</p>
                                     <div className="mt-3 p-3 bg-gray-100 rounded-lg">
-                                        <p className="text-gray-700 whitespace-pre-wrap">{chunk.masked_text}</p>
+                                        <p className="text-gray-700 whitespace-pre-wrap">{formatBoldText(chunk.masked_text)}</p>
                                     </div>
                                 </div>
                             );

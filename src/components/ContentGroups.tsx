@@ -97,11 +97,6 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
         }
     }
 
-    const handleGroupClick = (groupId: string) => {
-        setIsLoading(true)
-        router.push(`/content/${content.id}/groups/${groupId}`)
-    }
-
     return (
         <main className="flex min-h-screen flex-col bg-gradient-to-b from-[#F8F4EF] to-[#E8D9C5]">
             {isLoading && <LoadingOverlay />}
@@ -143,17 +138,17 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                         </div>
                     ) : (
                         <>
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <svg className="w-5 h-5 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                             </svg>
-                            <span className="ml-1 font-semibold text-sm">전체 삭제</span>
+                            <span className="font-medium">전체 삭제</span>
                         </>
                     )}
                 </button>
             </div>
 
             <div className="flex-1 max-w-2xl mx-auto w-full p-4">
-                <div className="space-y-4 mb-8">
+                <div className="space-y-2 mb-8 mt-4">
                     <h1 className="text-3xl font-bold text-gray-800">{content.title}</h1>
                     <div className="text-sm text-gray-500">
                         {new Date(content.created_at).toLocaleDateString('ko-KR')} 시작
@@ -204,7 +199,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                 )}
 
                 <div className="space-y-4">
-                    <h2 className="text-xl font-semibold text-gray-700">학습 그룹</h2>
+                    <h2 className="text-xl font-semibold text-gray-700 mt-2">학습 그룹</h2>
                     <div className="grid grid-cols-2 gap-4">
                         {content.groups.map((group, index) => (
                             <div
@@ -228,6 +223,12 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                                     <Link
                                         href={`/content/${content.id}/groups/${group.id}`}
                                         className="flex-1 flex flex-col"
+                                        onClick={(e) => {
+                                            // 클릭 시 로딩 상태 설정
+                                            setIsLoading(true);
+                                            // 선택한 그룹 ID를 localStorage에 저장
+                                            localStorage.setItem(`content_${content.id}_selected_group`, group.id.toString());
+                                        }}
                                     >
                                         <h3 className="text-lg font-medium text-gray-800 mb-2">{group.title}</h3>
                                     </Link>
@@ -249,48 +250,6 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                                             <span className="text-gray-600">기억카드</span>
                                             <span className="text-gray-700 font-bold">{group.chunks_count}</span>
                                         </div>
-                                        <button
-                                            onClick={() => handleDelete(group.id)}
-                                            disabled={isDeleting === group.id}
-                                            className="p-1 text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
-                                        >
-                                            {isDeleting === group.id ? (
-                                                <div className="relative w-6 h-6">
-                                                    {[0, 1, 2, 3, 4].map((i) => (
-                                                        <motion.div
-                                                            key={i}
-                                                            className="absolute w-1.5 h-1.5 bg-[#7969F7] rounded-full"
-                                                            style={{
-                                                                left: '50%',
-                                                                top: '50%',
-                                                                transform: 'translate(-50%, -50%)',
-                                                            }}
-                                                            animate={{
-                                                                x: [
-                                                                    '0px',
-                                                                    `${Math.cos(i * (2 * Math.PI / 5)) * 12}px`,
-                                                                    '0px'
-                                                                ],
-                                                                y: [
-                                                                    '0px',
-                                                                    `${Math.sin(i * (2 * Math.PI / 5)) * 12}px`,
-                                                                    '0px'
-                                                                ],
-                                                            }}
-                                                            transition={{
-                                                                repeat: Infinity,
-                                                                duration: 1.5,
-                                                                delay: i * 0.1,
-                                                            }}
-                                                        />
-                                                    ))}
-                                                </div>
-                                            ) : (
-                                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                </svg>
-                                            )}
-                                        </button>
                                     </div>
                                 </div>
                             </div>

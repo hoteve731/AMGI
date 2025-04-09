@@ -346,7 +346,7 @@ export default function BottomSheet() {
                                                     value={additionalMemory}
                                                     onChange={(e) => setAdditionalMemory(e.target.value)}
                                                     placeholder="(선택) 이제 특별히 기억하고 싶은 부분을 알려주세요."
-                                                    className="w-full h-20 resize-none rounded-lg p-2 focus:outline-none text-sm border border-gray-200 focus:border-[#A99BFF] focus:border-2"
+                                                    className="w-full h-20 resize-none rounded-lg p-2 focus:outline-none text-base border border-gray-200 focus:border-[#A99BFF] focus:border-2"
                                                     disabled={isLoading}
                                                 />
                                                 <p className="text-gray-400 text-xs mt-1 px-1">
