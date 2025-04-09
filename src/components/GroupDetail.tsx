@@ -497,15 +497,7 @@ export default function GroupDetail({ content, group: initialGroup }: { content:
                         >
                             <div className="max-w-2xl mx-auto">
                                 <div className="flex justify-between items-center mb-3">
-
-                                    <button
-                                        onClick={() => setShowGroupSelector(false)}
-                                        className="text-gray-500 hover:text-gray-700"
-                                    >
-                                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                        </svg>
-                                    </button>
+                                    <h3 className="text-lg font-semibold text-gray-800">그룹 선택</h3>
                                 </div>
                                 <div className="flex flex-wrap gap-2">
                                     {groups.map((group: ContentGroup) => (
@@ -547,13 +539,17 @@ export default function GroupDetail({ content, group: initialGroup }: { content:
 
                 {groups.length > 1 && (
                     <button
-                        onClick={() => setShowGroupSelector(true)}
+                        onClick={() => setShowGroupSelector(!showGroupSelector)}
                         className="absolute right-4 top-1/2 -translate-y-1/2 px-4 py-1.5 bg-[#8B4513]/60 backdrop-blur-md text-white rounded-full flex items-center hover:bg-[#8B4513]/90 transition-colors"
                     >
                         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
+                            {showGroupSelector ? (
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            ) : (
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
+                            )}
                         </svg>
-                        <span className="ml-1 font-semibold text-sm">그룹 리스트</span>
+                        <span className="ml-1 font-semibold text-sm">{showGroupSelector ? '닫기' : '그룹 리스트'}</span>
                     </button>
                 )}
             </div>
