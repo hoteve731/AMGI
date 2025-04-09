@@ -39,8 +39,11 @@ export default function BottomSheet() {
         setIsExpanded(false)
 
         try {
-            // 콘텐츠 생성 (제목, 내용, 그룹 모두 포함)
-            const response = await fetch('/api/generate', {
+            // 1. 콘텐츠 생성 (제목과 내용만 포함)
+            setLoadingProgress(10)
+            setLoadingStatus('title')
+
+            const generateResponse = await fetch('/api/generate', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -52,11 +55,11 @@ export default function BottomSheet() {
             })
 
             // 응답이 JSON이 아닌 경우를 처리
-            let data;
+            let generateData;
             try {
-                const textData = await response.text();
+                const textData = await generateResponse.text();
                 try {
-                    data = JSON.parse(textData);
+                    generateData = JSON.parse(textData);
                 } catch (parseError) {
                     console.error('JSON 파싱 오류:', parseError);
                     console.error('응답 내용:', textData);
@@ -67,29 +70,53 @@ export default function BottomSheet() {
                 throw new Error('서버 응답을 읽을 수 없습니다.');
             }
 
-            if (!response.ok) {
-                throw new Error(data.error || '콘텐츠 생성에 실패했습니다.')
+            if (!generateResponse.ok) {
+                throw new Error(generateData.error || '콘텐츠 생성에 실패했습니다.')
             }
 
-            // 제목 생성 완료 (약 20%)
-            setLoadingProgress(20)
+            const contentId = generateData.content_id;
 
-            // 내용 생성 중 (약 40%)
-            setLoadingProgress(40)
+            // 제목 생성 완료 (약 30%)
+            setLoadingProgress(30)
             setLoadingStatus('content')
 
-            // 그룹 생성 중 (약 60%)
-            setLoadingProgress(60)
+            // 2. 그룹 생성 API 호출
+            setLoadingProgress(40)
             setLoadingStatus('group')
 
-            // 그룹별 청크 생성 API 호출
-            if (data.group_ids && data.group_ids.length > 0) {
+            const groupsResponse = await fetch('/api/process-groups', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    contentId
+                }),
+            })
+
+            let groupsData;
+            try {
+                groupsData = await groupsResponse.json();
+            } catch (error) {
+                console.error('그룹 생성 응답 파싱 오류:', error);
+                throw new Error('그룹 생성 응답을 파싱할 수 없습니다.');
+            }
+
+            if (!groupsResponse.ok) {
+                throw new Error(groupsData.error || '그룹 생성에 실패했습니다.')
+            }
+
+            // 그룹 생성 완료 (약 70%)
+            setLoadingProgress(70)
+
+            // 3. 그룹별 청크 생성 API 호출
+            if (groupsData.group_ids && groupsData.group_ids.length > 0) {
                 // 청크 생성 중 (약 80%)
                 setLoadingProgress(80)
                 setLoadingStatus('chunk')
 
                 // 각 그룹에 대해 순차적으로 청크 생성 API 호출
-                for (const groupId of data.group_ids) {
+                for (const groupId of groupsData.group_ids) {
                     try {
                         // 일반 청크 생성
                         await fetch('/api/process-chunks', {
@@ -98,7 +125,7 @@ export default function BottomSheet() {
                                 'Content-Type': 'application/json',
                             },
                             body: JSON.stringify({
-                                content_id: data.content_id,
+                                content_id: contentId,
                                 group_id: groupId
                             }),
                         });
@@ -110,7 +137,7 @@ export default function BottomSheet() {
                                 'Content-Type': 'application/json',
                             },
                             body: JSON.stringify({
-                                content_id: data.content_id,
+                                content_id: contentId,
                                 group_id: groupId
                             }),
                         });
