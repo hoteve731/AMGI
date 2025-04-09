@@ -1,0 +1,237 @@
+import { NextResponse } from 'next/server'
+import OpenAI from 'openai'
+import { createClient } from '@/utils/supabase/server'
+import { generateEnhancedChunksPrompt } from '@/prompt_generator'
+
+const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+    baseURL: "https://api.openai.com/v1"
+})
+
+// 타임아웃 시간을 설정 (ms)
+const TIMEOUT = 9000; // 9초 (Vercel 무료 플랜 제한 10초보다 약간 짧게 설정)
+
+// 타임아웃 프로미스 생성 함수
+function timeoutPromise(ms: number) {
+    return new Promise((_, reject) => {
+        setTimeout(() => {
+            reject(new Error('API 요청 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.'));
+        }, ms);
+    });
+}
+
+// 타임아웃과 함께 프로미스 실행
+async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+    return Promise.race([
+        promise,
+        timeoutPromise(ms)
+    ]) as Promise<T>;
+}
+
+export async function POST(req: Request) {
+    const supabase = await createClient()
+
+    try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session) {
+            return NextResponse.json(
+                { error: '인증되지 않은 사용자입니다.' },
+                { status: 401 }
+            )
+        }
+
+        const { group_id, content_id } = await req.json()
+
+        if (!group_id || !content_id) {
+            return NextResponse.json(
+                { error: '그룹 ID와 콘텐츠 ID가 필요합니다.' },
+                { status: 400 }
+            )
+        }
+
+        // 1. 그룹 정보 조회
+        const { data: groupData, error: groupError } = await supabase
+            .from('content_groups')
+            .select('*')
+            .eq('id', group_id)
+            .single()
+
+        if (groupError || !groupData) {
+            return NextResponse.json(
+                { error: '그룹을 찾을 수 없습니다.' },
+                { status: 404 }
+            )
+        }
+
+        // 2. 콘텐츠 정보 조회 (추가 메모리 가져오기 위함)
+        const { data: contentData, error: contentError } = await supabase
+            .from('contents')
+            .select('additional_memory')
+            .eq('id', content_id)
+            .single()
+
+        if (contentError) {
+            console.error('Content fetch error:', contentError)
+        }
+
+        const additionalMemory = contentData?.additional_memory || '';
+
+        // 3. 청크 생성
+        try {
+            console.log(`Generating chunks for group: ${groupData.title}`)
+
+            // 프롬프트 생성기를 사용하여 청크 시스템 프롬프트 생성
+            const chunkSystemPrompt = generateEnhancedChunksPrompt(additionalMemory);
+
+            const chunksCompletion = await withTimeout(openai.chat.completions.create({
+                model: "gpt-4o-mini-2024-07-18",
+                messages: [
+                    {
+                        role: "system",
+                        content: chunkSystemPrompt
+                    },
+                    { role: "user", content: groupData.original_text }
+                ],
+                temperature: 0.1,
+                max_tokens: 1000
+            }), TIMEOUT);
+
+            const chunksText = chunksCompletion.choices[0].message.content || ''
+            console.log(`Chunks generated for group ${groupData.title}:`, chunksText)
+
+            // 청크 텍스트 파싱 - 개선된 접근 방식
+            // 카드 n: 패턴으로 시작하는 모든 텍스트를 찾아 분리
+            const cardRegex = /(카드 \d+:[\s\S]*?)(?=카드 \d+:|$)/g;
+            let chunkPosition = 0;
+            const chunks = [];
+
+            let cardMatch;
+            while ((cardMatch = cardRegex.exec(chunksText)) !== null) {
+                const cardText = cardMatch[1].trim();
+
+                // 각 카드에서 질문과 답변 추출
+                const cardContentMatch = cardText.match(/카드 \d+:\s*(.*?)\s*\/\s*([\s\S]*)/);
+                if (cardContentMatch) {
+                    chunkPosition++;
+                    const summary = cardContentMatch[1].trim();
+                    const maskedText = cardContentMatch[2].trim();
+
+                    // 요약과 마스킹된 텍스트가 올바르게 추출되었는지 로그로 확인
+                    console.log(`Parsed chunk ${chunkPosition} for group ${groupData.title}:`,
+                        { summary, maskedTextPreview: maskedText.substring(0, 50) + '...' });
+
+                    chunks.push({
+                        group_id,
+                        summary,
+                        masked_text: maskedText,
+                        position: chunkPosition
+                    });
+                }
+            }
+
+            console.log(`Total chunks parsed for group ${groupData.title}:`, chunks.length);
+
+            // 청크 저장
+            if (chunks.length > 0) {
+                const { error: chunksError } = await supabase
+                    .from('content_chunks')
+                    .insert(chunks)
+
+                if (chunksError) throw chunksError
+            } else {
+                // 청크가 생성되지 않았을 경우 기본 청크 생성
+                const { error: fallbackChunkError } = await supabase
+                    .from('content_chunks')
+                    .insert([{
+                        group_id,
+                        summary: "전체 내용",
+                        masked_text: groupData.original_text,
+                        position: 1
+                    }])
+
+                if (fallbackChunkError) throw fallbackChunkError
+            }
+
+            // 모든 그룹의 청크 생성이 완료되었는지 확인
+            const { data: groupsData, error: groupsError } = await supabase
+                .from('content_groups')
+                .select('id')
+                .eq('content_id', content_id)
+
+            if (groupsError) {
+                console.error('Groups fetch error:', groupsError)
+            } else {
+                // 모든 그룹에 대해 청크가 있는지 확인
+                const allGroupIds = groupsData.map(g => g.id);
+                const { data: chunksData, error: chunksQueryError } = await supabase
+                    .from('content_chunks')
+                    .select('group_id')
+                    .in('group_id', allGroupIds)
+                    .order('group_id')
+
+                if (chunksQueryError) {
+                    console.error('Chunks query error:', chunksQueryError)
+                } else {
+                    // 청크가 있는 그룹 ID 목록
+                    const groupsWithChunks = [...new Set(chunksData.map(c => c.group_id))];
+
+                    // 모든 그룹에 청크가 있으면 콘텐츠 상태를 'studying'으로 업데이트
+                    if (groupsWithChunks.length === allGroupIds.length) {
+                        const { error: updateError } = await supabase
+                            .from('contents')
+                            .update({ status: 'studying' })
+                            .eq('id', content_id)
+
+                        if (updateError) {
+                            console.error('Content status update error:', updateError)
+                        }
+                    }
+                }
+            }
+
+            return NextResponse.json({
+                success: true,
+                group_id,
+                chunks_count: chunks.length
+            })
+        } catch (error) {
+            console.error(`Chunks generation error for group ${groupData.title}:`, error)
+
+            // 청크 생성 실패 시 기본 청크 하나 생성
+            try {
+                const { error: fallbackChunkError } = await supabase
+                    .from('content_chunks')
+                    .insert([{
+                        group_id,
+                        summary: "전체 내용",
+                        masked_text: groupData.original_text,
+                        position: 1
+                    }])
+
+                if (fallbackChunkError) throw fallbackChunkError
+
+                return NextResponse.json({
+                    success: true,
+                    group_id,
+                    chunks_count: 1,
+                    fallback: true
+                })
+            } catch (fallbackError) {
+                console.error(`Fallback chunk creation error for group ${groupData.title}:`, fallbackError)
+
+                return NextResponse.json(
+                    { error: '청크 생성 중 오류가 발생했습니다.', details: fallbackError },
+                    { status: 500 }
+                )
+            }
+        }
+    } catch (error) {
+        console.error('General error:', error)
+        const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.'
+
+        return NextResponse.json(
+            { error: `서버 처리 중 오류: ${errorMessage}` },
+            { status: 500 }
+        )
+    }
+}

@@ -74,40 +74,51 @@ export default function BottomSheet() {
             // 제목 생성 완료 (약 20%)
             setLoadingProgress(20)
 
-            // 내용이 처리 중인 상태인 경우 폴링 시작
-            if (data.status === 'processing') {
-                // 내용 생성 중 (약 40%)
-                setLoadingProgress(40)
-                setLoadingStatus('content')
-
-                // 그룹 생성 중 (약 60%)
-                setLoadingProgress(60)
-
-                // 폴링을 통해 콘텐츠 처리 상태 확인
-                await pollContentStatus(data.content_id);
-                return;
-            }
-
-            // API 응답 처리 과정에 따라 프로그레스 바 업데이트
             // 내용 생성 중 (약 40%)
             setLoadingProgress(40)
             setLoadingStatus('content')
 
             // 그룹 생성 중 (약 60%)
             setLoadingProgress(60)
-
-            // 청크 생성 중 (약 80%)
-            setLoadingProgress(80)
             setLoadingStatus('group')
 
-            // 마스킹 처리 중 (약 90%)
-            setLoadingProgress(90)
+            // 그룹별 청크 생성 API 호출
+            if (data.group_ids && data.group_ids.length > 0) {
+                // 청크 생성 중 (약 80%)
+                setLoadingProgress(80)
+                setLoadingStatus('chunk')
+
+                // 각 그룹에 대해 순차적으로 청크 생성 API 호출
+                for (const groupId of data.group_ids) {
+                    try {
+                        await fetch('/api/process-chunks', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                content_id: data.content_id,
+                                group_id: groupId
+                            }),
+                        });
+                    } catch (error) {
+                        console.error(`Error processing chunks for group ${groupId}:`, error);
+                    }
+                }
+
+                // 마스킹 처리 중 (약 95%)
+                setLoadingProgress(95)
+            }
 
             // 완료 (100%)
             setLoadingProgress(100)
+            setLoadingStatus('complete')
 
-            // 콘텐츠 생성 후 홈으로 이동하기 전에 백그라운드 처리가 완료될 때까지 기다림
-            await pollContentStatus(data.content_id)
+            // 완료 메시지 표시를 위해 잠시 대기
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            // 완료되면 홈으로 이동
+            window.location.href = '/'
         } catch (error) {
             console.error('Error:', error)
             alert(error instanceof Error ? error.message : '오류가 발생했습니다.')

@@ -10,11 +10,11 @@ type LoadingScreenProps = {
 
 export default function LoadingScreen({ progress, status }: LoadingScreenProps) {
     const statusText = {
-        title: '제목 생성 중...',
-        content: '내용 생성 중...',
-        group: '그룹 생성 중...',
-        chunk: '청크 생성 중...',
-        complete: '완료!'
+        title: '제목을 생성하는 중...',
+        content: '내용을 분석하는 중...',
+        group: '그룹으로 나누는 중...',
+        chunk: '기억 카드를 생성하는 중...',
+        complete: '완료되었습니다!'
     }
 
     return (
