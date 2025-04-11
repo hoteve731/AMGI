@@ -3,6 +3,7 @@ import LogoutButton from '@/components/LogoutButton'
 import ContentTabs from '@/components/ContentTabs'
 import BottomSheet from '@/components/BottomSheet'
 import { createClient } from '@/utils/supabase/server'
+import ReviewDashboard from '@/components/ReviewDashboard'
 
 export const dynamic = 'force-dynamic'
 
@@ -37,6 +38,11 @@ export default async function Home() {
         </div>
         <LogoutButton />
       </header>
+
+      {/* 리뷰 대시보드 추가 - 헤더 아래, 탭바 위에 */}
+      <div className="pt-4 px-4">
+        <ReviewDashboard />
+      </div>
 
       <div className="flex-1 overflow-hidden">
         <ContentTabs />
