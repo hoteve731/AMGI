@@ -38,20 +38,42 @@ export default function ReviewPage() {
 
     const fetchReviewCards = useCallback(async () => {
         try {
+            console.log('Fetching review cards...')
             setIsLoading(true)
-            const { data, error } = await supabase.auth.getSession()
 
-            if (error || !data.session) {
-                console.error('Authentication error:', error)
-                router.push('/login')
-                return
+            // 세션에서 사용자 ID 가져오기
+            const { data: { session } } = await supabase.auth.getSession()
+            const userId = session?.user?.id
+
+            console.log('Session check:', userId ? 'User is authenticated' : 'No user ID found')
+
+            // API 요청 보내기
+            const response = await fetch('/api/review', {
+                headers: {
+                    'Content-Type': 'application/json',
+                    // 사용자 ID가 있으면 Authorization 헤더에 포함
+                    ...(userId && { 'Authorization': `Bearer ${userId}` })
+                },
+                credentials: 'include' // 쿠키 포함
+            })
+
+            console.log('API response status:', response.status)
+
+            if (!response.ok) {
+                const errorData = await response.json()
+                console.error('API error response:', errorData)
+                throw new Error(`서버 오류: ${response.status} - ${errorData.details || errorData.error || '알 수 없는 오류'}`)
             }
 
-            const response = await fetch('/api/review')
             const result = await response.json()
+            console.log('API response data:', result)
 
-            if (result.cards) {
+            if (result.cards && Array.isArray(result.cards)) {
+                console.log(`Received ${result.cards.length} cards for review`)
                 setCards(result.cards)
+            } else {
+                console.warn('No cards received from API or cards is not an array:', result.cards)
+                setCards([])
             }
 
             setIsLoading(false)
@@ -59,7 +81,7 @@ export default function ReviewPage() {
             console.error('Error fetching review cards:', error)
             setIsLoading(false)
         }
-    }, [router, supabase])
+    }, [supabase])
 
     useEffect(() => {
         fetchReviewCards()
@@ -137,16 +159,27 @@ export default function ReviewPage() {
         return '?'
     }
 
-    const handleAnswer = async (result: 'again' | 'hard' | 'good' | 'easy') => {
+    const handleCardAction = async (result: 'again' | 'hard' | 'good' | 'easy') => {
         if (!currentCard || isSubmitting) return
 
         try {
             setIsSubmitting(true)
+            console.log(`Submitting card action: ${result} for card ID: ${currentCard.id}`)
+
+            // 세션에서 사용자 ID 가져오기
+            const { data: { session } } = await supabase.auth.getSession()
+            const userId = session?.user?.id
+
+            if (!userId) {
+                console.error('No authenticated user found')
+                throw new Error('인증된 사용자를 찾을 수 없습니다')
+            }
 
             const response = await fetch('/api/review', {
                 method: 'PUT',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${userId}`
                 },
                 body: JSON.stringify({
                     id: currentCard.id,
@@ -154,24 +187,28 @@ export default function ReviewPage() {
                 })
             })
 
+            console.log('API response status:', response.status)
+
             if (!response.ok) {
-                throw new Error('Failed to update card')
+                const errorData = await response.json()
+                console.error('API error response:', errorData)
+                throw new Error(`서버 오류: ${response.status} - ${errorData.details || errorData.error || '알 수 없는 오류'}`)
             }
 
-            // Remove the current card from the queue
-            setCards(prev => prev.filter((_, i) => i !== currentCardIndex))
+            // Move to the next card
+            if (currentCardIndex < cards.length - 1) {
+                setCurrentCardIndex(prev => prev + 1)
+            } else {
+                // No more cards, show completion message or redirect
+                console.log('All cards reviewed!')
+                router.push('/')
+            }
 
             // Reset flip state
             setIsFlipped(false)
-
-            // If no more cards, refresh the queue
-            if (currentCardIndex >= cards.length - 1) {
-                await fetchReviewCards()
-                setCurrentCardIndex(0)
-            }
         } catch (error) {
-            console.error('Error updating card:', error)
-            alert('카드 업데이트 중 오류가 발생했습니다.')
+            console.error('Error submitting card action:', error)
+            alert('카드 처리 중 오류가 발생했습니다: ' + (error instanceof Error ? error.message : String(error)))
         } finally {
             setIsSubmitting(false)
         }
@@ -183,10 +220,20 @@ export default function ReviewPage() {
         try {
             setIsSubmitting(true)
 
+            // 세션에서 사용자 ID 가져오기
+            const { data: { session } } = await supabase.auth.getSession()
+            const userId = session?.user?.id
+
+            if (!userId) {
+                console.error('No authenticated user found')
+                throw new Error('인증된 사용자를 찾을 수 없습니다')
+            }
+
             const response = await fetch('/api/review', {
                 method: 'PATCH',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${userId}`
                 },
                 body: JSON.stringify({
                     id: currentCard.id,
@@ -286,10 +333,10 @@ export default function ReviewPage() {
                 <div className="flex justify-center mb-6">
                     <div className="inline-flex items-center justify-center bg-gray-100 rounded-full px-3 py-1">
                         <span className={`text-sm font-medium ${currentCard?.card_state === 'new' ? 'text-blue-600' :
-                                currentCard?.card_state === 'learning' ? 'text-orange-600' :
-                                    currentCard?.card_state === 'graduated' ? 'text-green-600' :
-                                        currentCard?.card_state === 'review' ? 'text-purple-600' :
-                                            'text-red-600'
+                            currentCard?.card_state === 'learning' ? 'text-orange-600' :
+                                currentCard?.card_state === 'graduated' ? 'text-green-600' :
+                                    currentCard?.card_state === 'review' ? 'text-purple-600' :
+                                        'text-red-600'
                             }`}>
                             {currentCard?.card_state === 'new' ? '새 카드' :
                                 currentCard?.card_state === 'learning' ? '학습 중' :
@@ -374,7 +421,7 @@ export default function ReviewPage() {
                             </p>
                             <div className="grid grid-cols-4 gap-2 mb-8">
                                 <button
-                                    onClick={() => handleAnswer('again')}
+                                    onClick={() => handleCardAction('again')}
                                     className="flex flex-col items-center justify-center p-4 rounded-xl bg-red-50 hover:bg-red-100 transition-colors"
                                     disabled={isSubmitting}
                                 >
@@ -384,7 +431,7 @@ export default function ReviewPage() {
                                     </span>
                                 </button>
                                 <button
-                                    onClick={() => handleAnswer('hard')}
+                                    onClick={() => handleCardAction('hard')}
                                     className="flex flex-col items-center justify-center p-4 rounded-xl bg-orange-50 hover:bg-orange-100 transition-colors"
                                     disabled={isSubmitting}
                                 >
@@ -394,7 +441,7 @@ export default function ReviewPage() {
                                     </span>
                                 </button>
                                 <button
-                                    onClick={() => handleAnswer('good')}
+                                    onClick={() => handleCardAction('good')}
                                     className="flex flex-col items-center justify-center p-4 rounded-xl bg-green-50 hover:bg-green-100 transition-colors"
                                     disabled={isSubmitting}
                                 >
@@ -404,7 +451,7 @@ export default function ReviewPage() {
                                     </span>
                                 </button>
                                 <button
-                                    onClick={() => handleAnswer('easy')}
+                                    onClick={() => handleCardAction('easy')}
                                     className="flex flex-col items-center justify-center p-4 rounded-xl bg-blue-50 hover:bg-blue-100 transition-colors"
                                     disabled={isSubmitting}
                                 >
