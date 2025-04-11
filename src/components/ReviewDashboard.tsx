@@ -34,20 +34,10 @@ export default function ReviewDashboard() {
                 setIsLoading(true)
                 setError(null)
 
-                // 세션에서 사용자 ID 가져오기
-                const { data: { session } } = await supabase.auth.getSession()
-                const userId = session?.user?.id
-
-                if (!userId) {
-                    console.log('No user ID found in session, continuing anyway')
-                }
-
-                // API 요청 보내기
+                // API 요청 보내기 - 인증은 세션 쿠키로 처리
                 const response = await fetch('/api/review', {
                     headers: {
-                        'Content-Type': 'application/json',
-                        // 사용자 ID가 있으면 Authorization 헤더에 포함
-                        ...(userId && { 'Authorization': `Bearer ${userId}` })
+                        'Content-Type': 'application/json'
                     },
                     credentials: 'include' // 쿠키 포함
                 })
@@ -66,19 +56,12 @@ export default function ReviewDashboard() {
                     setNeedsMigration(true)
                 }
 
-                if (result.error) {
-                    console.error('API error:', result.error)
-                    setError(`데이터를 불러오는 중 오류가 발생했습니다: ${result.error}`)
-                }
-
-                if (result.stats) {
-                    setStats(result.stats)
-                }
-
-                setIsLoading(false)
+                console.log('Review stats:', result.stats)
+                setStats(result.stats)
             } catch (error) {
                 console.error('Error fetching review stats:', error)
-                setError(error instanceof Error ? error.message : '데이터를 불러오는 중 오류가 발생했습니다.')
+                setError('통계를 가져오는 중 오류가 발생했습니다.')
+            } finally {
                 setIsLoading(false)
             }
         }

@@ -12,99 +12,81 @@ const REVIEW_SETTINGS = {
 }
 
 // Helper function to calculate the next due date based on card state and user response
-function calculateNextDue(
-    cardState: string,
+function calculateNextDueDate(
+    currentState: string,
     result: 'again' | 'hard' | 'good' | 'easy',
     currentInterval: number,
     currentEase: number,
     repetitionCount: number
 ) {
     const now = new Date()
-    let newDue = new Date(now)
+    let newDue = now.getTime()
     let newInterval = currentInterval
-    let newEase = currentEase || REVIEW_SETTINGS.starting_ease
-    let newState = cardState
+    let newEase = currentEase
+    let newState = currentState
 
     // Adjust ease based on response
     if (result === 'again') {
         newEase = Math.max(1.3, newEase - 0.2)
     } else if (result === 'hard') {
         newEase = Math.max(1.3, newEase - 0.15)
-    } else if (result === 'good') {
-        // No change to ease
     } else if (result === 'easy') {
         newEase = newEase + 0.15
     }
 
     // Calculate next interval and state based on current state and response
-    if (cardState === 'new' || cardState === 'learning') {
+    if (currentState === 'new' || currentState === 'learning') {
         if (result === 'again') {
             newState = 'learning'
-            // Reset to first step
-            newDue.setMinutes(now.getMinutes() + REVIEW_SETTINGS.steps[0])
-            newInterval = REVIEW_SETTINGS.steps[0] / 1440 // Convert minutes to days
+            newDue = now.getTime() + REVIEW_SETTINGS.steps[0] * 60 * 1000 // First step in minutes
         } else if (result === 'good') {
-            if (cardState === 'learning' && repetitionCount >= REVIEW_SETTINGS.steps.length - 1) {
-                // Graduate the card
+            if (currentState === 'learning' && repetitionCount > 1) {
                 newState = 'graduated'
-                newDue.setDate(now.getDate() + REVIEW_SETTINGS.graduating_interval)
                 newInterval = REVIEW_SETTINGS.graduating_interval
+                newDue = now.getTime() + newInterval * 24 * 60 * 60 * 1000 // Days to milliseconds
             } else {
-                // Move to next step
                 newState = 'learning'
-                const stepIndex = Math.min(repetitionCount, REVIEW_SETTINGS.steps.length - 1)
-                newDue.setMinutes(now.getMinutes() + REVIEW_SETTINGS.steps[stepIndex])
-                newInterval = REVIEW_SETTINGS.steps[stepIndex] / 1440 // Convert minutes to days
+                newDue = now.getTime() + REVIEW_SETTINGS.steps[1] * 60 * 1000 // Second step in minutes
             }
         } else if (result === 'easy') {
-            // Skip learning and graduate immediately
             newState = 'graduated'
-            newDue.setDate(now.getDate() + REVIEW_SETTINGS.graduating_interval * 2)
             newInterval = REVIEW_SETTINGS.graduating_interval * 2
+            newDue = now.getTime() + newInterval * 24 * 60 * 60 * 1000 // Days to milliseconds
         }
-    } else if (cardState === 'graduated' || cardState === 'review') {
+    } else if (currentState === 'graduated' || currentState === 'review') {
         if (result === 'again') {
-            // Card needs relearning
             newState = 'relearning'
-            newDue.setMinutes(now.getMinutes() + REVIEW_SETTINGS.steps[0])
-            newInterval = REVIEW_SETTINGS.steps[0] / 1440 // Convert minutes to days
+            newInterval = Math.max(1, Math.floor(currentInterval * 0.5))
+            newDue = now.getTime() + 24 * 60 * 60 * 1000 // 1 day in milliseconds
         } else if (result === 'hard') {
             newState = 'review'
             newInterval = Math.ceil(currentInterval * REVIEW_SETTINGS.hard_interval * REVIEW_SETTINGS.interval_modifier)
-            newDue.setDate(now.getDate() + newInterval)
+            newDue = now.getTime() + newInterval * 24 * 60 * 60 * 1000
         } else if (result === 'good') {
             newState = 'review'
             newInterval = Math.ceil(currentInterval * newEase * REVIEW_SETTINGS.interval_modifier)
-            newDue.setDate(now.getDate() + newInterval)
+            newDue = now.getTime() + newInterval * 24 * 60 * 60 * 1000
         } else if (result === 'easy') {
             newState = 'review'
             newInterval = Math.ceil(currentInterval * newEase * REVIEW_SETTINGS.easy_bonus * REVIEW_SETTINGS.interval_modifier)
-            newDue.setDate(now.getDate() + newInterval)
+            newDue = now.getTime() + newInterval * 24 * 60 * 60 * 1000
         }
-    } else if (cardState === 'relearning') {
+    } else if (currentState === 'relearning') {
         if (result === 'again') {
-            // Stay in relearning
-            newDue.setMinutes(now.getMinutes() + REVIEW_SETTINGS.steps[0])
-            newInterval = REVIEW_SETTINGS.steps[0] / 1440 // Convert minutes to days
+            newState = 'relearning'
+            newDue = now.getTime() + REVIEW_SETTINGS.steps[0] * 60 * 1000 // First step in minutes
         } else if (result === 'good') {
-            // Return to review
             newState = 'review'
             newInterval = Math.max(1, Math.ceil(currentInterval * 0.5 * REVIEW_SETTINGS.interval_modifier))
-            newDue.setDate(now.getDate() + newInterval)
+            newDue = now.getTime() + newInterval * 24 * 60 * 60 * 1000
         } else if (result === 'easy') {
-            // Return to review with full interval
             newState = 'review'
             newInterval = Math.ceil(currentInterval * REVIEW_SETTINGS.interval_modifier)
-            newDue.setDate(now.getDate() + newInterval)
+            newDue = now.getTime() + newInterval * 24 * 60 * 60 * 1000
         }
     }
 
-    return {
-        due: newDue.getTime(),
-        interval: newInterval,
-        ease: newEase,
-        card_state: newState
-    }
+    return { newState, newInterval, newEase, newDue }
 }
 
 // 타입 정의 추가
@@ -146,35 +128,15 @@ export async function GET(request: NextRequest) {
     try {
         console.log('=== API /review GET 요청 시작 ===')
         console.log('Request headers:', Object.fromEntries(request.headers.entries()))
-        console.log('Request cookies:', request.cookies.getAll())
 
         const supabase = await createClient()
         console.log('Supabase 클라이언트 생성 완료')
 
-        // 인증 확인
-        const { data: { user }, error: authError } = await supabase.auth.getUser()
-        console.log('User from auth.getUser():', user)
+        // 사용자 인증 정보 가져오기
+        const { data: { user } } = await supabase.auth.getUser()
+        const userId = user?.id
 
-        // Authorization 헤더가 있는 경우 이를 처리
-        const authHeader = request.headers.get('Authorization')
-        console.log('Authorization header:', authHeader)
-
-        let userId = user?.id
-
-        // 헤더에서 사용자 ID를 추출 (Bearer 토큰 형식)
-        if (authHeader && authHeader.startsWith('Bearer ')) {
-            const tokenValue = authHeader.substring(7) // 'Bearer ' 이후의 문자열
-            // 주의: 여기서는 클라이언트가 보낸 ID를 사용
-            // 프로덕션 환경에서는 추가 검증이 필요할 수 있음
-            userId = tokenValue
-            console.log('Using ID from Authorization header:', userId)
-        }
-
-        // 사용자 ID가 없는 경우에도 계속 진행
-        // 이미 인증된 사용자만 이 페이지에 접근할 수 있으므로 세션 쿠키를 통해 인증됨
-        if (!userId) {
-            console.log('No user ID found, but continuing as request is likely authenticated via session cookie')
-        }
+        console.log('User ID from session:', userId || 'Not found')
 
         // 사용자 ID가 있는 경우에만 해당 사용자의 카드를 가져옴
         // 없는 경우 모든 카드를 가져옴 (테스트 목적)
@@ -205,11 +167,6 @@ export async function GET(request: NextRequest) {
             .or(`due.lt.${new Date().getTime()},card_state.eq.new`)
             .order('due')
             .limit(50)
-
-        // 사용자 ID가 있는 경우 해당 사용자의 카드만 가져옴
-        if (userId) {
-            query = query.eq('content_groups.contents.user_id', userId)
-        }
 
         // First check if the card_state column exists
         const { data: columnCheck, error: columnError } = await supabase
@@ -273,13 +230,12 @@ export async function GET(request: NextRequest) {
             });
 
             if (!belongsToUser) {
-                console.log('Card does not belong to user:', card.id, 'Group:', card.group_id);
+                console.log('Card does not belong to user:', card.id);
             }
-
             return belongsToUser;
         });
 
-        console.log(`Filtered to ${filteredCards.length} cards for user ${userId}`);
+        console.log(`Filtered to ${filteredCards.length} cards for user ${userId || 'unknown'}`);
 
         // Fetch statistics for all cards
         const { data: statsData, error: statsError } = await supabase
@@ -329,7 +285,7 @@ export async function GET(request: NextRequest) {
             });
         });
 
-        console.log(`Found ${filteredStats.length} stats cards for user ${userId}`);
+        console.log(`Found ${filteredStats.length} stats cards for user ${userId || 'unknown'}`);
 
         // Calculate statistics
         const stats = {
@@ -376,36 +332,20 @@ export async function GET(request: NextRequest) {
 // PUT handler for updating card after review
 export async function PUT(request: NextRequest) {
     try {
+        console.log('=== API /review PUT 요청 시작 ===')
+        console.log('Request headers:', Object.fromEntries(request.headers.entries()))
+
         const supabase = await createClient()
-
-        // 인증 확인
-        const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-        // Authorization 헤더가 있는 경우 이를 처리
-        const authHeader = request.headers.get('Authorization')
-        let userId = user?.id
-
-        // 헤더에서 사용자 ID를 추출 (Bearer 토큰 형식)
-        if (!userId && authHeader && authHeader.startsWith('Bearer ')) {
-            const tokenUserId = authHeader.substring(7) // 'Bearer ' 이후의 문자열
-            if (tokenUserId) {
-                userId = tokenUserId
-                console.log('Using user ID from Authorization header:', userId)
-            }
-        }
-
-        if (authError || !userId) {
-            console.error('Authentication error:', authError || 'No user ID found')
-            return NextResponse.json({ error: 'Unauthorized', details: authError || 'No user ID found' }, { status: 401 })
-        }
 
         // Get request body
         const body = await request.json()
         const { id, result } = body
 
         if (!id || !result) {
-            return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+            return NextResponse.json({ error: 'Bad Request', details: 'Missing required fields: id or result' }, { status: 400 })
         }
+
+        console.log(`Updating card ${id} with result: ${result}`)
 
         // Fetch the current card data
         const { data: card, error: cardError } = await supabase
@@ -414,79 +354,74 @@ export async function PUT(request: NextRequest) {
             .eq('id', id)
             .single()
 
-        if (cardError || !card) {
+        if (cardError) {
             console.error('Error fetching card:', cardError)
-            return NextResponse.json({ error: 'Card not found' }, { status: 404 })
+            return NextResponse.json({ error: 'Card not found', details: cardError.message }, { status: 404 })
         }
 
         // Calculate next due date and updated card state
-        const nextState = calculateNextDue(
-            card.card_state || 'new',
+        const now = new Date()
+        const currentState = card.card_state || 'new'
+        const currentInterval = card.interval || 0
+        const currentEase = card.ease || REVIEW_SETTINGS.starting_ease
+        const repetitionCount = (card.repetition_count || 0) + 1
+
+        const { newState, newInterval, newEase, newDue } = calculateNextDueDate(
+            currentState,
             result,
-            card.interval || 0,
-            card.ease || REVIEW_SETTINGS.starting_ease,
-            card.repetition_count || 0
+            currentInterval,
+            currentEase,
+            repetitionCount
         )
+
+        console.log(`Card update: state=${currentState}->${newState}, interval=${currentInterval}->${newInterval}, ease=${currentEase}->${newEase}, due=${new Date(newDue).toISOString()}`)
 
         // Update the card
         const { error: updateError } = await supabase
             .from('content_chunks')
             .update({
-                card_state: nextState.card_state,
-                due: nextState.due,
-                ease: nextState.ease,
-                interval: nextState.interval,
-                repetition_count: (card.repetition_count || 0) + 1,
+                card_state: newState,
+                interval: newInterval,
+                ease: newEase,
+                due: newDue,
+                repetition_count: repetitionCount,
                 last_result: result,
-                last_reviewed: new Date().getTime()
+                last_reviewed: now.getTime()
             })
             .eq('id', id)
 
         if (updateError) {
             console.error('Error updating card:', updateError)
-            return NextResponse.json({ error: 'Failed to update card' }, { status: 500 })
+            return NextResponse.json({ error: 'Failed to update card', details: updateError.message }, { status: 500 })
         }
 
-        return NextResponse.json({ success: true, nextState })
+        return NextResponse.json({ success: true })
     } catch (error) {
-        console.error('Error in review PUT handler:', error)
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+        console.error('Error in PUT handler:', error)
+        return NextResponse.json({
+            error: 'Internal Server Error',
+            details: error instanceof Error ? error.message : String(error)
+        }, { status: 500 })
     }
 }
 
 // PATCH handler for updating card status (active/inactive)
 export async function PATCH(request: NextRequest) {
     try {
+        console.log('=== API /review PATCH 요청 시작 ===')
+        console.log('Request headers:', Object.fromEntries(request.headers.entries()))
+
         const supabase = await createClient()
-
-        // 인증 확인
-        const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-        // Authorization 헤더가 있는 경우 이를 처리
-        const authHeader = request.headers.get('Authorization')
-        let userId = user?.id
-
-        // 헤더에서 사용자 ID를 추출 (Bearer 토큰 형식)
-        if (!userId && authHeader && authHeader.startsWith('Bearer ')) {
-            const tokenUserId = authHeader.substring(7) // 'Bearer ' 이후의 문자열
-            if (tokenUserId) {
-                userId = tokenUserId
-                console.log('Using user ID from Authorization header:', userId)
-            }
-        }
-
-        if (authError || !userId) {
-            console.error('Authentication error:', authError || 'No user ID found')
-            return NextResponse.json({ error: 'Unauthorized', details: authError || 'No user ID found' }, { status: 401 })
-        }
 
         // Get request body
         const body = await request.json()
         const { id, status } = body
 
-        if (!id || !status || !['active', 'inactive'].includes(status)) {
-            return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
+        if (!id || !status) {
+            return NextResponse.json({ error: 'Bad Request', details: 'Missing required fields: id or status' }, { status: 400 })
         }
+
+        console.log(`Updating card ${id} status to: ${status}`)
 
         // Update the card status
         const { error: updateError } = await supabase

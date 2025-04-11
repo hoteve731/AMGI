@@ -41,18 +41,9 @@ export default function ReviewPage() {
             console.log('Fetching review cards...')
             setIsLoading(true)
 
-            // 세션에서 사용자 ID 가져오기
-            const { data: { session } } = await supabase.auth.getSession()
-            const userId = session?.user?.id
-
-            console.log('Session check:', userId ? 'User is authenticated' : 'No user ID found')
-
-            // API 요청 보내기
             const response = await fetch('/api/review', {
                 headers: {
-                    'Content-Type': 'application/json',
-                    // 사용자 ID가 있으면 Authorization 헤더에 포함
-                    ...(userId && { 'Authorization': `Bearer ${userId}` })
+                    'Content-Type': 'application/json'
                 },
                 credentials: 'include' // 쿠키 포함
             })
@@ -124,6 +115,9 @@ export default function ReviewPage() {
         if (card.card_state === 'new' || card.card_state === 'learning') {
             if (result === 'again') {
                 return '1m'
+            } else if (result === 'hard') {
+                // 학습 중인 카드에 대한 hard 결과 처리
+                return '5m'
             } else if (result === 'good') {
                 if (card.card_state === 'learning') {
                     return '1d'
@@ -149,6 +143,9 @@ export default function ReviewPage() {
         } else if (card.card_state === 'relearning') {
             if (result === 'again') {
                 return '1m'
+            } else if (result === 'hard') {
+                // 재학습 중인 카드에 대한 hard 결과 처리
+                return '5m'
             } else if (result === 'good') {
                 return formatInterval(Math.max(1, Math.ceil(interval * 0.5 * settings.interval_modifier)))
             } else if (result === 'easy') {
@@ -166,25 +163,16 @@ export default function ReviewPage() {
             setIsSubmitting(true)
             console.log(`Submitting card action: ${result} for card ID: ${currentCard.id}`)
 
-            // 세션에서 사용자 ID 가져오기
-            const { data: { session } } = await supabase.auth.getSession()
-            const userId = session?.user?.id
-
-            if (!userId) {
-                console.error('No authenticated user found')
-                throw new Error('인증된 사용자를 찾을 수 없습니다')
-            }
-
             const response = await fetch('/api/review', {
                 method: 'PUT',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${userId}`
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
                     id: currentCard.id,
                     result
-                })
+                }),
+                credentials: 'include' // 쿠키 포함
             })
 
             console.log('API response status:', response.status)
@@ -219,30 +207,26 @@ export default function ReviewPage() {
 
         try {
             setIsSubmitting(true)
-
-            // 세션에서 사용자 ID 가져오기
-            const { data: { session } } = await supabase.auth.getSession()
-            const userId = session?.user?.id
-
-            if (!userId) {
-                console.error('No authenticated user found')
-                throw new Error('인증된 사용자를 찾을 수 없습니다')
-            }
+            console.log(`Updating card status to ${status} for card ID: ${currentCard.id}`)
 
             const response = await fetch('/api/review', {
                 method: 'PATCH',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${userId}`
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
                     id: currentCard.id,
                     status
-                })
+                }),
+                credentials: 'include' // 쿠키 포함
             })
 
+            console.log('API response status:', response.status)
+
             if (!response.ok) {
-                throw new Error('Failed to update card status')
+                const errorData = await response.json()
+                console.error('API error response:', errorData)
+                throw new Error(`서버 오류: ${response.status} - ${errorData.details || errorData.error || '알 수 없는 오류'}`)
             }
 
             // Remove the current card from the queue
@@ -258,7 +242,7 @@ export default function ReviewPage() {
             }
         } catch (error) {
             console.error('Error updating card status:', error)
-            alert('카드 상태 업데이트 중 오류가 발생했습니다.')
+            alert('카드 상태 업데이트 중 오류가 발생했습니다: ' + (error instanceof Error ? error.message : String(error)))
         } finally {
             setIsSubmitting(false)
         }
@@ -406,13 +390,20 @@ export default function ReviewPage() {
                 <div className="mt-auto pt-4 h-[150px]">
                     {!isFlipped ? (
                         // 앞면: 정답 보기 버튼
-                        <button
-                            onClick={handleFlip}
-                            className="w-full bg-white rounded-xl border border-[#D4C4B7] py-4 text-gray-800 font-medium hover:bg-gray-50 transition-colors shadow-lg mb-8"
-                            disabled={isSubmitting}
-                        >
-                            정답 보기
-                        </button>
+                        <div>
+                            <p className="text-center text-gray-600 text-sm mb-4">
+                                정답을 확인하려면 버튼을 클릭하세요
+                            </p>
+                            <div className="grid grid-cols-1 gap-2 mb-8">
+                                <button
+                                    onClick={handleFlip}
+                                    className="flex flex-col items-center justify-center p-4 rounded-xl bg-white border border-[#D4C4B7] hover:bg-gray-50 transition-colors shadow-lg"
+                                    disabled={isSubmitting}
+                                >
+                                    <span className="text-gray-800 font-medium">정답 보기</span>
+                                </button>
+                            </div>
+                        </div>
                     ) : (
                         // 뒷면: 난이도 버튼들
                         <div>
