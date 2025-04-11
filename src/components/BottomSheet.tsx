@@ -319,7 +319,7 @@ export default function BottomSheet() {
                             >
                                 <div className="w-full">
                                     <div className="text-[#7C6FFB] font-medium text-sm mb-1">
-                                        내 것으로 만들고 싶은 아이디어
+                                        기억하고 싶은 아이디어
                                     </div>
                                     <div className="text-gray-400 text-base truncate">
                                         {text ? text : '여기에 타이핑하거나 붙여넣으세요...'}
@@ -375,7 +375,7 @@ export default function BottomSheet() {
 
                                 <form onSubmit={handleSubmit} className="flex-1 flex flex-col p-4">
                                     <div className="text-[#7C6FFB] font-medium text-sm mb-2">
-                                        내 것으로 만들고 싶은 아이디어
+                                        기억하고 싶은 아이디어
                                     </div>
 
                                     {/* Additional Memory Input Area - Moved Here */}

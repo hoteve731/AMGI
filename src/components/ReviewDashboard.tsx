@@ -12,7 +12,11 @@ type ReviewStats = {
     total: number
 }
 
-export default function ReviewDashboard() {
+interface ReviewDashboardProps {
+    userName: string
+}
+
+export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
     const router = useRouter()
     const supabase = createClientComponentClient()
 
@@ -73,15 +77,16 @@ export default function ReviewDashboard() {
         router.push('/review')
     }
 
+    const handleAddIdea = () => {
+        // 바텀시트 열기 - 전역 이벤트 발생시키기
+        window.dispatchEvent(new Event('openBottomSheet'))
+    }
+
     if (isLoading) {
         return (
             <div className="bg-white/90 backdrop-blur-md rounded-xl border border-gray-200 shadow-lg p-6 mb-6">
-                <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xl font-bold text-gray-800">복습</h2>
-                    <div className="w-5 h-5 rounded-full border-2 border-gray-300 border-t-transparent animate-spin"></div>
-                </div>
-                <div className="h-24 flex items-center justify-center">
-                    <p className="text-gray-500">복습 정보를 불러오는 중...</p>
+                <div className="flex items-center justify-center h-24">
+                    <div className="w-6 h-6 rounded-full border-2 border-purple-300 border-t-transparent animate-spin"></div>
                 </div>
             </div>
         )
@@ -90,9 +95,8 @@ export default function ReviewDashboard() {
     if (error) {
         return (
             <div className="bg-white/90 backdrop-blur-md rounded-xl border border-gray-200 shadow-lg p-6 mb-6">
-                <h2 className="text-xl font-bold text-gray-800 mb-4">복습</h2>
-                <div className="text-center py-6">
-                    <p className="text-gray-500 mb-4">{error}</p>
+                <div className="text-center py-4">
+                    <p className="text-gray-500">{error}</p>
                 </div>
             </div>
         )
@@ -101,73 +105,114 @@ export default function ReviewDashboard() {
     if (needsMigration) {
         return (
             <div className="bg-white/90 backdrop-blur-md rounded-xl border border-gray-200 shadow-lg p-6 mb-6">
-                <h2 className="text-xl font-bold text-gray-800 mb-4">복습</h2>
-                <div className="text-center py-6">
-                    <p className="text-gray-500 mb-4">데이터베이스 마이그레이션이 필요합니다.</p>
-                    <p className="text-sm text-gray-400">
-                        데이터베이스를 마이그레이션한 후 다시 시도해 주세요.
-                    </p>
+                <div className="text-center py-4">
+                    <p className="text-gray-500">데이터베이스 마이그레이션이 필요합니다.</p>
                 </div>
             </div>
         )
     }
 
-    if (stats.total === 0) {
+    // 복습할 카드가 없는 경우
+    if (stats.due === 0) {
         return (
             <div className="bg-white/90 backdrop-blur-md rounded-xl border border-gray-200 shadow-lg p-6 mb-6">
-                <h2 className="text-xl font-bold text-gray-800 mb-4">복습</h2>
-                <div className="text-center py-6">
-                    <p className="text-gray-500 mb-4">아직 복습할 카드가 없습니다.</p>
-                    <p className="text-sm text-gray-400">
-                        콘텐츠를 추가하면 자동으로 복습 카드가 생성됩니다.
-                    </p>
+                <div className="flex items-center mb-6">
+                    <img
+                        src="/images/doneloopa.png"
+                        alt="No cards character"
+                        className="w-20 h-20"
+                    />
+                    <div className="ml-4">
+                        <p className="text-lg font-medium text-gray-800">
+                            {userName}님,<br />
+                            기억할 카드가 없어요!
+                        </p>
+                    </div>
+                </div>
+
+                {/* 복습 통계 */}
+                <div className="grid grid-cols-4 gap-2 mb-6">
+                    <div className="text-center">
+                        <p className="text-blue-600 text-xl font-medium">{stats.new}</p>
+                        <p className="text-gray-500 text-xs">새 카드</p>
+                    </div>
+                    <div className="text-center">
+                        <p className="text-orange-600 text-xl font-medium">{stats.learning}</p>
+                        <p className="text-gray-500 text-xs">학습 중</p>
+                    </div>
+                    <div className="text-center">
+                        <p className="text-purple-600 text-xl font-medium">{stats.review}</p>
+                        <p className="text-gray-500 text-xs">복습 중</p>
+                    </div>
+                    <div className="text-center">
+                        <p className="text-gray-800 text-xl font-medium">{stats.total}</p>
+                        <p className="text-gray-500 text-xs">전체 카드</p>
+                    </div>
+                </div>
+
+                {/* 아이디어 추가 버튼 */}
+                <div className="flex justify-center">
+                    <button
+                        onClick={handleAddIdea}
+                        className="w-full py-4 px-6 rounded-xl bg-white border border-[#D4C4B7] text-[#7969F7] font-medium hover:bg-gray-50 transition-all duration-200 flex items-center justify-center"
+                    >
+                        <span>기억하고 싶은 아이디어 추가하기</span>
+                        <span className="ml-2 text-[#7969F7] text-lg">+</span>
+                    </button>
                 </div>
             </div>
         )
     }
 
+    // 복습할 카드가 있는 경우
     return (
-        <div className="bg-white/90 backdrop-blur-md rounded-xl border border-gray-200 shadow-lg p-6 mb-6">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">복습</h2>
+        <div className="bg-white/80 backdrop-blur-md rounded-xl shadow-lg p-5 mb-6">
+            <div className="flex items-center mb-6">
+                <img
+                    src="/images/reviewloopa.png"
+                    alt="Study character"
+                    className="w-20 h-20"
+                />
+                <div className="ml-4">
+                    <p className="text-xl font-bold text-gray-800">
+                        {userName}님,<br />
+                        학습을 시작해 볼까요?
+                    </p>
+                </div>
+            </div>
 
             {/* 복습 통계 */}
             <div className="grid grid-cols-4 gap-2 mb-6">
-                <div className="bg-blue-50 rounded-lg p-3 text-center">
-                    <p className="text-blue-600 text-xl font-bold">{stats.new}</p>
-                    <p className="text-blue-500 text-sm">새 카드</p>
+                <div className="text-center">
+                    <p className="text-blue-600 text-xl font-light">{stats.new}</p>
+                    <p className="text-gray-500 text-xs font-bold">새 카드</p>
                 </div>
-                <div className="bg-orange-50 rounded-lg p-3 text-center">
-                    <p className="text-orange-600 text-xl font-bold">{stats.learning}</p>
-                    <p className="text-orange-500 text-sm">학습 중</p>
+                <div className="text-center">
+                    <p className="text-orange-600 text-xl font-light">{stats.learning}</p>
+                    <p className="text-gray-500 text-xs font-bold">학습 중</p>
                 </div>
-                <div className="bg-purple-50 rounded-lg p-3 text-center">
-                    <p className="text-purple-600 text-xl font-bold">{stats.review}</p>
-                    <p className="text-purple-500 text-sm">복습</p>
+                <div className="text-center">
+                    <p className="text-purple-600 text-xl font-light">{stats.review}</p>
+                    <p className="text-gray-500 text-xs font-bold">복습 중</p>
                 </div>
-                <div className="bg-green-50 rounded-lg p-3 text-center">
-                    <p className="text-green-600 text-xl font-bold">{stats.total}</p>
-                    <p className="text-green-500 text-sm">전체</p>
+                <div className="text-center">
+                    <p className="text-gray-800 text-xl font-light">{stats.total}</p>
+                    <p className="text-gray-500 text-xs font-bold">전체 카드</p>
                 </div>
             </div>
 
             {/* 복습 시작 버튼 */}
-            <div className="flex justify-center">
+            <div className="flex flex-col items-center">
                 <button
                     onClick={handleStartReview}
-                    disabled={stats.due === 0}
-                    className={`
-            py-3 px-6 rounded-lg font-medium transition-all duration-200
-            ${stats.due > 0
-                            ? 'bg-purple-600 hover:bg-purple-700 text-white shadow-md hover:shadow-lg'
-                            : 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                        }
-          `}
+                    className="w-full py-4 px-6 rounded-xl bg-[#7969F7] text-white font-bold hover:bg-[#6858e6] transition-all duration-200 flex items-center justify-center"
                 >
-                    {stats.due > 0
-                        ? `${stats.due}개 카드 복습하기`
-                        : '복습할 카드가 없습니다'
-                    }
+                    <span className="mr-2">🔥</span>
+                    <span>{stats.due}개 카드 복습 시작하기</span>
                 </button>
+                <p className="text-xs text-gray-500 mt-2 text-center">
+                    가장 잘 기억할 수 있도록 순서와 간격이 실시간으로 조정돼요
+                </p>
             </div>
         </div>
     )
