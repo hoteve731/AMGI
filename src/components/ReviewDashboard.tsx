@@ -78,8 +78,10 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
     }
 
     const handleAddIdea = () => {
-        // 바텀시트 열기 - 전역 이벤트 발생시키기
-        window.dispatchEvent(new Event('openBottomSheet'))
+        // 바텀시트 열기 - CustomEvent 사용
+        console.log('바텀시트 열기 이벤트 발생시키기')
+        const event = new CustomEvent('openBottomSheet')
+        window.dispatchEvent(event)
     }
 
     if (isLoading) {

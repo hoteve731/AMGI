@@ -235,6 +235,22 @@ export default function BottomSheet() {
         return () => window.removeEventListener('keydown', handleEscape)
     }, [isExpanded])
 
+    // 외부에서 바텀시트를 열 수 있도록 이벤트 리스너 추가
+    useEffect(() => {
+        const handleOpenBottomSheet = (e: CustomEvent) => {
+            console.log('바텀시트 열기 이벤트 수신됨')
+            expandSheet()
+        }
+
+        // 전역 이벤트 리스너 등록
+        window.addEventListener('openBottomSheet', handleOpenBottomSheet as EventListener)
+
+        // 컴포넌트 언마운트 시 이벤트 리스너 제거
+        return () => {
+            window.removeEventListener('openBottomSheet', handleOpenBottomSheet as EventListener)
+        }
+    }, [])
+
     if (isLoading) {
         return <LoadingScreen
             progress={loadingProgress}
