@@ -14,6 +14,7 @@ type Chunk = {
     summary: string
     masked_text: string
     position: number
+    status?: 'active' | 'inactive'
 }
 
 type ContentGroup = {
@@ -49,6 +50,11 @@ export default function GroupDetail({ content, group: initialGroup }: { content:
     const [fcmToken, setFcmToken] = useState<string | null>(null)
     const [showGroupSelector, setShowGroupSelector] = useState(false)
     const supabase = createClientComponentClient()
+
+    // Add state for editing functionality
+    const [editingChunkId, setEditingChunkId] = useState<string | null>(null)
+    const [editSummary, setEditSummary] = useState('')
+    const [editMaskedText, setEditMaskedText] = useState('')
 
     // 세션 상태 관리 추가
     const [session, setSession] = useState<any>(null)
@@ -468,6 +474,145 @@ export default function GroupDetail({ content, group: initialGroup }: { content:
         });
     };
 
+    // Add function to toggle chunk active status
+    const toggleChunkActive = async (e: React.MouseEvent, chunkId: string, newStatus: 'active' | 'inactive') => {
+        e.stopPropagation() // Prevent card click event
+
+        if (!currentGroup) return
+
+        try {
+            // Find the chunk and set its status
+            const updatedChunks = currentGroup.chunks.map(chunk => {
+                if (chunk.id === chunkId) {
+                    return { ...chunk, status: newStatus }
+                }
+                return chunk
+            })
+
+            // Update the current group with the updated chunks
+            setCurrentGroup({
+                ...currentGroup,
+                chunks: updatedChunks as Chunk[]
+            })
+
+            // Update the database
+            const { error } = await supabase
+                .from('content_chunks')
+                .update({
+                    status: newStatus
+                })
+                .eq('id', chunkId)
+
+            if (error) {
+                console.error('Error updating chunk status:', error)
+                throw error
+            }
+        } catch (error) {
+            console.error('Error toggling chunk status:', error)
+            alert('상태 변경 중 오류가 발생했습니다.')
+        }
+    }
+
+    // Add function to handle edit button click
+    const handleEditClick = (e: React.MouseEvent, chunk: Chunk) => {
+        e.stopPropagation() // Prevent card click event
+        setEditingChunkId(chunk.id)
+        setEditSummary(chunk.summary)
+        setEditMaskedText(chunk.masked_text)
+    }
+
+    // Add function to save edited chunk
+    const saveEditedChunk = async (chunkId: string) => {
+        if (!currentGroup) return
+
+        setIsLoading(true)
+
+        try {
+            // Update the chunk in the current group
+            const updatedChunks = currentGroup.chunks.map(chunk => {
+                if (chunk.id === chunkId) {
+                    return { ...chunk, summary: editSummary, masked_text: editMaskedText }
+                }
+                return chunk
+            })
+
+            // Update the current group with the updated chunks
+            setCurrentGroup({
+                ...currentGroup,
+                chunks: updatedChunks
+            })
+
+            // Update the database
+            const { error } = await supabase
+                .from('content_chunks')
+                .update({
+                    summary: editSummary,
+                    masked_text: editMaskedText
+                })
+                .eq('id', chunkId)
+
+            if (error) {
+                console.error('Error updating chunk:', error)
+                throw error
+            }
+
+            // Reset editing state
+            setEditingChunkId(null)
+            setEditSummary('')
+            setEditMaskedText('')
+        } catch (error) {
+            console.error('Error saving edited chunk:', error)
+            alert('변경사항 저장 중 오류가 발생했습니다.')
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
+    // Add function to cancel editing
+    const cancelEditing = () => {
+        setEditingChunkId(null)
+        setEditSummary('')
+        setEditMaskedText('')
+    }
+
+    // Add function to delete chunk
+    const deleteChunk = async (e: React.MouseEvent, chunkId: string) => {
+        e.stopPropagation() // Prevent card click event
+
+        if (!currentGroup || !confirm('정말로 이 기억카드를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+            return
+        }
+
+        setIsLoading(true)
+
+        try {
+            // Remove the chunk from the current group
+            const updatedChunks = currentGroup.chunks.filter(chunk => chunk.id !== chunkId)
+
+            // Update the current group with the updated chunks
+            setCurrentGroup({
+                ...currentGroup,
+                chunks: updatedChunks
+            })
+
+            // Delete from the database
+            const { error } = await supabase
+                .from('content_chunks')
+                .delete()
+                .eq('id', chunkId)
+
+            if (error) {
+                console.error('Error deleting chunk:', error)
+                throw error
+            }
+        } catch (error) {
+            console.error('Error deleting chunk:', error)
+            alert('기억카드 삭제 중 오류가 발생했습니다.')
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
     if (!currentGroup) {
         return (
             <main className="flex min-h-screen flex-col bg-gradient-to-b from-[#F8F4EF] to-[#E8D9C5]">
@@ -701,11 +846,13 @@ export default function GroupDetail({ content, group: initialGroup }: { content:
                     <div className="space-y-4">
                         {currentGroup.chunks?.map((chunk: Chunk, index: number) => {
                             const notification = getNotificationForChunk(chunk.id);
+                            const isActive = chunk.status !== 'inactive'; // If status is undefined or 'active', treat as active
+
                             return (
                                 <div
                                     key={chunk.id}
-                                    onClick={() => handleChunkClick(chunk.id)}
-                                    className="
+                                    onClick={editingChunkId === chunk.id ? undefined : (e) => handleEditClick(e, chunk)}
+                                    className={`
                                     p-4 
                                     bg-white/80
                                     backdrop-blur-md 
@@ -713,65 +860,145 @@ export default function GroupDetail({ content, group: initialGroup }: { content:
                                     border
                                     border-white/20
                                     hover:bg-white/90
-                                    transition-colors
+                                    transition-all
+                                    duration-300
                                     [-webkit-backdrop-filter:blur(20px)]
                                     [backdrop-filter:blur(20px)]
                                     relative
                                     z-0
-                                    cursor-pointer
-                                "
+                                    ${editingChunkId === chunk.id ? '' : 'cursor-pointer'}
+                                    ${isActive ? '' : 'opacity-50'}
+                                `}
                                 >
-                                    <div className="flex justify-between items-center">
-                                        {notification && (
-                                            <div className="text-sm font-medium text-purple-600">
-                                                {formatTimeRemaining(notification.scheduledFor)} 알림
+                                    <div className="flex justify-between items-center mb-4">
+                                        <div className="flex items-center">
+                                            {notification && (
+                                                <div className="text-sm font-medium text-purple-600 mr-2">
+                                                    {formatTimeRemaining(notification.scheduledFor)} 알림
+                                                </div>
+                                            )}
+
+                                            {/* Edit/Delete buttons */}
+                                            {editingChunkId !== chunk.id && (
+                                                <div className="flex space-x-2" onClick={e => e.stopPropagation()}>
+                                                    {/* Edit button */}
+                                                    <button
+                                                        onClick={(e) => handleEditClick(e, chunk)}
+                                                        className="p-1 text-gray-600 hover:text-gray-800 transition-colors"
+                                                        aria-label="수정"
+                                                    >
+                                                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                                        </svg>
+                                                    </button>
+
+                                                    {/* Delete button */}
+                                                    <button
+                                                        onClick={(e) => deleteChunk(e, chunk.id)}
+                                                        className="p-1 text-gray-600 hover:text-red-600 transition-colors"
+                                                        aria-label="삭제"
+                                                    >
+                                                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Save/Cancel or Active/Inactive buttons */}
+                                        <div onClick={e => e.stopPropagation()}>
+                                            {editingChunkId === chunk.id ? (
+                                                <div className="flex space-x-2">
+                                                    {/* Save button */}
+                                                    <button
+                                                        onClick={() => saveEditedChunk(chunk.id)}
+                                                        className="px-2 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors font-medium text-sm"
+                                                        aria-label="저장"
+                                                    >
+                                                        저장
+                                                    </button>
+
+                                                    {/* Cancel button */}
+                                                    <button
+                                                        onClick={cancelEditing}
+                                                        className="px-2 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors font-medium text-sm"
+                                                        aria-label="취소"
+                                                    >
+                                                        취소
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                /* Active/Inactive buttons - side by side */
+                                                <div className="flex space-x-1">
+                                                    {/* Active button */}
+                                                    <button
+                                                        onClick={(e) => toggleChunkActive(e, chunk.id, 'active')}
+                                                        className={`p-1 transition-colors ${isActive ? 'text-green-600' : 'text-gray-400 hover:text-green-600'}`}
+                                                        aria-label="활성화"
+                                                    >
+                                                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                        </svg>
+                                                    </button>
+
+                                                    {/* Inactive button */}
+                                                    <button
+                                                        onClick={(e) => toggleChunkActive(e, chunk.id, 'inactive')}
+                                                        className={`p-1 transition-colors ${!isActive ? 'text-red-500' : 'text-gray-400 hover:text-red-500'}`}
+                                                        aria-label="비활성화"
+                                                    >
+                                                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {editingChunkId === chunk.id ? (
+                                        <>
+                                            <div className="mt-2">
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">앞면</label>
+                                                <textarea
+                                                    value={editSummary}
+                                                    onChange={(e) => setEditSummary(e.target.value)}
+                                                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                                    rows={3}
+                                                />
                                             </div>
-                                        )}
-                                    </div>
-                                    <p className="mt-2 text-gray-600">{formatBoldText(chunk.summary)}</p>
-                                    <div className="mt-3 p-3 bg-gray-100 rounded-lg">
-                                        <p className="text-gray-700 whitespace-pre-wrap">{formatBoldText(chunk.masked_text)}</p>
-                                    </div>
+                                            <div className="mt-3">
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">뒷면</label>
+                                                <textarea
+                                                    value={editMaskedText}
+                                                    onChange={(e) => setEditMaskedText(e.target.value)}
+                                                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                                    rows={5}
+                                                />
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <p className="mt-2 text-gray-600">{formatBoldText(chunk.summary)}</p>
+                                            <div className="mt-3 p-3 bg-gray-100 rounded-lg">
+                                                <p className="text-gray-700 whitespace-pre-wrap">{formatBoldText(chunk.masked_text)}</p>
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
                             );
                         })}
                     </div>
                 </div>
 
-                {/* 알림 스케줄 */}
-                <div className="mb-6 p-4 bg-white/80 backdrop-blur-md rounded-xl border border-white/20">
-                    <div className="flex justify-between items-center mb-3">
-                        <h3 className="text-lg font-semibold text-gray-700">알림 스케줄</h3>
-                        <div className="text-sm font-medium px-2 py-1 bg-blue-100 text-blue-800 rounded-full">
-                            <span className="font-bold">{activeNotificationsCount}</span>개 예약됨
-                        </div>
-                    </div>
-                    <p className="text-gray-600 text-sm mb-4">
-                        {activeNotificationsCount > 0
-                            ? '아래 카드들의 알림이 예약되어 있습니다. 각 카드에 표시된 시간에 알림을 받게 됩니다.'
-                            : '아직 예약된 알림이 없습니다. 학습 시작 버튼을 눌러 알림을 설정하세요.'}
-                    </p>
-                    <div className="flex flex-col space-y-3">
-                        <button
-                            onClick={handleStartLearning}
-                            className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition-colors flex items-center justify-center"
-                        >
-                            <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3.197-2.132a1 1 0 000-1.664z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            지금 학습 시작하기
-                        </button>
-                        <button
-                            onClick={scheduleNotifications}
-                            className="w-full py-3 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors flex items-center justify-center"
-                        >
-                            <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                            </svg>
-                            복습 알림 설정
-                        </button>
-                    </div>
+                <div className="mb-6">
+                    <button
+                        onClick={handleStartLearning}
+                        className="w-full py-4 px-6 rounded-xl bg-[#7969F7] text-white font-bold hover:bg-[#6858e6] transition-all duration-200 flex items-center justify-center"
+                    >
+                        이 그룹 지금 학습하기
+                    </button>
                 </div>
             </div>
         </main>
