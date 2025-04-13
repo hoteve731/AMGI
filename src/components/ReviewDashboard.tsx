@@ -97,11 +97,11 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
     const completedCards = stats.total - stats.due;
     const completionPercentage = stats.total > 0 ? Math.round((completedCards / stats.total) * 100) : 100;
 
-    // Calculate the stroke dash array and offset for the circular progress
-    const calculateStrokeDashArray = (percentage: number) => {
-        const circumference = 2 * Math.PI * 70; // radius is 70
-        return `${circumference * percentage / 100} ${circumference}`;
-    }
+    // 새 카드, 학습 중, 복습 중의 비율 계산
+    const totalCards = stats.new + stats.learning + stats.review;
+    const newRatio = totalCards > 0 ? stats.new / totalCards : 0;
+    const learningRatio = totalCards > 0 ? stats.learning / totalCards : 0;
+    const reviewRatio = totalCards > 0 ? stats.review / totalCards : 0;
 
     if (isLoading) {
         return (
@@ -149,8 +149,8 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
                     transition={{ duration: 0.5, delay: 0.3 }}
                     className="text-center mb-3"
                 >
-                    <span className="text-white text-3xl font-extrabold">{stats.total}</span>
-                    <span className="text-[#5F4BB6] text-2xl font-bold">/{stats.total} 완료</span>
+                    <span className="text-[#5F4BB6] text-3xl font-extrabold">{stats.total}</span>
+                    <span className="text-white text-2xl font-bold">/{stats.total} 완료</span>
                 </motion.div>
 
                 {/* 카드 타입 카운터 - 가로 정렬 */}
@@ -161,10 +161,10 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ duration: 0.4, delay: 0.4 }}
                     >
-                        <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center mr-1">
-                            <span className="text-[#B4B6E4] text-base font-bold">{stats.total}</span>
+                        <div className="w-8 h-8 rounded-full bg-[#FDFF8C] flex items-center justify-center mr-1">
+                            <span className="text-gray-800 text-base font-bold">{stats.new}</span>
                         </div>
-                        <span className="text-white text-m font-bold">전체 카드</span>
+                        <span className="text-white text-m font-bold">새 카드</span>
                     </motion.div>
 
                     <motion.div
@@ -173,10 +173,10 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ duration: 0.4, delay: 0.5 }}
                     >
-                        <div className="w-8 h-8 rounded-full bg-[#FDFF8C] flex items-center justify-center mr-1">
-                            <span className="text-gray-800 text-base font-bold">{stats.learning + stats.review}</span>
+                        <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center mr-1">
+                            <span className="text-[#B4B6E4] text-base font-bold">{stats.learning}</span>
                         </div>
-                        <span className="text-white text-m font-bold">학습 중</span>
+                        <span className="text-white text-m font-bold">학습</span>
                     </motion.div>
 
                     <motion.div
@@ -185,52 +185,101 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ duration: 0.4, delay: 0.6 }}
                     >
-                        <div className="w-8 h-8 rounded-full bg-black flex items-center justify-center mr-1">
-                            <span className="text-white text-base font-bold">{stats.due}</span>
+                        <div className="w-8 h-8 rounded-full bg-[#5F4BB6] flex items-center justify-center mr-1">
+                            <span className="text-white text-base font-bold">{stats.review}</span>
                         </div>
-                        <span className="text-white text-m font-bold">학습 필요</span>
+                        <span className="text-white text-m font-bold">복습</span>
                     </motion.div>
                 </div>
 
                 {/* 캐릭터와 아치 */}
-                <div className="relative flex items-center justify-center w-full h-38">
-                    {/* 아치 배경 */}
-                    <svg className="absolute w-full h-38" viewBox="0 0 300 150">
-                        <defs>
-                            <linearGradient id="archGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                                <stop offset="0%" stopColor="#E2DDFF" stopOpacity="1" />
-                                <stop offset="100%" stopColor="#E2DDFF" stopOpacity="1" />
-                            </linearGradient>
-                        </defs>
-                        {/* 배경 아치 - 더 두껍고 넓게, 완전 둥근 끝 */}
-                        <path
-                            d="M 30,140 A 120,120 0 1,1 270,140"
-                            fill="none"
-                            stroke="url(#archGradient)"
-                            strokeWidth="40"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                        />
+                <div className="relative flex flex-col items-center justify-center w-[300px] mx-auto h-56 mb-8">
+                    {/* 아치 프로그레스 바 */}
+                    <div className="relative w-full h-40 mb-2">
+                        <svg className="absolute w-full h-full" viewBox="0 0 300 150">
+                            <defs>
+                                <linearGradient id="archGradientBg" x1="0%" y1="0%" x2="100%" y2="0%">
+                                    <stop offset="0%" stopColor="#E2DDFF" stopOpacity="1" />
+                                    <stop offset="100%" stopColor="#E2DDFF" stopOpacity="1" />
+                                </linearGradient>
+                            </defs>
 
-                        {/* 진행 상황 아치 - 완료된 카드 비율 */}
-                        <motion.path
-                            d="M 30,140 A 120,120 0 1,1 270,140"
-                            fill="none"
-                            stroke="#9F9DF3"
-                            strokeWidth="40"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            initial={{ pathLength: 0 }}
-                            animate={{ pathLength: 1 }}
-                            transition={{ duration: 1.5, delay: 0.7, ease: "easeOut" }}
-                        />
-                    </svg>
+                            {/* 배경 아치 */}
+                            <path
+                                d="M 30,140 A 120,120 0 1,1 270,140"
+                                fill="none"
+                                stroke="url(#archGradientBg)"
+                                strokeWidth="30"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                            />
 
-                    {/* 캐릭터 - 크기 증가 */}
+                            {/* 아치 진행 상황 - 각 세그먼트 별도 그리기 */}
+                            {totalCards > 0 && (
+                                <>
+                                    {/* 새 카드 아치 (노란색) - 새 카드가 있을 때만 표시 */}
+                                    {stats.new > 0 && (
+                                        <motion.path
+                                            d="M 30,140 A 120,120 0 1,1 270,140"
+                                            fill="none"
+                                            stroke="#FDFF8C"
+                                            strokeWidth="30"
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            pathLength={1}
+                                            strokeDasharray={`${stats.new / totalCards}, ${1 - (stats.new / totalCards)}`}
+                                            strokeDashoffset={0}
+                                            initial={{ pathLength: 0 }}
+                                            animate={{ pathLength: animateProgress ? 1 : 0 }}
+                                            transition={{ duration: 1.5, ease: "easeOut" }}
+                                        />
+                                    )}
+
+                                    {/* 학습 중 아치 (흰색) - 학습 카드가 있을 때만 표시 */}
+                                    {stats.learning > 0 && (
+                                        <motion.path
+                                            d="M 30,140 A 120,120 0 1,1 270,140"
+                                            fill="none"
+                                            stroke="white"
+                                            strokeWidth="30"
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            pathLength={1}
+                                            strokeDasharray={`${stats.learning / totalCards}, ${1 - (stats.learning / totalCards)}`}
+                                            strokeDashoffset={`${-(stats.new / totalCards)}`}
+                                            initial={{ pathLength: 0 }}
+                                            animate={{ pathLength: animateProgress ? 1 : 0 }}
+                                            transition={{ duration: 1.5, ease: "easeOut" }}
+                                        />
+                                    )}
+
+                                    {/* 복습 중 아치 (진한 보라색) - 복습 카드가 있을 때만 표시 */}
+                                    {stats.review > 0 && (
+                                        <motion.path
+                                            d="M 30,140 A 120,120 0 1,1 270,140"
+                                            fill="none"
+                                            stroke="#5F4BB6"
+                                            strokeWidth="30"
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            pathLength={1}
+                                            strokeDasharray={`${stats.review / totalCards}, ${1 - (stats.review / totalCards)}`}
+                                            strokeDashoffset={`${-((stats.new + stats.learning) / totalCards)}`}
+                                            initial={{ pathLength: 0 }}
+                                            animate={{ pathLength: animateProgress ? 1 : 0 }}
+                                            transition={{ duration: 1.5, ease: "easeOut" }}
+                                        />
+                                    )}
+                                </>
+                            )}
+                        </svg>
+                    </div>
+
+                    {/* 캐릭터 */}
                     <motion.img
                         src="/images/doneloopa.png"
                         alt="Character"
-                        className="w-38 h-38 z-10"
+                        className="w-38 h-38 z-10 absolute bottom-0"
                         initial={{ y: 10, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
                         transition={{ duration: 0.5, delay: 0.4 }}
@@ -305,10 +354,10 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 0.4, delay: 0.4 }}
                 >
-                    <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center mr-2">
-                        <span className="text-[#B4B6E4] text-base font-bold">{stats.total}</span>
+                    <div className="w-10 h-10 rounded-full bg-[#FDFF8C] flex items-center justify-center mr-2">
+                        <span className="text-gray-800 text-base font-bold">{stats.new}</span>
                     </div>
-                    <span className="text-white text-m font-medium">전체</span>
+                    <span className="text-white text-m font-medium">새 카드</span>
                 </motion.div>
 
                 <motion.div
@@ -317,8 +366,8 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 0.4, delay: 0.5 }}
                 >
-                    <div className="w-10 h-10 rounded-full bg-[#FDFF8C] flex items-center justify-center mr-2">
-                        <span className="text-gray-800 text-base font-bold">{stats.learning + stats.review}</span>
+                    <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center mr-2">
+                        <span className="text-[#B4B6E4] text-base font-bold">{stats.learning}</span>
                     </div>
                     <span className="text-white text-m font-medium">학습</span>
                 </motion.div>
@@ -329,52 +378,101 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 0.4, delay: 0.6 }}
                 >
-                    <div className="w-10 h-10 rounded-full bg-black flex items-center justify-center mr-2">
-                        <span className="text-white text-base font-bold">{stats.due}</span>
+                    <div className="w-10 h-10 rounded-full bg-[#5F4BB6] flex items-center justify-center mr-2">
+                        <span className="text-white text-base font-bold">{stats.review}</span>
                     </div>
-                    <span className="text-white text-m font-medium">학습 필요</span>
+                    <span className="text-white text-m font-medium">복습</span>
                 </motion.div>
             </div>
 
             {/* 캐릭터와 아치 */}
-            <div className="relative flex items-center justify-center w-full h-56 mb-8">
-                {/* 아치 배경 */}
-                <svg className="absolute w-full h-56" viewBox="0 0 300 150">
-                    <defs>
-                        <linearGradient id="archGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                            <stop offset="0%" stopColor="#E2DDFF" stopOpacity="1" />
-                            <stop offset="100%" stopColor="#E2DDFF" stopOpacity="1" />
-                        </linearGradient>
-                    </defs>
-                    {/* 배경 아치 - 더 두껍고 넓게, 완전 둥근 끝 */}
-                    <path
-                        d="M 30,140 A 120,120 0 1,1 270,140"
-                        fill="none"
-                        stroke="url(#archGradient)"
-                        strokeWidth="40"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                    />
+            <div className="relative flex flex-col items-center justify-center w-[300px] mx-auto h-56 mb-8">
+                {/* 아치 프로그레스 바 */}
+                <div className="relative w-full h-40 mb-2">
+                    <svg className="absolute w-full h-full" viewBox="0 0 300 150">
+                        <defs>
+                            <linearGradient id="archGradientBg" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" stopColor="#E2DDFF" stopOpacity="1" />
+                                <stop offset="100%" stopColor="#E2DDFF" stopOpacity="1" />
+                            </linearGradient>
+                        </defs>
 
-                    {/* 진행 상황 아치 - 완료된 카드 비율 */}
-                    <motion.path
-                        d="M 30,140 A 120,120 0 1,1 270,140"
-                        fill="none"
-                        stroke="#9F9DF3"
-                        strokeWidth="40"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        initial={{ pathLength: 0 }}
-                        animate={{ pathLength: animateProgress ? completionPercentage / 100 : 0 }}
-                        transition={{ duration: 1.5, delay: 0.7, ease: "easeOut" }}
-                    />
-                </svg>
+                        {/* 배경 아치 */}
+                        <path
+                            d="M 30,140 A 120,120 0 1,1 270,140"
+                            fill="none"
+                            stroke="url(#archGradientBg)"
+                            strokeWidth="30"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                        />
 
-                {/* 캐릭터 - 크기 증가 */}
+                        {/* 아치 진행 상황 - 각 세그먼트 별도 그리기 */}
+                        {totalCards > 0 && (
+                            <>
+                                {/* 새 카드 아치 (노란색) - 새 카드가 있을 때만 표시 */}
+                                {stats.new > 0 && (
+                                    <motion.path
+                                        d="M 30,140 A 120,120 0 1,1 270,140"
+                                        fill="none"
+                                        stroke="#FDFF8C"
+                                        strokeWidth="30"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        pathLength={1}
+                                        strokeDasharray={`${stats.new / totalCards}, ${1 - (stats.new / totalCards)}`}
+                                        strokeDashoffset={0}
+                                        initial={{ pathLength: 0 }}
+                                        animate={{ pathLength: animateProgress ? 1 : 0 }}
+                                        transition={{ duration: 1.5, ease: "easeOut" }}
+                                    />
+                                )}
+
+                                {/* 학습 중 아치 (흰색) - 학습 카드가 있을 때만 표시 */}
+                                {stats.learning > 0 && (
+                                    <motion.path
+                                        d="M 30,140 A 120,120 0 1,1 270,140"
+                                        fill="none"
+                                        stroke="white"
+                                        strokeWidth="30"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        pathLength={1}
+                                        strokeDasharray={`${stats.learning / totalCards}, ${1 - (stats.learning / totalCards)}`}
+                                        strokeDashoffset={`${-(stats.new / totalCards)}`}
+                                        initial={{ pathLength: 0 }}
+                                        animate={{ pathLength: animateProgress ? 1 : 0 }}
+                                        transition={{ duration: 1.5, ease: "easeOut" }}
+                                    />
+                                )}
+
+                                {/* 복습 중 아치 (진한 보라색) - 복습 카드가 있을 때만 표시 */}
+                                {stats.review > 0 && (
+                                    <motion.path
+                                        d="M 30,140 A 120,120 0 1,1 270,140"
+                                        fill="none"
+                                        stroke="#5F4BB6"
+                                        strokeWidth="30"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        pathLength={1}
+                                        strokeDasharray={`${stats.review / totalCards}, ${1 - (stats.review / totalCards)}`}
+                                        strokeDashoffset={`${-((stats.new + stats.learning) / totalCards)}`}
+                                        initial={{ pathLength: 0 }}
+                                        animate={{ pathLength: animateProgress ? 1 : 0 }}
+                                        transition={{ duration: 1.5, ease: "easeOut" }}
+                                    />
+                                )}
+                            </>
+                        )}
+                    </svg>
+                </div>
+
+                {/* 캐릭터 */}
                 <motion.img
                     src="/images/reviewloopa.png"
                     alt="Character"
-                    className="w-40 h-40 z-10"
+                    className="w-40 h-40 z-10 absolute bottom-0"
                     initial={{ y: 10, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     transition={{ duration: 0.5, delay: 0.4 }}
@@ -389,7 +487,7 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
                 transition={{ duration: 0.5, delay: 1 }}
             >
                 <p className="text-2xl font-bold">{userName}님,</p>
-                <p className="text-xl font-bold">복습을 시작해 볼까요?</p>
+                <p className="text-xl font-bold">학습을 시작해 볼까요?</p>
             </motion.div>
 
             {/* 복습 시작 버튼 */}
@@ -401,9 +499,9 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
             >
                 <button
                     onClick={handleStartReview}
-                    className="w-full py-4 px-6 rounded-xl bg-white text-[#7969F7] font-medium hover:bg-gray-50 transition-all duration-200 flex items-center justify-center"
+                    className="w-full py-4 px-6 rounded-xl bg-white text-[#7969F7] font-bold hover:bg-gray-50 transition-all duration-200 flex items-center justify-center"
                 >
-                    <span>복습 시작하기</span>
+                    <span> {stats.due}개 카드 즉시 학습하기</span>
                 </button>
             </motion.div>
 
@@ -424,12 +522,12 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
                             className="bg-white rounded-xl p-6 w-full max-w-md mx-4"
                             onClick={(e) => e.stopPropagation()}
                         >
-                            <h3 className="text-xl font-bold text-gray-800 mb-4">카드 상태 통계</h3>
+                            <h3 className="text-xl font-bold text-gray-800 mb-4">기억카드 통계</h3>
 
                             <table className="w-full mb-4">
                                 <thead>
                                     <tr className="border-b border-gray-200">
-                                        <th className="text-left py-2 text-gray-600">카드 상태</th>
+                                        <th className="text-left py-2 text-gray-600">상태</th>
                                         <th className="text-right py-2 text-gray-600">개수</th>
                                     </tr>
                                 </thead>
@@ -451,7 +549,7 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
                                         <td className="py-2 text-right font-bold text-gray-800">{stats.due}</td>
                                     </tr>
                                     <tr>
-                                        <td className="py-2 text-gray-800 font-bold">전체 카드</td>
+                                        <td className="py-2 text-gray-800 font-bold">전체 기억카드</td>
                                         <td className="py-2 text-right font-bold text-gray-800">{stats.total}</td>
                                     </tr>
                                 </tbody>
