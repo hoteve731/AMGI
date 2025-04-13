@@ -34,6 +34,7 @@ export default function ReviewPage() {
     const [isFlipped, setIsFlipped] = useState(false)
     const [isLoading, setIsLoading] = useState(true)
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const [slideDirection, setSlideDirection] = useState<'right-to-left' | 'flip'>('flip')
 
     const currentCard = cards[currentCardIndex]
 
@@ -80,6 +81,7 @@ export default function ReviewPage() {
     }, [fetchReviewCards])
 
     const handleFlip = () => {
+        setSlideDirection('flip')
         setIsFlipped(!isFlipped)
     }
 
@@ -162,6 +164,7 @@ export default function ReviewPage() {
 
         try {
             setIsSubmitting(true)
+            setSlideDirection('right-to-left')
             console.log(`Submitting card action: ${result} for card ID: ${currentCard.id}`)
 
             const response = await fetch('/api/review', {
@@ -313,41 +316,57 @@ export default function ReviewPage() {
                     {currentCard?.content_groups?.title || '복습'}
                 </h1>
 
-                {/* 카드 상태 */}
-                <div className="flex justify-center mb-6">
-                    <div className="inline-flex items-center justify-center bg-gray-100 rounded-full px-3 py-1">
-                        <span className={`text-sm font-medium ${currentCard?.card_state === 'new' ? 'text-blue-600' :
-                            currentCard?.card_state === 'learning' ? 'text-orange-600' :
-                                currentCard?.card_state === 'graduated' ? 'text-green-600' :
-                                    currentCard?.card_state === 'review' ? 'text-purple-600' :
-                                        'text-red-600'
-                            }`}>
-                            {currentCard?.card_state === 'new' ? '새 카드' :
-                                currentCard?.card_state === 'learning' ? '학습 중' :
-                                    currentCard?.card_state === 'graduated' ? '졸업' :
-                                        currentCard?.card_state === 'review' ? '복습' :
-                                            '재학습'}
-                        </span>
-                    </div>
-                </div>
-
                 {/* 카드 표시 영역 */}
                 <div className="relative flex-1 overflow-hidden">
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
                         <AnimatePresence mode="wait">
                             <motion.div
                                 key={currentCard.id + (isFlipped ? '-back' : '-front')}
-                                initial={{ opacity: 0, rotateY: isFlipped ? -90 : 90 }}
-                                animate={{ opacity: 1, rotateY: 0 }}
-                                exit={{ opacity: 0, rotateY: isFlipped ? 90 : -90 }}
-                                transition={{
-                                    type: "spring",
-                                    stiffness: 300,
-                                    damping: 30
-                                }}
+                                initial={slideDirection === 'flip'
+                                    ? { opacity: 0, rotateY: isFlipped ? -90 : 90 }
+                                    : { opacity: 0, x: 300 }
+                                }
+                                animate={slideDirection === 'flip'
+                                    ? { opacity: 1, rotateY: 0 }
+                                    : { opacity: 1, x: 0 }
+                                }
+                                exit={slideDirection === 'flip'
+                                    ? { opacity: 0, rotateY: isFlipped ? 90 : -90 }
+                                    : { opacity: 0, x: -300 }
+                                }
+                                transition={slideDirection === 'flip'
+                                    ? {
+                                        type: "spring",
+                                        stiffness: 300,
+                                        damping: 30
+                                    }
+                                    : {
+                                        type: "spring",
+                                        stiffness: 300,
+                                        damping: 30,
+                                        duration: 0.3
+                                    }
+                                }
                                 className="w-full max-w-md perspective-1000"
                             >
                                 <div className="w-full min-h-[200px] bg-white/90 backdrop-blur-md rounded-xl border border-[#D4C4B7] p-6 shadow-lg">
+                                    {/* 카드 상태 태그 - 좌상단에 배치 */}
+                                    <div className="flex justify-start mb-4">
+                                        <div className="inline-flex items-center justify-center bg-white rounded-full px-3 py-1 border border-gray-200">
+                                            <div className="flex items-center">
+                                                <div className={`w-3 h-3 rounded-full mr-2 ${currentCard?.card_state === 'new' ? 'bg-[#FDFF8C]' :
+                                                    currentCard?.card_state === 'learning' || currentCard?.card_state === 'relearning' ? 'bg-[#B4B6E4]' :
+                                                        currentCard?.card_state === 'review' || currentCard?.card_state === 'graduated' ? 'bg-[#5F4BB6]' : 'bg-gray-400'
+                                                    }`}></div>
+                                                <span className="text-sm font-medium text-gray-800">
+                                                    {currentCard?.card_state === 'new' ? '새 카드' :
+                                                        currentCard?.card_state === 'learning' ? '학습 중' :
+                                                            currentCard?.card_state === 'graduated' || currentCard?.card_state === 'review' ? '복습' :
+                                                                '재학습'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
                                     <div
                                         className="text-gray-800 text-lg"
                                         dangerouslySetInnerHTML={{
@@ -373,26 +392,16 @@ export default function ReviewPage() {
                         </svg>
                         <span className="ml-1 text-sm">비활성화</span>
                     </button>
-
-                    <button
-                        onClick={() => router.push(`/content/${currentCard?.content_groups?.content_id}/groups/${currentCard?.group_id}`)}
-                        className="text-gray-500 hover:text-blue-500 transition-colors mx-2 flex items-center"
-                        title="그룹으로 이동"
-                    >
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
-                        <span className="ml-1 text-sm">그룹으로</span>
-                    </button>
                 </div>
 
                 {/* 하단 버튼 영역 */}
                 <div className="mt-auto pt-4 h-[150px]">
+                    {isSubmitting && <LoadingOverlay />}
                     {!isFlipped ? (
                         // 앞면: 정답 보기 버튼
                         <div>
                             <p className="text-center text-gray-600 text-sm mb-4">
-                                정답을 확인하려면 버튼을 클릭하세요
+                                정답을 확인하려면 클릭하세요
                             </p>
                             <div className="grid grid-cols-1 gap-2 mb-8">
                                 <button

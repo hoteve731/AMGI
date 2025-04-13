@@ -458,7 +458,7 @@ function StatsModal({
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="flex justify-between items-center p-6 border-b border-gray-100 sticky top-0 bg-white z-10">
-                    <h3 className="text-xl font-bold text-gray-800">기억카드 통계</h3>
+                    <h3 className="text-xl font-bold text-gray-800">실시간 통계</h3>
                     <button
                         onClick={onClose}
                         className="text-gray-500 hover:text-gray-700"
@@ -500,7 +500,7 @@ function StatsModal({
                     </div>
 
                     <div className="bg-gray-50 p-4 rounded-lg">
-                        <h4 className="font-medium text-gray-700 mb-2">진행 상황</h4>
+                        <h4 className="font-medium text-gray-700 mb-2">암기 현황</h4>
                         <div className="mb-2">
                             <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
                                 <div
@@ -513,7 +513,7 @@ function StatsModal({
                     </div>
 
                     <div className="bg-gray-50 p-4 rounded-lg">
-                        <h4 className="font-medium text-gray-700 mb-2">카드 상태 설명</h4>
+                        <h4 className="font-medium text-gray-700 mb-2">카드 상태</h4>
                         <div className="text-sm text-gray-600 space-y-1">
                             <p>* 새 카드: 아직 한번도 학습하지 않은 카드</p>
                             <p>* 학습 중: 학습 단계에 있는 카드</p>
