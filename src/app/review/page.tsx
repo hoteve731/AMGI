@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { motion, AnimatePresence } from 'framer-motion'
+import LoadingOverlay from '@/components/LoadingOverlay'
 
 type ReviewCard = {
     id: string
@@ -261,8 +262,7 @@ export default function ReviewPage() {
     if (isLoading) {
         return (
             <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-t from-[#D4C4B7] via-[#E8D9C5] to-[#F8F4EF]">
-                <div className="animate-spin w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full"></div>
-                <p className="mt-4 text-gray-600">복습 카드를 불러오는 중...</p>
+                <LoadingOverlay />
             </div>
         )
     }

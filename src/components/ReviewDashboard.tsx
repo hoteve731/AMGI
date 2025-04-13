@@ -6,6 +6,7 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { motion, AnimatePresence } from 'framer-motion'
 import { InformationCircleIcon } from '@heroicons/react/24/outline'
 import { createPortal } from 'react-dom'
+import LoadingOverlay from './LoadingOverlay'
 
 type ReviewStats = {
     new: number
@@ -31,6 +32,7 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
         total: 0
     })
     const [isLoading, setIsLoading] = useState(true)
+    const [isNavigating, setIsNavigating] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [needsMigration, setNeedsMigration] = useState(false)
     const [animateProgress, setAnimateProgress] = useState(false)
@@ -87,6 +89,7 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
     }, [])
 
     const handleStartReview = () => {
+        setIsNavigating(true)
         router.push('/review')
     }
 
@@ -106,16 +109,6 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
     console.log('Rendering Arch - Stats:', stats);
     console.log('Rendering Arch - TotalCards for Ratio:', totalCards);
     console.log('Rendering Arch - Ratios:', { newRatio, learningRatio, reviewRatio });
-
-    if (isLoading) {
-        return (
-            <div className="bg-white/90 backdrop-blur-md rounded-xl border border-gray-200 shadow-lg p-6 mb-6">
-                <div className="flex items-center justify-center h-24">
-                    <div className="w-6 h-6 rounded-full border-2 border-purple-300 border-t-transparent animate-spin"></div>
-                </div>
-            </div>
-        )
-    }
 
     if (error) {
         return (
@@ -289,6 +282,7 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
             transition={{ duration: 0.5 }}
             className="bg-[#B4B6E4] backdrop-blur-md rounded-3xl shadow-lg p-6 mb-6"
         >
+            {isNavigating && <LoadingOverlay />}
             <div className="flex justify-between items-center mb-6">
                 <motion.div
                     initial={{ opacity: 0, y: -10 }}

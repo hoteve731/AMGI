@@ -43,6 +43,7 @@ type NotificationInfo = {
 export default function GroupDetail({ content, group: initialGroup }: { content: Content; group: ContentGroup }) {
     const router = useRouter()
     const [isLoading, setIsLoading] = useState(false)
+    const [isNavigating, setIsNavigating] = useState(false)
     const [groups, setGroups] = useState<ContentGroup[]>([])
     const [currentGroup, setCurrentGroup] = useState<ContentGroup | null>(initialGroup)
     const [showOriginalText, setShowOriginalText] = useState(false)
@@ -633,10 +634,15 @@ export default function GroupDetail({ content, group: initialGroup }: { content:
         }
     }
 
+    const handleGoBack = () => {
+        setIsNavigating(true)
+        router.push(`/content/${content.id}/groups`)
+    }
+
     if (!currentGroup) {
         return (
             <main className="flex min-h-screen flex-col bg-gradient-to-b from-[#F8F4EF] to-[#E8D9C5]">
-                {isLoading && <LoadingOverlay />}
+                {(isLoading || isNavigating) && <LoadingOverlay />}
                 <div className="sticky top-0 bg-[#F8F4EF] border-b border-[#D4C4B7] h-12 z-50">
                     <button
                         onClick={() => router.push('/')}
@@ -666,7 +672,7 @@ export default function GroupDetail({ content, group: initialGroup }: { content:
 
     return (
         <main className="flex min-h-screen flex-col bg-gradient-to-b from-[#F8F4EF] to-[#E8D9C5]">
-            {isLoading && <LoadingOverlay />}
+            {(isLoading || isNavigating) && <LoadingOverlay />}
             <AnimatePresence>
                 {showGroupSelector && (
                     <>
@@ -721,7 +727,7 @@ export default function GroupDetail({ content, group: initialGroup }: { content:
             </AnimatePresence>
             <div className="sticky top-0 bg-[#F8F4EF] border-b border-[#D4C4B7] h-12 z-50">
                 <button
-                    onClick={() => router.push(`/content/${content.id}/groups`)}
+                    onClick={handleGoBack}
                     className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center text-gray-600 hover:text-gray-900 transition-all duration-200 group"
                 >
                     <svg className="w-5 h-5 group-hover:scale-110 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
