@@ -182,7 +182,7 @@ export default function ContentTabs() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="p-4 sticky top-0 z-10">
+      <div className="px-4 pt-4 pb-2 sticky top-0 z-10">
         <div className="relative flex justify-center max-w-md mx-auto">
           {/* Tabs */}
           <div className="relative flex w-full justify-between bg-white/80 backdrop-blur-md rounded-full p-1">

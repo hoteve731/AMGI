@@ -14,11 +14,7 @@ export default async function Home() {
     data: { session },
   } = await supabase.auth.getSession()
 
-  if (!session) {
-    redirect('/auth')
-  }
-
-  const user = session.user
+  const user = session?.user
 
   return (
     <main className="flex min-h-screen flex-col bg-gradient-to-b from-[#F8F4EF] to-[#E8D9C5]">
@@ -29,7 +25,7 @@ export default async function Home() {
 
       {/* 리뷰 대시보드 추가 - 헤더 아래, 탭바 위에 */}
       <div className="pt-4 px-4">
-        <ReviewDashboard userName={user.user_metadata.full_name || user.email} />
+        <ReviewDashboard userName={user?.user_metadata.full_name || user?.email} />
       </div>
 
       <div className="flex-1 overflow-hidden">

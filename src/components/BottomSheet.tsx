@@ -335,7 +335,7 @@ export default function BottomSheet() {
                             >
                                 <div className="w-full">
                                     <div className="text-[#7C6FFB] font-medium text-sm mb-1">
-                                        기억하고 싶은 아이디어
+                                        기억하고 싶은 텍스트
                                     </div>
                                     <div className="text-gray-400 text-base truncate">
                                         {text ? text : '여기에 타이핑하거나 붙여넣으세요...'}
@@ -391,7 +391,7 @@ export default function BottomSheet() {
 
                                 <form onSubmit={handleSubmit} className="flex-1 flex flex-col p-4">
                                     <div className="text-[#7C6FFB] font-medium text-sm mb-2">
-                                        기억하고 싶은 아이디어
+                                        기억하고 싶은 텍스트
                                     </div>
 
                                     {/* Additional Memory Input Area - Moved Here */}
@@ -412,12 +412,12 @@ export default function BottomSheet() {
                                                     ref={additionalMemoryRef}
                                                     value={additionalMemory}
                                                     onChange={(e) => setAdditionalMemory(e.target.value)}
-                                                    placeholder="(선택) 이제 특별히 기억하고 싶은 부분을 알려주세요."
+                                                    placeholder="(선택) 특별히 기억하고 싶은 부분을 알려주세요."
                                                     className="w-full h-20 resize-none rounded-lg p-2 focus:outline-none text-base border border-gray-200 focus:border-[#A99BFF] focus:border-2"
                                                     disabled={isLoading}
                                                 />
                                                 <p className="text-gray-400 text-xs mt-1 px-1">
-                                                    *예: 특정 단어에 집중해서 분석하기, 내 삶에 이것을 어떻게 적용할 수 있을지
+                                                    *특정 단어에 집중해서 분석, 삶에 이것을 어떻게 적용할 수 있을지 등
                                                 </p>
                                             </motion.div>
                                         )}

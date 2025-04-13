@@ -20,6 +20,32 @@ interface ReviewDashboardProps {
     userName: string
 }
 
+const DashboardSkeleton = () => (
+    <div className="bg-white/50 backdrop-blur-sm rounded-3xl shadow-lg p-6 mb-6 animate-pulse">
+        {/* 레이아웃 구조를 비슷하게 만듭니다 */}
+        <div className="flex justify-between items-center mb-4">
+            <div className="h-8 bg-gray-300 rounded w-24"></div> {/* Title placeholder */}
+            <div className="w-8 h-8 bg-gray-300 rounded-full"></div> {/* Icon placeholder */}
+        </div>
+        <div className="w-full h-12 bg-gray-300 rounded-lg mb-5"></div> {/* Button placeholder */}
+        <div className="flex justify-center space-x-6">
+            {/* Stat placeholders */}
+            <div className="flex items-center space-x-2">
+                <div className="w-6 h-6 bg-gray-300 rounded-full"></div>
+                <div className="h-4 bg-gray-300 rounded w-16"></div>
+            </div>
+            <div className="flex items-center space-x-2">
+                <div className="w-6 h-6 bg-gray-300 rounded-full"></div>
+                <div className="h-4 bg-gray-300 rounded w-16"></div>
+            </div>
+            <div className="flex items-center space-x-2">
+                <div className="w-6 h-6 bg-gray-300 rounded-full"></div>
+                <div className="h-4 bg-gray-300 rounded w-16"></div>
+            </div>
+        </div>
+    </div>
+);
+
 export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
     const router = useRouter()
     const supabase = createClientComponentClient()
@@ -110,6 +136,10 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
     console.log('Rendering Arch - TotalCards for Ratio:', totalCards);
     console.log('Rendering Arch - Ratios:', { newRatio, learningRatio, reviewRatio });
 
+    if (isLoading) {
+        return <DashboardSkeleton />;
+    }
+
     if (error) {
         return (
             <div className="bg-white/90 backdrop-blur-md rounded-xl border border-gray-200 shadow-lg p-6 mb-6">
@@ -162,7 +192,7 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
                     </motion.button>
                 </div>
 
-                <div className="flex justify-center space-x-6 mb-4">
+                <div className="flex justify-center space-x-6 mb-4 mt-6">
                     <motion.div
                         className="flex items-center"
                         initial={{ opacity: 0, scale: 0.8 }}
@@ -265,10 +295,23 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
                         onClick={handleAddIdea}
                         className="w-full py-4 px-6 rounded-xl bg-white text-[#7969F7] font-medium hover:bg-gray-50 transition-all duration-200 flex items-center justify-center"
                     >
-                        <span>기억하고 싶은 아이디어 추가하기</span>
+                        <span>기억하고 싶은 텍스트 추가하기</span>
                         <span className="ml-2 text-[#7969F7] text-lg">+</span>
                     </button>
                 </motion.div>
+
+                {mounted && (
+                    <AnimatePresence>
+                        {showStatsModal && (
+                            <StatsModal
+                                stats={stats}
+                                completionPercentage={completionPercentage}
+                                completedCards={completedCards}
+                                onClose={() => setShowStatsModal(false)}
+                            />
+                        )}
+                    </AnimatePresence>
+                )}
             </motion.div>
         )
     }
@@ -458,7 +501,7 @@ function StatsModal({
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="flex justify-between items-center p-6 border-b border-gray-100 sticky top-0 bg-white z-10">
-                    <h3 className="text-xl font-bold text-gray-800">실시간 통계</h3>
+                    <h3 className="text-xl font-bold text-gray-800">학습 & 카드 정보</h3>
                     <button
                         onClick={onClose}
                         className="text-gray-500 hover:text-gray-700"

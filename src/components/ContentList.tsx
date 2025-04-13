@@ -204,7 +204,7 @@ export default function ContentList({ contents, showTabs = false, mutate: extern
                             p-4 
                             bg-white/60
                             backdrop-blur-md 
-                            rounded-xl
+                            rounded-3xl
                             shadow-lg
                             border
                             border-white/20

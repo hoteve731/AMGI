@@ -39,6 +39,9 @@ function calculateNextDueDate(
         if (result === 'again') {
             newState = 'learning'
             newDue = now.getTime() + REVIEW_SETTINGS.steps[0] * 60 * 1000 // First step in minutes
+        } else if (result === 'hard') {
+            newState = 'learning'
+            newDue = now.getTime() + 5 * 60 * 1000 // 5분 뒤로 설정
         } else if (result === 'good') {
             if (currentState === 'learning' && repetitionCount > 1) {
                 newState = 'graduated'
