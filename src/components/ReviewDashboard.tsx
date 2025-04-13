@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { motion, AnimatePresence } from 'framer-motion'
 import { InformationCircleIcon } from '@heroicons/react/24/outline'
+import { createPortal } from 'react-dom'
 
 type ReviewStats = {
     new: number
@@ -34,6 +35,7 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
     const [needsMigration, setNeedsMigration] = useState(false)
     const [animateProgress, setAnimateProgress] = useState(false)
     const [showStatsModal, setShowStatsModal] = useState(false)
+    const [mounted, setMounted] = useState(false)
 
     useEffect(() => {
         const fetchReviewStats = async () => {
@@ -42,12 +44,11 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
                 setIsLoading(true)
                 setError(null)
 
-                // API 요청 보내기 - 인증은 세션 쿠키로 처리
                 const response = await fetch('/api/review', {
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    credentials: 'include' // 쿠키 포함
+                    credentials: 'include'
                 })
 
                 console.log('API response status:', response.status)
@@ -67,7 +68,6 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
                 console.log('Review stats:', result.stats)
                 setStats(result.stats)
 
-                // Trigger animation after data is loaded
                 setTimeout(() => {
                     setAnimateProgress(true)
                 }, 300)
@@ -82,28 +82,27 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
         fetchReviewStats()
     }, [supabase])
 
+    useEffect(() => {
+        setMounted(true)
+    }, [])
+
     const handleStartReview = () => {
         router.push('/review')
     }
 
     const handleAddIdea = () => {
-        // 바텀시트 열기 - CustomEvent 사용
-        console.log('바텀시트 열기 이벤트 발생시키기')
         const event = new CustomEvent('openBottomSheet')
         window.dispatchEvent(event)
     }
 
-    // 완료된 카드 수와 완료율 계산
     const completedCards = stats.total - stats.due;
     const completionPercentage = stats.total > 0 ? Math.round((completedCards / stats.total) * 100) : 100;
 
-    // 새 카드, 학습 중, 복습 중의 비율 계산
     const totalCards = stats.new + stats.learning + stats.review;
     const newRatio = totalCards > 0 ? stats.new / totalCards : 0;
     const learningRatio = totalCards > 0 ? stats.learning / totalCards : 0;
     const reviewRatio = totalCards > 0 ? stats.review / totalCards : 0;
 
-    // 디버깅을 위한 로그 추가
     console.log('Rendering Arch - Stats:', stats);
     console.log('Rendering Arch - TotalCards for Ratio:', totalCards);
     console.log('Rendering Arch - Ratios:', { newRatio, learningRatio, reviewRatio });
@@ -138,9 +137,8 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
         )
     }
 
-    // 복습할 카드가 없는 경우
     if (stats.due === 0) {
-        console.log('Rendering Arch (Due === 0) - Stats:', stats); // 이 블록 내부에서도 로그 추가
+        console.log('Rendering Arch (Due === 0) - Stats:', stats);
         console.log('Rendering Arch (Due === 0) - TotalCards:', totalCards);
         return (
             <motion.div
@@ -149,7 +147,6 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
                 transition={{ duration: 0.5 }}
                 className="bg-[#B4B6E4] backdrop-blur-md rounded-3xl shadow-lg p-6 mb-6"
             >
-                {/* 상단 카드 상태 표시와 정보 버튼 */}
                 <div className="flex justify-between items-center mb-3">
                     <motion.div
                         initial={{ opacity: 0, y: -10 }}
@@ -172,7 +169,6 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
                     </motion.button>
                 </div>
 
-                {/* 카드 타입 카운터 - 가로 정렬 */}
                 <div className="flex justify-center space-x-6 mb-4">
                     <motion.div
                         className="flex items-center"
@@ -211,9 +207,7 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
                     </motion.div>
                 </div>
 
-                {/* 프로그레스 바 */}
                 <div className="relative flex flex-col items-center justify-center w-[300px] mx-auto mb-6">
-                    {/* 카드 타입별 프로그레스 바 */}
                     <div className="w-full">
                         {totalCards > 0 && (
                             <div className="w-[250px] h-4 rounded-full overflow-hidden bg-[#E2DDFF] flex mx-auto">
@@ -248,7 +242,6 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
                         )}
                     </div>
 
-                    {/* 캐릭터 */}
                     <motion.img
                         src="/images/doneloopa.png"
                         alt="Character"
@@ -259,7 +252,6 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
                     />
                 </div>
 
-                {/* 사용자 이름과 메시지 */}
                 <motion.div
                     className="text-center text-white mt-2 mb-4"
                     initial={{ opacity: 0 }}
@@ -270,7 +262,6 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
                     <p className="text-xl font-bold">모든 카드를 완료했어요!</p>
                 </motion.div>
 
-                {/* 아이디어 추가 버튼 */}
                 <motion.div
                     className="flex justify-center"
                     initial={{ opacity: 0, y: 10 }}
@@ -289,7 +280,7 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
         )
     }
 
-    console.log('Rendering Arch (Due > 0) - Stats:', stats); // 이 블록 내부에서도 로그 추가
+    console.log('Rendering Arch (Due > 0) - Stats:', stats);
     console.log('Rendering Arch (Due > 0) - TotalCards:', totalCards);
     return (
         <motion.div
@@ -298,7 +289,6 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
             transition={{ duration: 0.5 }}
             className="bg-[#B4B6E4] backdrop-blur-md rounded-3xl shadow-lg p-6 mb-6"
         >
-            {/* 상단 카드 상태 표시 */}
             <div className="flex justify-between items-center mb-6">
                 <motion.div
                     initial={{ opacity: 0, y: -10 }}
@@ -321,7 +311,6 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
                 </motion.button>
             </div>
 
-            {/* 카드 타입 카운터 - 가로 정렬 */}
             <div className="flex justify-center space-x-6 mb-4">
                 <motion.div
                     className="flex items-center"
@@ -360,9 +349,7 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
                 </motion.div>
             </div>
 
-            {/* 프로그레스 바 */}
             <div className="relative flex flex-col items-center justify-center w-[300px] mx-auto mb-4">
-                {/* 카드 타입별 프로그레스 바 */}
                 <div className="w-full">
                     {totalCards > 0 && (
                         <div className="w-[270px] h-4 rounded-full overflow-hidden bg-[#E2DDFF] flex mx-auto">
@@ -397,7 +384,6 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
                     )}
                 </div>
 
-                {/* 캐릭터 */}
                 <motion.img
                     src="/images/reviewloopa.png"
                     alt="Character"
@@ -408,7 +394,6 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
                 />
             </div>
 
-            {/* 사용자 이름과 메시지 */}
             <motion.div
                 className="text-center text-white mb-8"
                 initial={{ opacity: 0 }}
@@ -419,7 +404,6 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
                 <p className="text-xl font-bold">학습을 시작해 볼까요?</p>
             </motion.div>
 
-            {/* 복습 시작 버튼 */}
             <motion.div
                 className="flex justify-center"
                 initial={{ opacity: 0, y: 10 }}
@@ -434,73 +418,122 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
                 </button>
             </motion.div>
 
-            {/* 통계 모달 */}
-            <AnimatePresence>
-                {showStatsModal && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-                        onClick={() => setShowStatsModal(false)}
-                    >
-                        <motion.div
-                            initial={{ scale: 0.9, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0.9, opacity: 0 }}
-                            className="bg-white rounded-xl p-6 w-full max-w-md mx-4"
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            <h3 className="text-xl font-bold text-gray-800 mb-4">기억카드 통계</h3>
-
-                            <table className="w-full mb-4">
-                                <thead>
-                                    <tr className="border-b border-gray-200">
-                                        <th className="text-left py-2 text-gray-600">상태</th>
-                                        <th className="text-right py-2 text-gray-600">개수</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr className="border-b border-gray-100">
-                                        <td className="py-2 text-gray-800">새 카드</td>
-                                        <td className="py-2 text-right font-bold text-gray-800">{stats.new}</td>
-                                    </tr>
-                                    <tr className="border-b border-gray-100">
-                                        <td className="py-2 text-gray-800">학습 중</td>
-                                        <td className="py-2 text-right font-bold text-gray-800">{stats.learning}</td>
-                                    </tr>
-                                    <tr className="border-b border-gray-100">
-                                        <td className="py-2 text-gray-800">복습 중</td>
-                                        <td className="py-2 text-right font-bold text-gray-800">{stats.review}</td>
-                                    </tr>
-                                    <tr className="border-b border-gray-100">
-                                        <td className="py-2 text-gray-800">지금 학습 필요</td>
-                                        <td className="py-2 text-right font-bold text-gray-800">{stats.due}</td>
-                                    </tr>
-                                    <tr>
-                                        <td className="py-2 text-gray-800 font-bold">전체 기억카드</td>
-                                        <td className="py-2 text-right font-bold text-gray-800">{stats.total}</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-
-                            <div className="text-sm text-gray-500 mb-4">
-                                <p>* 새 카드: 아직 한번도 학습하지 않은 카드</p>
-                                <p>* 학습 중: 학습 단계에 있는 카드</p>
-                                <p>* 복습 중: 학습 단계를 졸업하고 장기 기억으로 이동한 카드</p>
-                                <p>* 지금 학습 필요: 당장 학습/복습이 필요한 카드</p>
-                            </div>
-
-                            <button
-                                onClick={() => setShowStatsModal(false)}
-                                className="w-full py-2 rounded-lg bg-gray-100 text-gray-800 font-medium hover:bg-gray-200 transition-colors"
-                            >
-                                닫기
-                            </button>
-                        </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+            {mounted && showStatsModal && (
+                <StatsModal
+                    stats={stats}
+                    completionPercentage={completionPercentage}
+                    completedCards={completedCards}
+                    onClose={() => setShowStatsModal(false)}
+                />
+            )}
         </motion.div>
     )
+}
+
+function StatsModal({
+    stats,
+    completionPercentage,
+    completedCards,
+    onClose
+}: {
+    stats: ReviewStats;
+    completionPercentage: number;
+    completedCards: number;
+    onClose: () => void;
+}) {
+    return createPortal(
+        <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
+            onClick={onClose}
+            style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
+        >
+            <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="bg-white rounded-2xl w-full max-w-md max-h-[80vh] flex flex-col overflow-hidden"
+                onClick={(e) => e.stopPropagation()}
+            >
+                <div className="flex justify-between items-center p-6 border-b border-gray-100 sticky top-0 bg-white z-10">
+                    <h3 className="text-xl font-bold text-gray-800">기억카드 통계</h3>
+                    <button
+                        onClick={onClose}
+                        className="text-gray-500 hover:text-gray-700"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div className="p-6 space-y-4 overflow-y-auto">
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                        <h4 className="font-medium text-gray-700 mb-2">카드 상태</h4>
+                        <div className="grid grid-cols-2 gap-2 mb-3">
+                            <div className="flex items-center">
+                                <div className="w-3 h-3 rounded-full bg-[#FDFF8C] mr-2"></div>
+                                <span className="text-sm text-gray-600">새 카드: {stats.new}</span>
+                            </div>
+                            <div className="flex items-center">
+                                <div className="w-3 h-3 rounded-full bg-white border border-gray-300 mr-2"></div>
+                                <span className="text-sm text-gray-600">학습 중: {stats.learning}</span>
+                            </div>
+                            <div className="flex items-center">
+                                <div className="w-3 h-3 rounded-full bg-[#5F4BB6] mr-2"></div>
+                                <span className="text-sm text-gray-600">복습 중: {stats.review}</span>
+                            </div>
+                            <div className="flex items-center">
+                                <div className="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
+                                <span className="text-sm text-gray-600">지금 학습 필요: {stats.due}</span>
+                            </div>
+                        </div>
+
+                        <div className="w-full border-t border-gray-200 pt-3 mt-2">
+                            <div className="flex justify-between items-center">
+                                <span className="font-bold text-gray-800">전체 기억카드</span>
+                                <span className="font-bold text-gray-800">{stats.total}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                        <h4 className="font-medium text-gray-700 mb-2">진행 상황</h4>
+                        <div className="mb-2">
+                            <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                                <div
+                                    className="h-full bg-[#7969F7]"
+                                    style={{ width: `${completionPercentage}%` }}
+                                ></div>
+                            </div>
+                        </div>
+                        <p className="text-sm text-gray-600 text-center">{completionPercentage}% 완료</p>
+                    </div>
+
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                        <h4 className="font-medium text-gray-700 mb-2">카드 상태 설명</h4>
+                        <div className="text-sm text-gray-600 space-y-1">
+                            <p>* 새 카드: 아직 한번도 학습하지 않은 카드</p>
+                            <p>* 학습 중: 학습 단계에 있는 카드</p>
+                            <p>* 복습 중: 학습 단계를 졸업하고 장기 기억으로 이동한 카드</p>
+                            <p>* 지금 학습 필요: 당장 학습/복습이 필요한 카드</p>
+                        </div>
+                    </div>
+
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                        <h4 className="font-medium text-gray-700 mb-2">기억 알고리즘</h4>
+                        <p className="text-sm text-gray-600 mb-2">
+                            LOOPA는 AI를 활용한 자동 기억카드 변환과 간격 반복(Spaced Repetition) 알고리즘을 사용하여 효율적인 기억을 돕습니다.
+                        </p>
+                        <ul className="text-sm text-gray-600 list-disc pl-5 space-y-1">
+
+                        </ul>
+                    </div>
+                </div>
+            </motion.div>
+        </motion.div>,
+        document.body
+    );
 }
