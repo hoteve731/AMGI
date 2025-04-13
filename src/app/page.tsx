@@ -4,6 +4,7 @@ import ContentTabs from '@/components/ContentTabs'
 import BottomSheet from '@/components/BottomSheet'
 import { createClient } from '@/utils/supabase/server'
 import ReviewDashboard from '@/components/ReviewDashboard'
+import { SparklesIcon } from '@heroicons/react/24/solid'
 
 export const dynamic = 'force-dynamic'
 
@@ -26,6 +27,15 @@ export default async function Home() {
       {/* 리뷰 대시보드 추가 - 헤더 아래, 탭바 위에 */}
       <div className="pt-4 px-4">
         <ReviewDashboard userName={user?.user_metadata.full_name || user?.email} />
+      </div>
+
+      {/* 내 컨텐츠 제목 추가 */}
+      <div className="px-6 mt-4">
+        <div className="flex items-center gap-1">
+          <SparklesIcon className="w-6 h-6 text-[#5F4BB6] stroke-1" />
+          <h2 className="text-[#5F4BB6] font-extrabold text-2xl">모든 컨텐츠</h2>
+        </div>
+        {/* <p className="text-gray-500 text-m">모든 기억카드를 한눈에</p> */}
       </div>
 
       <div className="flex-1 overflow-hidden">

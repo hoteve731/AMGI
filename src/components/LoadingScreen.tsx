@@ -6,9 +6,11 @@ import { motion } from 'framer-motion'
 type LoadingScreenProps = {
     progress: number
     status: 'title' | 'content' | 'group' | 'chunk' | 'complete'
+    previewTitle?: string
+    previewContent?: string
 }
 
-export default function LoadingScreen({ progress, status }: LoadingScreenProps) {
+export default function LoadingScreen({ progress, status, previewTitle, previewContent }: LoadingScreenProps) {
     const statusText = {
         title: '제목을 생성하는 중...',
         content: '내용을 분석하는 중...',
@@ -59,7 +61,7 @@ export default function LoadingScreen({ progress, status }: LoadingScreenProps) 
             </p>
 
             {/* 프로그레스 바 */}
-            <div className="w-64 h-2 bg-gray-200 rounded-full overflow-hidden">
+            <div className="w-64 h-2 bg-gray-200 rounded-full overflow-hidden mb-3">
                 <motion.div
                     className="h-full bg-[#7969F7]"
                     initial={{ width: 0 }}
@@ -67,6 +69,29 @@ export default function LoadingScreen({ progress, status }: LoadingScreenProps) 
                     transition={{ duration: 0.5 }}
                 />
             </div>
+            
+            {/* 진행률 표시 */}
+            <p className="text-sm text-gray-500 mb-6">{progress}% 완료</p>
+            
+            {/* 미리보기 정보 */}
+            {previewTitle && (
+                <motion.div 
+                    className="max-w-md w-full px-6 py-4 bg-gray-50 rounded-lg mt-2 mb-4"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                >
+                    <h3 className="text-sm font-medium text-gray-500 mb-1">생성된 제목:</h3>
+                    <p className="text-base font-medium text-gray-800 mb-3">{previewTitle}</p>
+                    
+                    {previewContent && (
+                        <>
+                            <h3 className="text-sm font-medium text-gray-500 mb-1">미리보기:</h3>
+                            <p className="text-sm text-gray-700 line-clamp-2">{previewContent}</p>
+                        </>
+                    )}
+                </motion.div>
+            )}
         </div>
     )
 } 

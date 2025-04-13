@@ -451,7 +451,7 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
                     onClick={handleStartReview}
                     className="w-full py-4 px-6 rounded-xl bg-white text-[#7969F7] font-bold hover:bg-gray-50 transition-all duration-200 flex items-center justify-center"
                 >
-                    <span>{stats.due}개 바로 학습하기 </span>
+                    <span>{stats.due}개 학습 시작하기 </span>
                 </button>
             </motion.div>
 

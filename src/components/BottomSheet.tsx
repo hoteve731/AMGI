@@ -10,6 +10,8 @@ export default function BottomSheet() {
     const [isLoading, setIsLoading] = useState(false)
     const [loadingStatus, setLoadingStatus] = useState<'title' | 'content' | 'group' | 'chunk' | 'complete'>('title')
     const [loadingProgress, setLoadingProgress] = useState(0)
+    const [previewTitle, setPreviewTitle] = useState('')
+    const [previewContent, setPreviewContent] = useState('')
     const [generatedTitle, setGeneratedTitle] = useState('')
     const [isExpanded, setIsExpanded] = useState(false)
     const [showAdditionalMemoryInput, setShowAdditionalMemoryInput] = useState(false)
@@ -157,8 +159,8 @@ export default function BottomSheet() {
             // 완료 메시지 표시를 위해 잠시 대기
             await new Promise(resolve => setTimeout(resolve, 1000));
 
-            // 완료되면 홈으로 이동
-            window.location.href = '/'
+            // 완료되면 그룹 리스트 페이지로 이동
+            window.location.href = `/content/${contentId}/groups`
         } catch (error) {
             console.error('Error:', error)
             alert(error instanceof Error ? error.message : '오류가 발생했습니다.')
@@ -195,8 +197,8 @@ export default function BottomSheet() {
             // 완료 메시지 표시를 위해 잠시 대기
             await new Promise(resolve => setTimeout(resolve, 1000));
 
-            // 완료되면 홈으로 이동
-            window.location.href = '/'
+            // 완료되면 그룹 리스트 페이지로 이동
+            window.location.href = `/content/${contentId}/groups`
         } catch (error) {
             console.error('Error:', error)
             // 오류 발생 시 홈으로 이동
@@ -255,6 +257,8 @@ export default function BottomSheet() {
         return <LoadingScreen
             progress={loadingProgress}
             status={loadingStatus}
+            previewTitle={previewTitle}
+            previewContent={previewContent}
         />
     }
 
