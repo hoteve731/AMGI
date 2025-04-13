@@ -405,8 +405,28 @@ export default function GroupDetail({ content, group: initialGroup }: { content:
                 throw new Error('그룹 삭제 중 오류가 발생했습니다.');
             }
 
-            // 콘텐츠 페이지로 이동
-            router.push(`/content/${content.id}`);
+            // localStorage에서 삭제된 그룹 ID 제거
+            const savedGroupId = localStorage.getItem(`content_${content.id}_selected_group`);
+            if (savedGroupId === currentGroup.id.toString()) {
+                localStorage.removeItem(`content_${content.id}_selected_group`);
+            }
+
+            // 그룹 목록 상태 업데이트 (삭제된 그룹 제거)
+            if (groups) {
+                const updatedGroups = groups.filter(g => g.id !== currentGroup.id);
+                setGroups(updatedGroups);
+
+                // 다른 그룹이 있으면 첫 번째 그룹 선택, 없으면 null로 설정
+                if (updatedGroups.length > 0) {
+                    setCurrentGroup(updatedGroups[0]);
+                    localStorage.setItem(`content_${content.id}_selected_group`, updatedGroups[0].id.toString());
+                } else {
+                    setCurrentGroup(null);
+                }
+            }
+
+            // 상태 업데이트 후 그룹 리스트 페이지로 이동
+            router.push(`/content/${content.id}/groups`);
         } catch (error) {
             console.error('그룹 삭제 중 오류:', error);
             alert('그룹 삭제 중 오류가 발생했습니다.');

@@ -3,7 +3,7 @@
 
 import { PostgrestError } from '@supabase/supabase-js'
 import ContentDetail from '@/components/ContentDetail'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/utils/supabase/server'
 
 type Chunk = {
@@ -92,6 +92,11 @@ export default async function Page(props: any) {
 
     if (error) {
       console.error('Error fetching group:', error)
+      // PGRST116 코드는 결과가 없거나 여러 개인 경우 발생
+      if (error.code === 'PGRST116') {
+        // 그룹이 없는 경우 - 그룹 리스트 페이지로 리다이렉트
+        redirect(`/content/${id}/groups`);
+      }
       throw new Error(`Group fetch error: ${error.message}`)
     }
 
@@ -99,6 +104,11 @@ export default async function Page(props: any) {
   } catch (error: unknown) {
     console.error('Unexpected group fetch error:', error)
     if (error instanceof Error) {
+      // 에러 메시지에 'multiple (or no) rows returned'가 포함되어 있으면 그룹이 없는 경우로 처리
+      if (error.message.includes('multiple (or no) rows returned')) {
+        // 그룹이 없는 경우 - 그룹 리스트 페이지로 리다이렉트
+        redirect(`/content/${id}/groups`);
+      }
       throw new Error(`Group fetch failed: ${error.message}`)
     } else {
       throw new Error('Unknown group fetch error')
@@ -106,7 +116,8 @@ export default async function Page(props: any) {
   }
 
   if (!group) {
-    throw new Error(`No group found for content ID: ${id}`)
+    // 그룹이 없는 경우 - 그룹 리스트 페이지로 리다이렉트
+    redirect(`/content/${id}/groups`);
   }
 
   return <ContentDetail group={group} content={content} />
