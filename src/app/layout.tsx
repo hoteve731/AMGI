@@ -90,25 +90,7 @@ export default function RootLayout({
   return (
     <html lang="ko" className="bg-gradient-to-b from-[#F8F4EF] to-[#E8D9C5]">
       <head>
-      <script dangerouslySetInnerHTML={{ __html: firebaseConfigScript }} />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="theme-color" content="#F8F4EF" />
-        <link
-          rel="apple-touch-startup-image"
-          href="/splash/apple-splash-2048-2732.png"
-          media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2)"
-        />
-        <link
-          rel="apple-touch-startup-image"
-          href="/splash/apple-splash-1290-2796.png"
-          media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3)"
-        />
-        <link
-          rel="apple-touch-startup-image"
-          href="/splash/apple-splash-1080-1920.png"
-          media="(device-width: 360px) and (device-height: 640px) and (-webkit-device-pixel-ratio: 3)"
-        />
+        <script dangerouslySetInnerHTML={{ __html: firebaseConfigScript }} />
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gradient-to-b from-[#F8F4EF] to-[#E8D9C5] min-h-screen`}>
         {children}

@@ -15,13 +15,45 @@ type Content = {
   groups_count?: number
 }
 
-// Fetcher function for SWR
-const fetcher = (url: string) => fetch(url, {
-  credentials: 'include' // 항상 쿠키를 포함하여 요청
-}).then(res => {
-  if (!res.ok) throw new Error('Failed to fetch contents')
-  return res.json()
-})
+const fetcher = async (url: string) => {
+  try {
+    const response = await fetch(url, {
+      credentials: 'include'
+    });
+    
+    if (response.status === 401) {
+      console.log('Session expired, attempting to refresh...');
+      
+      // 세션 갱신 시도
+      const refreshResponse = await fetch('/api/auth/session', {
+        method: 'GET',
+        credentials: 'include',
+      });
+      
+      if (refreshResponse.ok) {
+        // 원래 요청 한 번 더 시도
+        const retryResponse = await fetch(url, {
+          credentials: 'include'
+        });
+        
+        if (!retryResponse.ok) {
+          throw new Error(`Failed to fetch contents: ${retryResponse.status}`);
+        }
+        
+        return retryResponse.json();
+      }
+    }
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch contents: ${response.status}`);
+    }
+    
+    return response.json();
+  } catch (error) {
+    console.error('Fetch error:', error);
+    throw error;
+  }
+}
 
 const tabs = [
   { id: 'all', label: 'All' },
