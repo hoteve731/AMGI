@@ -176,7 +176,7 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ duration: 0.4, delay: 0.4 }}
                     >
-                        <div className="w-6 h-6 rounded-full bg-[#FDFF8C] flex items-center justify-center mr-2">
+                        <div className={`${stats.new >= 100 ? 'w-auto px-2' : 'w-6'} h-6 rounded-full bg-[#FDFF8C] flex items-center justify-center mr-2`}>
                             <span className="text-gray-800 text-sm font-bold">{stats.new}</span>
                         </div>
                         <span className="text-white text-sm font-medium">새 카드</span>
@@ -188,7 +188,7 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ duration: 0.4, delay: 0.5 }}
                     >
-                        <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center mr-2">
+                        <div className={`${stats.learning >= 100 ? 'w-auto px-2' : 'w-6'} h-6 rounded-full bg-white flex items-center justify-center mr-2`}>
                             <span className="text-[#B4B6E4] text-sm font-bold">{stats.learning}</span>
                         </div>
                         <span className="text-white text-sm font-medium">학습 중</span>
@@ -200,7 +200,7 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ duration: 0.4, delay: 0.6 }}
                     >
-                        <div className="w-6 h-6 rounded-full bg-[#5F4BB6] flex items-center justify-center mr-2">
+                        <div className={`${stats.review >= 100 ? 'w-auto px-2' : 'w-6'} h-6 rounded-full bg-[#5F4BB6] flex items-center justify-center mr-2`}>
                             <span className="text-white text-sm font-bold">{stats.review}</span>
                         </div>
                         <span className="text-white text-sm font-medium">복습 중</span>
@@ -318,7 +318,7 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 0.4, delay: 0.4 }}
                 >
-                    <div className="w-6 h-6 rounded-full bg-[#FDFF8C] flex items-center justify-center mr-2">
+                    <div className={`${stats.new >= 100 ? 'w-auto px-2' : 'w-6'} h-6 rounded-full bg-[#FDFF8C] flex items-center justify-center mr-2`}>
                         <span className="text-gray-800 text-sm font-bold">{stats.new}</span>
                     </div>
                     <span className="text-white text-sm font-medium">새 카드</span>
@@ -330,7 +330,7 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 0.4, delay: 0.5 }}
                 >
-                    <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center mr-2">
+                    <div className={`${stats.learning >= 100 ? 'w-auto px-2' : 'w-6'} h-6 rounded-full bg-white flex items-center justify-center mr-2`}>
                         <span className="text-[#B4B6E4] text-sm font-bold">{stats.learning}</span>
                     </div>
                     <span className="text-white text-sm font-medium">학습 중</span>
@@ -342,7 +342,7 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 0.4, delay: 0.6 }}
                 >
-                    <div className="w-6 h-6 rounded-full bg-[#5F4BB6] flex items-center justify-center mr-2">
+                    <div className={`${stats.review >= 100 ? 'w-auto px-2' : 'w-6'} h-6 rounded-full bg-[#5F4BB6] flex items-center justify-center mr-2`}>
                         <span className="text-white text-sm font-bold">{stats.review}</span>
                     </div>
                     <span className="text-white text-sm font-medium">복습 중</span>
@@ -418,13 +418,17 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
                 </button>
             </motion.div>
 
-            {mounted && showStatsModal && (
-                <StatsModal
-                    stats={stats}
-                    completionPercentage={completionPercentage}
-                    completedCards={completedCards}
-                    onClose={() => setShowStatsModal(false)}
-                />
+            {mounted && (
+                <AnimatePresence>
+                    {showStatsModal && (
+                        <StatsModal
+                            stats={stats}
+                            completionPercentage={completionPercentage}
+                            completedCards={completedCards}
+                            onClose={() => setShowStatsModal(false)}
+                        />
+                    )}
+                </AnimatePresence>
             )}
         </motion.div>
     )
@@ -446,6 +450,7 @@ function StatsModal({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
             className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
             onClick={onClose}
             style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
@@ -454,6 +459,7 @@ function StatsModal({
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.9, opacity: 0 }}
+                transition={{ duration: 0.3 }}
                 className="bg-white rounded-2xl w-full max-w-md max-h-[80vh] flex flex-col overflow-hidden"
                 onClick={(e) => e.stopPropagation()}
             >
@@ -474,19 +480,19 @@ function StatsModal({
                         <h4 className="font-medium text-gray-700 mb-2">카드 상태</h4>
                         <div className="grid grid-cols-2 gap-2 mb-3">
                             <div className="flex items-center">
-                                <div className="w-3 h-3 rounded-full bg-[#FDFF8C] mr-2"></div>
+                                <div className={`${stats.new >= 100 ? 'w-auto px-2' : 'w-3'} h-3 rounded-full bg-[#FDFF8C] mr-2`}></div>
                                 <span className="text-sm text-gray-600">새 카드: {stats.new}</span>
                             </div>
                             <div className="flex items-center">
-                                <div className="w-3 h-3 rounded-full bg-white border border-gray-300 mr-2"></div>
+                                <div className={`${stats.learning >= 100 ? 'w-auto px-2' : 'w-3'} h-3 rounded-full bg-white border border-gray-300 mr-2`}></div>
                                 <span className="text-sm text-gray-600">학습 중: {stats.learning}</span>
                             </div>
                             <div className="flex items-center">
-                                <div className="w-3 h-3 rounded-full bg-[#5F4BB6] mr-2"></div>
+                                <div className={`${stats.review >= 100 ? 'w-auto px-2' : 'w-3'} h-3 rounded-full bg-[#5F4BB6] mr-2`}></div>
                                 <span className="text-sm text-gray-600">복습 중: {stats.review}</span>
                             </div>
                             <div className="flex items-center">
-                                <div className="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
+                                <div className={`${stats.due >= 100 ? 'w-auto px-2' : 'w-3'} h-3 rounded-full bg-green-500 mr-2`}></div>
                                 <span className="text-sm text-gray-600">지금 학습 필요: {stats.due}</span>
                             </div>
                         </div>
