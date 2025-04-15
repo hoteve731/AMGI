@@ -390,7 +390,7 @@ export default function ReviewPage() {
                         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                         </svg>
-                        <span className="ml-1 text-sm">비활성화</span>
+                        <span className="ml-1 text-m">이 카드 비활성화 (스킵)</span>
                     </button>
                 </div>
 
