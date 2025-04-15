@@ -88,12 +88,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko" className="bg-gradient-to-b from-[#F8F4EF] to-[#E8D9C5]">
+    <html lang="ko" className="bg-[#E8DED0]">
       <head>
         <script dangerouslySetInnerHTML={{ __html: firebaseConfigScript }} />
       </head>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gradient-to-b from-[#F8F4EF] to-[#E8D9C5] min-h-screen`}>
-        {children}
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-gray-100`}>
+        <div className="flex justify-center min-h-screen w-full">
+          <div className="w-full max-w-[700px] bg-white min-h-screen shadow-2xl shadow-black/20 rounded-xl">
+            {children}
+          </div>
+        </div>
         <UpdatePrompt />
         {/* <PushTest /> */}
       </body>

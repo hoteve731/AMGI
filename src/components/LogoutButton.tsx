@@ -76,7 +76,7 @@ export default function LogoutButton() {
                     <span>로그아웃 중...</span>
                 </>
             ) : (
-                <span>Logout</span>
+                <span>로그아웃</span>
             )}
         </button>
     )

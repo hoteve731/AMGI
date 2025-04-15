@@ -247,7 +247,7 @@ export default function ContentDetail({
                         href={`/content/${content.id}/learning?chunk=${group.chunks[0]?.id || ''}`}
                         className="w-full block text-center py-3 px-4 rounded-lg bg-[#DDCFFD] text-white font-medium hover:bg-opacity-90 transition-colors"
                     >
-                        학습 시작하기
+                        반복 시작하기
                     </Link>
                 </div>
             </div>

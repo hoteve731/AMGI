@@ -438,7 +438,7 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
                 transition={{ duration: 0.5, delay: 1 }}
             >
                 <p className="text-2xl font-bold">{userName}님,</p>
-                <p className="text-xl font-bold">학습을 시작해 볼까요?</p>
+                <p className="text-xl font-bold">반복을 시작해 볼까요?</p>
             </motion.div>
 
             <motion.div
@@ -451,7 +451,7 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
                     onClick={handleStartReview}
                     className="w-full py-4 px-6 rounded-xl bg-white text-[#7969F7] font-bold hover:bg-gray-50 transition-all duration-200 flex items-center justify-center"
                 >
-                    <span>{stats.due}개 학습 시작하기 </span>
+                    <span>{stats.due}개 반복 시작하기 </span>
                 </button>
             </motion.div>
 
@@ -501,7 +501,7 @@ function StatsModal({
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="flex justify-between items-center p-6 border-b border-gray-100 sticky top-0 bg-white z-10">
-                    <h3 className="text-xl font-bold text-gray-800">학습 & 카드 정보</h3>
+                    <h3 className="text-xl font-bold text-gray-800">반복 & 카드 정보</h3>
                     <button
                         onClick={onClose}
                         className="text-gray-500 hover:text-gray-700"

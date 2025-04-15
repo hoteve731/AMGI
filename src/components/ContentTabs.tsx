@@ -56,10 +56,10 @@ const fetcher = async (url: string) => {
 }
 
 const tabs = [
-  { id: 'all', label: 'All' },
-  { id: 'studying', label: 'Looping' },
-  { id: 'completed', label: 'Completed' },
-  { id: 'paused', label: 'Paused' },
+  { id: 'all', label: '전체' },
+  { id: 'studying', label: '반복 중' },
+  { id: 'completed', label: '완료' },
+  { id: 'paused', label: '일시중지' },
 ]
 
 export default function ContentTabs() {
