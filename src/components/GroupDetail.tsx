@@ -826,7 +826,7 @@ export default function GroupDetail({ content, group: initialGroup }: { content:
                                     d="M9 5l7 7-7 7"
                                 />
                             </svg>
-                            <span className="text-lg font-medium text-gray-800">원본 텍스트</span>
+                            <span className="text-lg font-medium text-gray-800">원본 문단</span>
                         </div>
                         <div></div>
                     </button>
@@ -904,8 +904,8 @@ export default function GroupDetail({ content, group: initialGroup }: { content:
                                                 <div className="inline-flex items-center justify-center bg-white rounded-full px-3 py-1 border border-gray-200">
                                                     <div className="flex items-center">
                                                         <div className={`w-2 h-2 rounded-full mr-2 ${chunk.card_state === 'new' ? 'bg-[#FDFF8C]' :
-                                                                chunk.card_state === 'learning' || chunk.card_state === 'relearning' ? 'bg-[#B4B6E4]' :
-                                                                    chunk.card_state === 'review' || chunk.card_state === 'graduated' ? 'bg-[#5F4BB6]' : 'bg-gray-400'
+                                                            chunk.card_state === 'learning' || chunk.card_state === 'relearning' ? 'bg-[#B4B6E4]' :
+                                                                chunk.card_state === 'review' || chunk.card_state === 'graduated' ? 'bg-[#5F4BB6]' : 'bg-gray-400'
                                                             }`}></div>
                                                         <div className="text-sm font-medium text-gray-800">
                                                             {chunk.card_state === 'new' ? '새 카드' :
@@ -1034,14 +1034,14 @@ export default function GroupDetail({ content, group: initialGroup }: { content:
                     </div>
                 </div>
 
-                <div className="mb-6">
+                {/* <div className="mb-6">
                     <button
                         onClick={handleStartLearning}
                         className="w-full py-4 px-6 rounded-xl bg-[#7969F7] text-white font-bold hover:bg-[#6858e6] transition-all duration-200 flex items-center justify-center"
                     >
                         이 그룹 지금 학습하기
                     </button>
-                </div>
+                </div> */}
             </div>
         </main>
     );

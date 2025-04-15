@@ -20,7 +20,7 @@ export default async function Page(props: any) {
   // 콘텐츠 정보 가져오기
   const { data: content, error: contentError } = await supabase
     .from('contents')
-    .select('id, title, created_at, status, additional_memory')
+    .select('id, title, created_at, status, additional_memory, original_text')
     .eq('id', id)
     .single()
 

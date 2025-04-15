@@ -20,9 +20,11 @@ type ContentWithGroups = {
     status: 'studying' | 'completed' | 'paused'
     groups: ContentGroup[]
     additional_memory?: string
+    original_text?: string
 }
 
 export default function ContentGroups({ content }: { content: ContentWithGroups }) {
+    const [showOriginalText, setShowOriginalText] = useState(false);
     const router = useRouter()
     const { mutate } = useSWRConfig()
     const [isDeleting, setIsDeleting] = useState<string | null>(null)
@@ -205,7 +207,49 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                 )}
 
                 <div className="space-y-4">
-                    <h2 className="text-xl font-semibold text-gray-700 mt-2">학습 그룹</h2>
+                    {/* 원본 텍스트 토글 */}
+<div className="flex flex-col mb-8">
+  <button
+    onClick={() => setShowOriginalText((prev) => !prev)}
+    className={`w-full bg-white/60 backdrop-blur-md rounded-xl p-4 flex items-center justify-between border border-white/20 transition-colors duration-200${showOriginalText ? ' rounded-b-none border-b-0' : ''}`}
+  >
+    <div className="flex items-center">
+      <svg
+        className={`w-5 h-5 text-gray-600 transition-transform mr-2${showOriginalText ? ' transform rotate-90' : ''}`}
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M9 5l7 7-7 7"
+        />
+      </svg>
+      <span className="text-lg font-medium text-gray-800">텍스트 원본</span>
+    </div>
+    <div></div>
+  </button>
+  <AnimatePresence>
+    {showOriginalText && (
+      <motion.div
+        initial={{ opacity: 0, height: 0 }}
+        animate={{ opacity: 1, height: "auto" }}
+        exit={{ opacity: 0, height: 0 }}
+        transition={{ duration: 0.3 }}
+        className="overflow-hidden"
+      >
+        <div className="bg-white/40 backdrop-blur-md rounded-xl rounded-t-none p-4 border border-white/20 border-t-0">
+          <p className="text-gray-600 text-sm whitespace-pre-wrap">
+            {content.original_text || '원본 텍스트를 불러올 수 없습니다.'}
+          </p>
+        </div>
+      </motion.div>
+    )}
+  </AnimatePresence>
+</div>
+<h2 className="text-xl font-semibold text-gray-700 mt-2">카드 그룹</h2>
                     <div className="grid grid-cols-2 gap-4">
                         {content.groups.map((group, index) => (
                             <div
