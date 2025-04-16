@@ -232,7 +232,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                         {[
                             { id: 'cards', label: '기억카드' },
                             { id: 'groups', label: '그룹' },
-                            { id: 'text', label: '텍스트 원본' }
+                            { id: 'text', label: '원본' }
                         ].map((tab) => {
                             const isActive = activeTab === tab.id;
                             return (
@@ -374,7 +374,6 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                             transition={{ duration: 0.2, ease: "easeInOut" }}
                         >
                             <div className="p-6 bg-white/80 backdrop-blur-md rounded-xl border border-white/20">
-                                <h3 className="text-lg font-semibold text-gray-800 mb-4">텍스트 원본</h3>
                                 <div className="prose max-w-none">
                                     <p className="whitespace-pre-wrap text-gray-700">{content.original_text}</p>
                                 </div>
