@@ -4,7 +4,7 @@ import ContentTabs from '@/components/ContentTabs'
 import BottomSheet from '@/components/BottomSheet'
 import { createClient } from '@/utils/supabase/server'
 import ReviewDashboard from '@/components/ReviewDashboard'
-import { SparklesIcon } from '@heroicons/react/24/solid'
+import MenuButton from '@/components/MenuButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,7 +20,10 @@ export default async function Home() {
   return (
     <main className="flex min-h-screen flex-col bg-gradient-to-b from-[#F8F4EF] to-[#E8D9C5]">
       <header className="flex justify-between items-center py-3 px-4 border-b border-[#D4C4B7] bg-[#F8F4EF]">
-        <h1 className="text-2xl font-bold text-[#7969F7]">LOOPA</h1>
+        <div className="flex items-center gap-3">
+          <MenuButton />
+          <h1 className="text-2xl font-bold text-[#7969F7]">LOOPA</h1>
+        </div>
         <LogoutButton />
       </header>
 
