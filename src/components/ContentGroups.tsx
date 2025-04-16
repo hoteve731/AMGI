@@ -41,7 +41,7 @@ type ContentWithGroups = Content & {
 }
 
 export default function ContentGroups({ content }: { content: ContentWithGroups }) {
-    const [activeTab, setActiveTab] = useState<'cards' | 'groups' | 'text'>('groups');
+    const [activeTab, setActiveTab] = useState<'cards' | 'groups' | 'text'>('cards');
     const [showOriginalText, setShowOriginalText] = useState(false);
     const [showAdditionalMemory, setShowAdditionalMemory] = useState(false);
     const [editingChunkId, setEditingChunkId] = useState<string | null>(null);
@@ -224,11 +224,11 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                     <span className="ml-2 font-medium group-hover:font-semibold transition-all duration-200">홈</span>
                 </button>
             </div>
-            
+
             {/* 탭 네비게이션 - 홈 디자인과 동일하게 적용 */}
-            <div className="sticky top-12 z-40 bg-[#F8F4EF] px-4 pt-3 pb-2">
+            <div className="sticky top-12 z-40 px-4 pt-3 pb-2">
                 <div className="relative flex justify-center max-w-md mx-auto">
-                    <div className="relative flex w-full justify-between bg-white/80 backdrop-blur-md rounded-full p-1 ring-1 ring-gray-200/70 ring-inset">
+                    <div className="relative flex w-full justify-between bg-white/70 backdrop-blur-xl rounded-full p-1 [box-shadow:0_2px_8px_rgba(0,0,0,0.1)] ring-1 ring-gray-200/70 ring-inset">
                         {[
                             { id: 'cards', label: '기억카드' },
                             { id: 'groups', label: '그룹' },
@@ -289,8 +289,10 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                         >
                             {content.groups.map((group) => (
                                 <div key={group.id} className="space-y-4">
-                                    <h3 className="text-lg font-semibold text-gray-800">{group.title}</h3>
-                                    <GroupDetail content={content} group={group} hideHeader={true} />
+                                    <h3 className="text-xl font-medium text-gray-800">
+                                        {group.title} <span className="font-light text-gray-500">({group.chunks?.length || 0})</span>
+                                    </h3>
+                                    <GroupDetail content={content} group={group} hideHeader={true} hideCardCount={true} />
                                 </div>
                             ))}
                         </motion.div>
@@ -312,7 +314,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                                     key={group.id}
                                     className="block relative transition-all duration-300 hover:scale-[1.02]"
                                 >
-                                <div className="
+                                    <div className="
                                     flex flex-col
                                     p-4 
                                     bg-white/60
@@ -326,38 +328,38 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                                     [-webkit-backdrop-filter:blur(20px)]
                                     [backdrop-filter:blur(20px)]
                                 ">
-                                    <Link
-                                        href={`/content/${content.id}/groups/${group.id}`}
-                                        className="flex-1 flex flex-col"
-                                        onClick={(e) => {
-                                            setIsLoading(true);
-                                            localStorage.setItem(`content_${content.id}_selected_group`, group.id.toString());
-                                        }}
-                                    >
-                                        <h3 className="text-lg font-medium text-gray-800 mb-2">{group.title}</h3>
-                                    </Link>
-                                    <div className="flex items-center justify-between mt-2">
-                                        <div className="flex items-center gap-1">
-                                            <svg
-                                                className="w-4 h-4"
-                                                fill="none"
-                                                stroke="currentColor"
-                                                viewBox="0 0 24 24"
-                                            >
-                                                <path
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                    strokeWidth={2}
-                                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                                                />
-                                            </svg>
-                                            <span className="text-gray-600">기억카드</span>
-                                            <span className="text-gray-700 font-bold">{group.chunks?.length || 0}</span>
+                                        <Link
+                                            href={`/content/${content.id}/groups/${group.id}`}
+                                            className="flex-1 flex flex-col"
+                                            onClick={(e) => {
+                                                setIsLoading(true);
+                                                localStorage.setItem(`content_${content.id}_selected_group`, group.id.toString());
+                                            }}
+                                        >
+                                            <h3 className="text-lg font-medium text-gray-800 mb-2">{group.title}</h3>
+                                        </Link>
+                                        <div className="flex items-center justify-between mt-2">
+                                            <div className="flex items-center gap-1">
+                                                <svg
+                                                    className="w-4 h-4"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    viewBox="0 0 24 24"
+                                                >
+                                                    <path
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                        strokeWidth={2}
+                                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                                    />
+                                                </svg>
+                                                <span className="text-gray-600">기억카드</span>
+                                                <span className="text-gray-700 font-bold">{group.chunks?.length || 0}</span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        ))}
+                            ))}
                         </motion.div>
                     )}
                 </AnimatePresence>
