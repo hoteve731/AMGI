@@ -1,24 +1,77 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
+import useSWR from 'swr';
+import { useRouter } from 'next/navigation';
 
-interface ContentInfo {
-  id: string;
-  title: string;
-  groupCount: number;
-  cardCount: number;
-}
+// ContentTabs와 동일한 fetcher 함수 사용
+const fetcher = async (url: string) => {
+  try {
+    const response = await fetch(url, {
+      credentials: 'include'
+    });
+    
+    if (response.status === 401) {
+      console.log('Session expired, attempting to refresh...');
+      
+      // 세션 갱신 시도
+      const refreshResponse = await fetch('/api/auth/session', {
+        method: 'GET',
+        credentials: 'include',
+      });
+      
+      if (refreshResponse.ok) {
+        // 원래 요청 한 번 더 시도
+        const retryResponse = await fetch(url, {
+          credentials: 'include'
+        });
+        
+        if (!retryResponse.ok) {
+          throw new Error(`Failed to fetch contents: ${retryResponse.status}`);
+        }
+        
+        return retryResponse.json();
+      }
+    }
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch contents: ${response.status}`);
+    }
+    
+    return response.json();
+  } catch (error) {
+    console.error('Fetch error:', error);
+    throw error;
+  }
+};
 
-interface SideMenuProps {
-  open: boolean;
-  onClose: () => void;
-  contents: ContentInfo[];
-  onSelectContent: (contentId: string) => void;
-}
+const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onClose }) => {
+  const router = useRouter();
+  const { data, error, isLoading } = useSWR<{ contents: any[] }>('/api/contents', fetcher, {
+    refreshInterval: 0,  // 자동 폴링 없음
+    revalidateOnFocus: true,  // 창이 포커스를 얻을 때 재검증
+    revalidateOnReconnect: true,  // 브라우저가 연결을 다시 얻을 때 재검증
+    dedupingInterval: 5000, // 5초 내에 중복 요청 방지
+  });
+  
+  const contents = data?.contents || [];
+  
+  // 디버깅을 위한 로그
+  useEffect(() => {
+    if (open) {
+      console.log('SideMenu data:', data);
+      console.log('SideMenu error:', error);
+      console.log('SideMenu isLoading:', isLoading);
+    }
+  }, [open, data, error, isLoading]);
 
-const SideMenu: React.FC<SideMenuProps> = ({ open, onClose, contents, onSelectContent }) => {
+  const handleSelectContent = (contentId: string) => {
+    router.push(`/content/${contentId}/groups`);
+    onClose();
+  };
+
   return (
     <AnimatePresence>
       {open && (
@@ -33,7 +86,7 @@ const SideMenu: React.FC<SideMenuProps> = ({ open, onClose, contents, onSelectCo
           {/* Header */}
           <div className="flex items-center justify-between h-16 px-5 border-b border-gray-100">
             <div className="flex items-center gap-2">
-              <Image src="/logo.svg" alt="LOOPA Logo" width={28} height={28} />
+              <Image src="/icons/translogo.png" alt="LOOPA Logo" width={32} height={32} />
               <span className="font-bold text-lg tracking-tight text-gray-900">LOOPA</span>
             </div>
             <button
@@ -46,7 +99,9 @@ const SideMenu: React.FC<SideMenuProps> = ({ open, onClose, contents, onSelectCo
           </div>
           {/* Content List */}
           <nav className="flex-1 overflow-y-auto py-3 px-2">
-            {contents.length === 0 ? (
+            {isLoading ? (
+              <div className="text-gray-400 text-center mt-8">로딩 중...</div>
+            ) : contents.length === 0 ? (
               <div className="text-gray-400 text-center mt-8">콘텐츠가 없습니다</div>
             ) : (
               <ul className="space-y-3">
@@ -54,12 +109,12 @@ const SideMenu: React.FC<SideMenuProps> = ({ open, onClose, contents, onSelectCo
                   <li key={content.id}>
                     <button
                       className="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors duration-200"
-                      onClick={() => onSelectContent(content.id)}
+                      onClick={() => handleSelectContent(content.id)}
                     >
                       <div className="truncate font-medium text-gray-900 text-base">{content.title}</div>
                       <div className="text-xs text-gray-500 mt-1 flex gap-3">
-                        <span>그룹 {content.groupCount}</span>
-                        <span>기억카드 {content.cardCount}</span>
+                        <span className="inline-flex items-center gap-1"><svg width="14" height="14" fill="none" stroke="#8B5CF6" strokeWidth="2" viewBox="0 0 20 20"><rect x="2.5" y="4" width="15" height="12" rx="2"/><path d="M6 2.5v3M14 2.5v3"/></svg>{content.groups_count ?? 0} 그룹</span>
+                        <span className="inline-flex items-center gap-1"><svg width="14" height="14" fill="none" stroke="#F59E42" strokeWidth="2" viewBox="0 0 20 20"><rect x="4" y="4" width="12" height="12" rx="2"/><path d="M8 8h4v4H8z"/></svg>{content.chunks_count ?? 0} 카드</span>
                       </div>
                     </button>
                   </li>

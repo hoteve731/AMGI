@@ -124,8 +124,6 @@ export const SideMenuProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       <SideMenu 
         open={isOpen} 
         onClose={closeMenu} 
-        contents={contents} 
-        onSelectContent={handleSelectContent} 
       />
       {children}
     </SideMenuContext.Provider>
