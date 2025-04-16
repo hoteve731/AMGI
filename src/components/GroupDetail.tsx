@@ -22,7 +22,7 @@ type ContentGroup = {
     id: string
     title: string
     original_text: string
-    chunks: Chunk[]
+    chunks?: Chunk[]
     position: number
 }
 
@@ -41,7 +41,7 @@ type NotificationInfo = {
     status: 'pending' | 'sent' | 'failed';
 }
 
-export default function GroupDetail({ content, group: initialGroup }: { content: Content; group: ContentGroup }) {
+export default function GroupDetail({ content, group: initialGroup, hideHeader = false }: { content: Content; group: ContentGroup; hideHeader?: boolean }) {
     const router = useRouter()
     const [isLoading, setIsLoading] = useState(false)
     const [isNavigating, setIsNavigating] = useState(false)
@@ -256,7 +256,7 @@ export default function GroupDetail({ content, group: initialGroup }: { content:
 
             // 각 청크별로 알림 스케줄링
             const promises = currentGroup?.chunks?.map(async (chunk: Chunk, index: number) => {
-                if (!currentGroup) return null;
+                if (!currentGroup || !currentGroup.chunks) return null;
                 const scheduledTime = new Date(Date.now() + (index + 1) * 10 * 1000)
                 const notificationBody = `${currentGroup.title}의 카드 ${index + 1}을 복습할 시간입니다.`
 
@@ -373,7 +373,7 @@ export default function GroupDetail({ content, group: initialGroup }: { content:
     };
 
     // 활성화된 알림 개수
-    const activeNotificationsCount = notifications.filter(n => n.status === 'pending').length;
+    const activeNotificationsCount = notifications?.filter(n => n.status === 'pending').length || 0;
 
     // 그룹 선택 핸들러
     const handleGroupSelect = (group: ContentGroup) => {
@@ -504,7 +504,7 @@ export default function GroupDetail({ content, group: initialGroup }: { content:
 
         try {
             // Find the chunk and set its status
-            const updatedChunks = currentGroup.chunks.map(chunk => {
+            const updatedChunks = currentGroup.chunks?.map(chunk => {
                 if (chunk.id === chunkId) {
                     return { ...chunk, status: newStatus }
                 }
@@ -514,7 +514,7 @@ export default function GroupDetail({ content, group: initialGroup }: { content:
             // Update the current group with the updated chunks
             setCurrentGroup({
                 ...currentGroup,
-                chunks: updatedChunks as Chunk[]
+                chunks: updatedChunks ? updatedChunks as Chunk[] : []
             })
 
             // Update the database
@@ -551,7 +551,7 @@ export default function GroupDetail({ content, group: initialGroup }: { content:
 
         try {
             // Update the chunk in the current group
-            const updatedChunks = currentGroup.chunks.map(chunk => {
+            const updatedChunks = currentGroup.chunks?.map(chunk => {
                 if (chunk.id === chunkId) {
                     return { ...chunk, summary: editSummary, masked_text: editMaskedText }
                 }
@@ -640,6 +640,8 @@ export default function GroupDetail({ content, group: initialGroup }: { content:
         router.push(`/content/${content.id}/groups`)
     }
 
+    const [activeTab, setActiveTab] = useState<'memory' | 'group' | 'text'>('memory')
+
     if (!currentGroup) {
         return (
             <main className="flex min-h-screen flex-col bg-gradient-to-b from-[#F8F4EF] to-[#E8D9C5]">
@@ -672,376 +674,394 @@ export default function GroupDetail({ content, group: initialGroup }: { content:
     }
 
     return (
-        <main className="flex min-h-screen flex-col bg-gradient-to-b from-[#F8F4EF] to-[#E8D9C5]">
+        <main className={`flex min-h-screen flex-col ${!hideHeader ? 'bg-gradient-to-b from-[#F8F4EF] to-[#E8D9C5]' : ''}`}>
             {(isLoading || isNavigating) && <LoadingOverlay />}
-            <AnimatePresence>
-                {showGroupSelector && (
-                    <>
+            {!hideHeader && (
+                <div className="sticky top-0 bg-[#F8F4EF] border-b border-[#D4C4B7] h-12 z-50">
+                    <button
+                        onClick={handleGoBack}
+                        className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center text-gray-600 hover:text-gray-900 transition-all duration-200 group"
+                    >
+                        <svg className="w-5 h-5 group-hover:scale-110 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                        <span className="ml-2 font-medium group-hover:font-semibold transition-all duration-200">그룹</span>
+                    </button>
+
+                    <button
+                        onClick={handleDeleteGroup}
+                        disabled={isDeletingGroup}
+                        className="absolute right-16 top-1/2 -translate-y-1/2 h-8 w-8 bg-[#8B4513]/60 backdrop-blur-md text-white rounded-full flex items-center justify-center hover:bg-red-500/90 transition-colors disabled:opacity-50"
+                        aria-label="그룹 삭제"
+                    >
+                        {isDeletingGroup ? (
+                            <div className="flex space-x-1">
+                                {[0, 1, 2, 3, 4].map((i) => (
+                                    <motion.div
+                                        key={i}
+                                        className="w-1.5 h-1.5 bg-white rounded-full"
+                                        animate={{
+                                            y: ["0%", "-100%"],
+                                        }}
+                                        transition={{
+                                            type: "spring",
+                                            stiffness: 300,
+                                            damping: 15,
+                                            mass: 0.8,
+                                            repeat: Infinity,
+                                            repeatType: "reverse",
+                                            delay: i * 0.1,
+                                        }}
+                                    />
+                                ))}
+                            </div>
+                        ) : (
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                        )}
+                    </button>
+
+                    {groups.length > 1 && (
+                        <button
+                            onClick={() => setShowGroupSelector(!showGroupSelector)}
+                            className="absolute right-4 top-1/2 -translate-y-1/2 h-8 w-8 bg-[#8B4513]/60 backdrop-blur-md text-white rounded-full flex items-center justify-center hover:bg-[#8B4513]/90 transition-colors"
+                            aria-label={showGroupSelector ? "닫기" : "그룹 리스트"}
+                        >
+                            <motion.div
+                                animate={{ rotate: showGroupSelector ? 90 : 0 }}
+                                transition={{ duration: 0.3, ease: "easeInOut" }}
+                            >
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    {showGroupSelector ? (
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    ) : (
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
+                                    )}
+                                </svg>
+                            </motion.div>
+                        </button>
+                    )}
+                </div>
+            )}
+
+            {/* 탭 컴포넌트 - 홈 디자인과 동일하게 적용 (hideHeader가 false일 때만 렌더링) */}
+            {!hideHeader && (
+                <div className="sticky top-12 z-40 bg-[#F8F4EF] px-4 pt-3 pb-2">
+                    <div className="relative flex justify-center max-w-md mx-auto">
+                        <div className="relative flex w-full justify-between bg-white/80 backdrop-blur-md rounded-full p-1 ring-1 ring-gray-200/70 ring-inset">
+                            {[
+                                { id: 'memory', label: '기억카드' },
+                                { id: 'group', label: '그룹' },
+                                { id: 'text', label: '텍스트 원본' }
+                            ].map((tab) => {
+                                const isActive = activeTab === tab.id;
+                                return (
+                                    <div key={tab.id} className="relative z-10 flex-1">
+                                        {isActive && (
+                                            <motion.div
+                                                layoutId="activeTabBackground"
+                                                className="absolute inset-0 bg-[#7969F7] rounded-full"
+                                                transition={{
+                                                    type: "spring",
+                                                    stiffness: 500,
+                                                    damping: 30
+                                                }}
+                                            />
+                                        )}
+                                        <button
+                                            onClick={() => setActiveTab(tab.id as 'memory' | 'group' | 'text')}
+                                            className={`
+                                                relative z-20
+                                                w-full py-2 px-1
+                                                text-sm
+                                                transition-colors duration-200
+                                                ${isActive
+                                                    ? 'text-white font-bold'
+                                                    : 'text-gray-500 hover:text-gray-700 font-medium'}
+                                            `}
+                                        >
+                                            {tab.label}
+                                        </button>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <div className={`flex-1 max-w-2xl mx-auto w-full ${!hideHeader ? 'p-4' : ''}`}>
+                {!hideHeader && (
+                    <div className="space-y-2 mb-8 mt-4">
+                        <h1 className="text-3xl font-bold text-gray-800">{content.title}</h1>
+                        <div className="text-sm text-gray-500">
+                            {new Date(content.created_at).toLocaleDateString('ko-KR')} 시작
+                        </div>
+                    </div>
+                )}
+
+                {/* 그룹 개수 서브타이틀 및 탭 */}
+                {!hideHeader && (
+                    <div className="mt-4 mb-6">
+                        {/* 현재 그룹 제목 (크게 표시) */}
+                        <div>
+                            <div className="flex justify-between items-center">
+                                <h2 className="text-3xl font-bold text-gray-800">{currentGroup?.title}</h2>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* 탭 내용 */}
+                <AnimatePresence mode="wait">
+                    {activeTab === 'memory' && (
                         <motion.div
-                            className="fixed inset-0 bg-white/70 backdrop-blur-sm z-40"
+                            key="memory"
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            onClick={() => setShowGroupSelector(false)}
-                        />
-                        <motion.div
-                            className="fixed inset-x-0 top-12 p-4 bg-white shadow-lg rounded-b-xl z-50"
-                            initial={{ y: "-100%" }}
-                            animate={{ y: 0 }}
-                            exit={{ y: "-100%" }}
-                            transition={{
-                                type: "spring",
-                                stiffness: 300,
-                                damping: 30
-                            }}
+                            transition={{ duration: 0.2, ease: "easeInOut" }}
+                            className="space-y-4"
                         >
-                            <div className="max-w-2xl mx-auto">
-                                <div className="flex justify-between items-center mb-3">
-                                    <h3 className="text-lg font-semibold text-gray-800">그룹 선택</h3>
-                                </div>
-                                <div className="flex flex-wrap gap-2">
-                                    {groups.map((group: ContentGroup) => (
-                                        <button
-                                            key={group.id}
-                                            onClick={() => handleGroupSelect(group)}
-                                            className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors flex flex-col items-start h-auto min-h-[70px] w-[calc(50%-0.5rem)] ${currentGroup?.id === group.id
-                                                ? 'bg-[#E8D9C5] font-bold'
-                                                : 'bg-white/60 text-gray-700 hover:bg-white/80 border border-gray-200'
-                                                }`}
+                            {/* 메모리 카드 */}
+                            <div className="space-y-4 mb-6">
+                                <div className="flex justify-between items-center">
+                                    <div className="flex items-center">
+                                        <svg
+                                            className="w-5 h-5 mr-1 text-gray-600"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24"
                                         >
-                                            <div className="line-clamp-2 text-left mb-1 w-full">
-                                                {group.title}
+                                            <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                strokeWidth={2}
+                                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                            />
+                                        </svg>
+                                        <h3 className="text-xl font-bold text-gray-800">기억카드<span className="text-sm font-normal text-gray-500 ml-1">({currentGroup.chunks?.length || 0})</span></h3>
+                                    </div>
+                                </div>
+
+                                {currentGroup.chunks && currentGroup.chunks.length > 0 ? (
+                                    <div className="space-y-4">
+                                        {currentGroup.chunks.map((chunk: Chunk, index: number) => (
+                                            <div
+                                                key={chunk.id}
+                                                onClick={editingChunkId === chunk.id ? undefined : (e) => handleEditClick(e, chunk)}
+                                                className={`
+                                                relative
+                                                p-4 
+                                                bg-white/60 
+                                                backdrop-blur-md 
+                                                rounded-xl 
+                                                shadow-md
+                                                border
+                                                border-white/20
+                                                transition-all
+                                                duration-300
+                                                ${chunk.status === 'inactive' ? 'opacity-50' : ''}
+                                                ${editingChunkId === chunk.id ? 'ring-2 ring-[#7969F7]' : ''}
+                                            `}
+                                            >
+                                                <div className="flex justify-between items-start mb-4">
+                                                    {/* Review status tag - TOP LEFT */}
+                                                    <div className="flex items-center">
+                                                        {chunk.card_state && (
+                                                            <div className="inline-flex items-center justify-center bg-white rounded-full px-3 py-1 border border-gray-200">
+                                                                <div className="flex items-center">
+                                                                    <div className={`w-2 h-2 rounded-full mr-2 ${chunk.card_state === 'new' ? 'bg-[#FDFF8C]' :
+                                                                        chunk.card_state === 'learning' || chunk.card_state === 'relearning' ? 'bg-[#B4B6E4]' :
+                                                                            chunk.card_state === 'review' || chunk.card_state === 'graduated' ? 'bg-[#5F4BB6]' : 'bg-gray-400'
+                                                                        }`}></div>
+                                                                    <div className="text-sm font-medium text-gray-800">
+                                                                        {chunk.card_state === 'new' ? '새 카드' :
+                                                                            chunk.card_state === 'learning' ? '학습 중' :
+                                                                                chunk.card_state === 'relearning' ? '재학습' :
+                                                                                    chunk.card_state === 'graduated' || chunk.card_state === 'review' ? '복습' :
+                                                                                        '미설정'}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    {getNotificationForChunk(chunk.id) && (
+                                                        <div className="text-sm font-medium text-purple-600">
+                                                            {formatTimeRemaining(getNotificationForChunk(chunk.id).scheduledFor)} 알림
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {editingChunkId === chunk.id ? (
+                                                    <>
+                                                        <div className="mt-2">
+                                                            <label className="block text-sm font-medium text-gray-700 mb-1">앞면</label>
+                                                            <textarea
+                                                                value={editSummary}
+                                                                onChange={(e) => setEditSummary(e.target.value)}
+                                                                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                                                rows={3}
+                                                            />
+                                                        </div>
+                                                        <div className="mt-3">
+                                                            <label className="block text-sm font-medium text-gray-700 mb-1">뒷면</label>
+                                                            <textarea
+                                                                value={editMaskedText}
+                                                                onChange={(e) => setEditMaskedText(e.target.value)}
+                                                                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                                                rows={5}
+                                                            />
+                                                        </div>
+                                                        {/* Edit mode buttons - at the bottom */}
+                                                        <div className="flex justify-end space-x-2 mt-4" onClick={e => e.stopPropagation()}>
+                                                            {/* Save button */}
+                                                            <button
+                                                                onClick={() => saveEditedChunk(chunk.id)}
+                                                                className="px-2 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors font-medium text-sm"
+                                                                aria-label="저장"
+                                                            >
+                                                                저장
+                                                            </button>
+
+                                                            {/* Cancel button */}
+                                                            <button
+                                                                onClick={cancelEditing}
+                                                                className="px-2 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors font-medium text-sm"
+                                                                aria-label="취소"
+                                                            >
+                                                                취소
+                                                            </button>
+                                                        </div>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <p className="mt-2 text-gray-600">{formatBoldText(chunk.summary)}</p>
+                                                        <div className="mt-3 p-3 bg-gray-100 rounded-lg">
+                                                            <p className="text-gray-700 whitespace-pre-wrap">{formatBoldText(chunk.masked_text)}</p>
+                                                        </div>
+
+                                                        {/* Action buttons - MOVED TO BOTTOM */}
+                                                        <div className="flex justify-between items-center mt-4 pt-3 border-t border-gray-100" onClick={e => e.stopPropagation()}>
+                                                            {/* Edit/Delete buttons */}
+                                                            <div className="flex space-x-3">
+                                                                {/* Edit button */}
+                                                                <button
+                                                                    onClick={(e) => handleEditClick(e, chunk)}
+                                                                    className="p-1 text-gray-600 hover:text-[#7969F7] transition-colors"
+                                                                    aria-label="수정"
+                                                                >
+                                                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                                                    </svg>
+                                                                </button>
+
+                                                                {/* Delete button */}
+                                                                <button
+                                                                    onClick={(e) => deleteChunk(e, chunk.id)}
+                                                                    className="p-1 text-gray-600 hover:text-red-600 transition-colors"
+                                                                    aria-label="삭제"
+                                                                >
+                                                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                                    </svg>
+                                                                </button>
+                                                            </div>
+
+                                                            {/* Active/Inactive buttons */}
+                                                            <div className="flex space-x-0">
+                                                                {/* Active button */}
+                                                                <button
+                                                                    onClick={(e) => toggleChunkActive(e, chunk.id, 'active')}
+                                                                    className={`p-1 transition-colors ${chunk.status === 'active' ? 'text-green-600' : 'text-gray-400 hover:text-green-600'}`}
+                                                                    aria-label="활성화"
+                                                                >
+                                                                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                                    </svg>
+                                                                </button>
+
+                                                                {/* Inactive button */}
+                                                                <button
+                                                                    onClick={(e) => toggleChunkActive(e, chunk.id, 'inactive')}
+                                                                    className={`p-1 transition-colors ${chunk.status === 'inactive' ? 'text-red-500' : 'text-gray-400 hover:text-red-500'}`}
+                                                                    aria-label="비활성화"
+                                                                >
+                                                                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                                    </svg>
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </>
+                                                )}
                                             </div>
-                                            <div className="flex items-center text-xs mt-1">
-                                                <svg className="w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                                </svg>
-                                                <span>기억카드 <span className="font-bold">{group.chunks?.length || 0}</span></span>
-                                            </div>
-                                        </button>
-                                    ))}
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="p-4 bg-white/80 backdrop-blur-md rounded-xl border border-white/20">
+                                        <p className="text-gray-500 text-center">이 그룹에는 아직 기억카드가 없습니다.</p>
+                                    </div>
+                                )}
+                            </div>
+                        </motion.div>
+                    )}
+
+                    {activeTab === 'group' && (
+                        <motion.div
+                            key="group"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.2, ease: "easeInOut" }}
+                            className="space-y-4"
+                        >
+                            <div className="p-6 bg-white/80 backdrop-blur-md rounded-xl border border-white/20">
+                                <h3 className="text-lg font-semibold text-gray-800 mb-4">그룹 정보</h3>
+                                <div className="prose max-w-none">
+                                    <p className="whitespace-pre-wrap text-gray-700">{currentGroup.original_text}</p>
+                                </div>
+                            </div>
+
+                            <div className="p-6 bg-white/80 backdrop-blur-md rounded-xl border border-white/20">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="text-lg font-semibold text-gray-800">기억카드 통계</h3>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="p-3 bg-white/60 rounded-lg border border-white/20">
+                                        <div className="text-sm text-gray-500">총 기억카드</div>
+                                        <div className="text-2xl font-bold text-gray-800">{currentGroup?.chunks?.length || 0}</div>
+                                    </div>
+
+                                    <div className="p-3 bg-white/60 rounded-lg border border-white/20">
+                                        <div className="text-sm text-gray-500">활성화 카드</div>
+                                        <div className="text-2xl font-bold text-gray-800">
+                                            {currentGroup?.chunks?.filter(c => c.status !== 'inactive').length || 0}
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </motion.div>
-                    </>
-                )}
-            </AnimatePresence>
-            <div className="sticky top-0 bg-[#F8F4EF] border-b border-[#D4C4B7] h-12 z-50">
-                <button
-                    onClick={handleGoBack}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center text-gray-600 hover:text-gray-900 transition-all duration-200 group"
-                >
-                    <svg className="w-5 h-5 group-hover:scale-110 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                    </svg>
-                    <span className="ml-2 font-medium group-hover:font-semibold transition-all duration-200">그룹</span>
-                </button>
-
-                <button
-                    onClick={handleDeleteGroup}
-                    disabled={isDeletingGroup}
-                    className="absolute right-16 top-1/2 -translate-y-1/2 h-8 w-8 bg-[#8B4513]/60 backdrop-blur-md text-white rounded-full flex items-center justify-center hover:bg-red-500/90 transition-colors disabled:opacity-50"
-                    aria-label="그룹 삭제"
-                >
-                    {isDeletingGroup ? (
-                        <div className="flex space-x-1">
-                            {[0, 1, 2, 3, 4].map((i) => (
-                                <motion.div
-                                    key={i}
-                                    className="w-1.5 h-1.5 bg-white rounded-full"
-                                    animate={{
-                                        y: ["0%", "-100%"],
-                                    }}
-                                    transition={{
-                                        type: "spring",
-                                        stiffness: 300,
-                                        damping: 15,
-                                        mass: 0.8,
-                                        repeat: Infinity,
-                                        repeatType: "reverse",
-                                        delay: i * 0.1,
-                                    }}
-                                />
-                            ))}
-                        </div>
-                    ) : (
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
                     )}
-                </button>
 
-                {groups.length > 1 && (
-                    <button
-                        onClick={() => setShowGroupSelector(!showGroupSelector)}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 h-8 w-8 bg-[#8B4513]/60 backdrop-blur-md text-white rounded-full flex items-center justify-center hover:bg-[#8B4513]/90 transition-colors"
-                        aria-label={showGroupSelector ? "닫기" : "그룹 리스트"}
-                    >
+                    {activeTab === 'text' && (
                         <motion.div
-                            animate={{ rotate: showGroupSelector ? 90 : 0 }}
-                            transition={{ duration: 0.3, ease: "easeInOut" }}
+                            key="text"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.2, ease: "easeInOut" }}
+                            className="space-y-4"
                         >
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                {showGroupSelector ? (
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                ) : (
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
-                                )}
-                            </svg>
+                            {/* 텍스트 원본 */}
+                            <div className="p-6 bg-white/80 backdrop-blur-md rounded-xl border border-white/20">
+                                <p className="text-gray-600 whitespace-pre-wrap">{currentGroup.original_text}</p>
+                            </div>
                         </motion.div>
-                    </button>
-                )}
-            </div>
-
-            <div className="flex-1 max-w-2xl mx-auto w-full p-4">
-                {/* 그룹 개수 서브타이틀 및 탭 */}
-                <div className="mt-4 mb-6">
-                    {/* 현재 그룹 제목 (크게 표시) */}
-                    <div>
-                        <div className="flex justify-between items-center">
-                            <h2 className="text-3xl font-bold text-gray-800">{currentGroup?.title}</h2>
-                        </div>
-                    </div>
-                </div>
-
-                {/* 소스 텍스트 토글 - 탭 아래로 이동 */}
-                <div className="flex flex-col mb-8">
-                    <button
-                        onClick={toggleOriginalText}
-                        className={`w-full bg-white/60 backdrop-blur-md rounded-xl p-4 flex items-center justify-between border border-white/20 ${showOriginalText ? 'rounded-b-none border-b-0' : ''
-                            }`}
-                    >
-                        <div className="flex items-center">
-                            <svg
-                                className={`w-5 h-5 text-gray-600 transition-transform mr-2 ${showOriginalText ? 'transform rotate-90' : ''
-                                    }`}
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M9 5l7 7-7 7"
-                                />
-                            </svg>
-                            <span className="text-lg font-medium text-gray-800">원본 문단</span>
-                        </div>
-                        <div></div>
-                    </button>
-
-                    <AnimatePresence>
-                        {showOriginalText && (
-                            <motion.div
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: "auto" }}
-                                exit={{ opacity: 0, height: 0 }}
-                                transition={{ duration: 0.3 }}
-                                className="overflow-hidden"
-                            >
-                                <div className="bg-white/40 backdrop-blur-md rounded-xl rounded-t-none p-4 border border-white/20 border-t-0">
-                                    <p className="text-gray-600 text-sm whitespace-pre-wrap">
-                                        {currentGroup.original_text || '원본 텍스트를 불러올 수 없습니다.'}
-                                    </p>
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-                </div>
-                {/* 메모리 카드 */}
-                <div className="space-y-4 mb-6">
-                    <div className="flex justify-between items-center">
-                        <div className="flex items-center">
-                            <svg
-                                className="w-5 h-5 mr-1 text-gray-600"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                                />
-                            </svg>
-                            <h3 className="text-xl font-bold text-gray-800">기억카드<span className="text-sm font-normal text-gray-500 ml-1">({currentGroup.chunks?.length || 0})</span></h3>
-                        </div>
-                    </div>
-
-                    <div className="space-y-4">
-                        {currentGroup.chunks?.map((chunk: Chunk, index: number) => {
-                            const notification = getNotificationForChunk(chunk.id);
-                            const isActive = chunk.status !== 'inactive'; // If status is undefined or 'active', treat as active
-
-                            return (
-                                <div
-                                    key={chunk.id}
-                                    onClick={editingChunkId === chunk.id ? undefined : (e) => handleEditClick(e, chunk)}
-                                    className={`
-                                    p-4 
-                                    bg-white/80
-                                    backdrop-blur-md 
-                                    rounded-xl
-                                    border
-                                    border-white/20
-                                    hover:bg-white/90
-                                    transition-all
-                                    duration-300
-                                    [-webkit-backdrop-filter:blur(20px)]
-                                    [backdrop-filter:blur(20px)]
-                                    relative
-                                    z-0
-                                    ${editingChunkId === chunk.id ? '' : 'cursor-pointer'}
-                                    ${isActive ? '' : 'opacity-50'}
-                                `}
-                                >
-                                    <div className="flex justify-between items-start mb-4">
-                                        {/* Review status tag - TOP LEFT */}
-                                        <div className="flex items-center">
-                                            {chunk.card_state && (
-                                                <div className="inline-flex items-center justify-center bg-white rounded-full px-3 py-1 border border-gray-200">
-                                                    <div className="flex items-center">
-                                                        <div className={`w-2 h-2 rounded-full mr-2 ${chunk.card_state === 'new' ? 'bg-[#FDFF8C]' :
-                                                            chunk.card_state === 'learning' || chunk.card_state === 'relearning' ? 'bg-[#B4B6E4]' :
-                                                                chunk.card_state === 'review' || chunk.card_state === 'graduated' ? 'bg-[#5F4BB6]' : 'bg-gray-400'
-                                                            }`}></div>
-                                                        <div className="text-sm font-medium text-gray-800">
-                                                            {chunk.card_state === 'new' ? '새 카드' :
-                                                                chunk.card_state === 'learning' ? '학습 중' :
-                                                                    chunk.card_state === 'relearning' ? '재학습' :
-                                                                        chunk.card_state === 'graduated' || chunk.card_state === 'review' ? '복습' :
-                                                                            '미설정'}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        {notification && (
-                                            <div className="text-sm font-medium text-purple-600">
-                                                {formatTimeRemaining(notification.scheduledFor)} 알림
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {editingChunkId === chunk.id ? (
-                                        <>
-                                            <div className="mt-2">
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">앞면</label>
-                                                <textarea
-                                                    value={editSummary}
-                                                    onChange={(e) => setEditSummary(e.target.value)}
-                                                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                                                    rows={3}
-                                                />
-                                            </div>
-                                            <div className="mt-3">
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">뒷면</label>
-                                                <textarea
-                                                    value={editMaskedText}
-                                                    onChange={(e) => setEditMaskedText(e.target.value)}
-                                                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                                                    rows={5}
-                                                />
-                                            </div>
-                                            {/* Edit mode buttons - at the bottom */}
-                                            <div className="flex justify-end space-x-2 mt-4" onClick={e => e.stopPropagation()}>
-                                                {/* Save button */}
-                                                <button
-                                                    onClick={() => saveEditedChunk(chunk.id)}
-                                                    className="px-2 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors font-medium text-sm"
-                                                    aria-label="저장"
-                                                >
-                                                    저장
-                                                </button>
-
-                                                {/* Cancel button */}
-                                                <button
-                                                    onClick={cancelEditing}
-                                                    className="px-2 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors font-medium text-sm"
-                                                    aria-label="취소"
-                                                >
-                                                    취소
-                                                </button>
-                                            </div>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <p className="mt-2 text-gray-600">{formatBoldText(chunk.summary)}</p>
-                                            <div className="mt-3 p-3 bg-gray-100 rounded-lg">
-                                                <p className="text-gray-700 whitespace-pre-wrap">{formatBoldText(chunk.masked_text)}</p>
-                                            </div>
-
-                                            {/* Action buttons - MOVED TO BOTTOM */}
-                                            <div className="flex justify-between items-center mt-4 pt-3 border-t border-gray-100" onClick={e => e.stopPropagation()}>
-                                                {/* Edit/Delete buttons */}
-                                                <div className="flex space-x-3">
-                                                    {/* Edit button */}
-                                                    <button
-                                                        onClick={(e) => handleEditClick(e, chunk)}
-                                                        className="p-1 text-gray-600 hover:text-[#7969F7] transition-colors"
-                                                        aria-label="수정"
-                                                    >
-                                                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                                        </svg>
-                                                    </button>
-
-                                                    {/* Delete button */}
-                                                    <button
-                                                        onClick={(e) => deleteChunk(e, chunk.id)}
-                                                        className="p-1 text-gray-600 hover:text-red-600 transition-colors"
-                                                        aria-label="삭제"
-                                                    >
-                                                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                        </svg>
-                                                    </button>
-                                                </div>
-
-                                                {/* Active/Inactive buttons */}
-                                                <div className="flex space-x-0">
-                                                    {/* Active button */}
-                                                    <button
-                                                        onClick={(e) => toggleChunkActive(e, chunk.id, 'active')}
-                                                        className={`p-1 transition-colors ${isActive ? 'text-green-600' : 'text-gray-400 hover:text-green-600'}`}
-                                                        aria-label="활성화"
-                                                    >
-                                                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                        </svg>
-                                                    </button>
-
-                                                    {/* Inactive button */}
-                                                    <button
-                                                        onClick={(e) => toggleChunkActive(e, chunk.id, 'inactive')}
-                                                        className={`p-1 transition-colors ${!isActive ? 'text-red-500' : 'text-gray-400 hover:text-red-500'}`}
-                                                        aria-label="비활성화"
-                                                    >
-                                                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                        </svg>
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </>
-                                    )}
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
-
-                {/* <div className="mb-6">
-                    <button
-                        onClick={handleStartLearning}
-                        className="w-full py-4 px-6 rounded-xl bg-[#7969F7] text-white font-bold hover:bg-[#6858e6] transition-all duration-200 flex items-center justify-center"
-                    >
-                        이 그룹 지금 학습하기
-                    </button>
-                </div> */}
+                    )}
+                </AnimatePresence>
             </div>
         </main>
     );

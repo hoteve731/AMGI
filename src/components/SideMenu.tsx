@@ -12,34 +12,34 @@ const fetcher = async (url: string) => {
     const response = await fetch(url, {
       credentials: 'include'
     });
-    
+
     if (response.status === 401) {
       console.log('Session expired, attempting to refresh...');
-      
+
       // 세션 갱신 시도
       const refreshResponse = await fetch('/api/auth/session', {
         method: 'GET',
         credentials: 'include',
       });
-      
+
       if (refreshResponse.ok) {
         // 원래 요청 한 번 더 시도
         const retryResponse = await fetch(url, {
           credentials: 'include'
         });
-        
+
         if (!retryResponse.ok) {
           throw new Error(`Failed to fetch contents: ${retryResponse.status}`);
         }
-        
+
         return retryResponse.json();
       }
     }
-    
+
     if (!response.ok) {
       throw new Error(`Failed to fetch contents: ${response.status}`);
     }
-    
+
     return response.json();
   } catch (error) {
     console.error('Fetch error:', error);
@@ -55,9 +55,9 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
     revalidateOnReconnect: true,  // 브라우저가 연결을 다시 얻을 때 재검증
     dedupingInterval: 5000, // 5초 내에 중복 요청 방지
   });
-  
+
   const contents = data?.contents || [];
-  
+
   // 디버깅을 위한 로그
   useEffect(() => {
     if (open) {
@@ -113,8 +113,8 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
                     >
                       <div className="truncate font-medium text-gray-900 text-base">{content.title}</div>
                       <div className="text-xs text-gray-500 mt-1 flex gap-3">
-                        <span className="inline-flex items-center gap-1"><svg width="14" height="14" fill="none" stroke="#8B5CF6" strokeWidth="2" viewBox="0 0 20 20"><rect x="2.5" y="4" width="15" height="12" rx="2"/><path d="M6 2.5v3M14 2.5v3"/></svg>{content.groups_count ?? 0} 그룹</span>
-                        <span className="inline-flex items-center gap-1"><svg width="14" height="14" fill="none" stroke="#F59E42" strokeWidth="2" viewBox="0 0 20 20"><rect x="4" y="4" width="12" height="12" rx="2"/><path d="M8 8h4v4H8z"/></svg>{content.chunks_count ?? 0} 카드</span>
+                        <span className="inline-flex items-center gap-1"><svg width="14" height="14" fill="none" stroke="#8B5CF6" strokeWidth="2" viewBox="0 0 20 20"><rect x="2.5" y="4" width="15" height="12" rx="2" /><path d="M6 2.5v3M14 2.5v3" /></svg>{content.groups_count ?? 0} 그룹</span>
+                        <span className="inline-flex items-center gap-1"><svg width="14" height="14" fill="none" stroke="#F59E42" strokeWidth="2" viewBox="0 0 20 20"><rect x="4" y="4" width="12" height="12" rx="2" /><path d="M8 8h4v4H8z" /></svg>{content.chunks_count ?? 0} 카드</span>
                       </div>
                     </button>
                   </li>

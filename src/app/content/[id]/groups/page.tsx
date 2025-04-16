@@ -32,7 +32,7 @@ export default async function Page(props: any) {
   // 콘텐츠에 속한 그룹 정보 가져오기
   const { data: groups, error: groupsError } = await supabase
     .from('content_groups')
-    .select('id, title, content_id')
+    .select('*, chunks:content_chunks(*)')
     .eq('content_id', id)
 
   if (groupsError) {
