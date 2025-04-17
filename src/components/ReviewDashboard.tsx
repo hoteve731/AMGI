@@ -22,14 +22,13 @@ interface ReviewDashboardProps {
 
 const DashboardSkeleton = () => (
     <div className="bg-white/50 backdrop-blur-sm rounded-3xl shadow-lg p-6 mb-6 animate-pulse">
-        {/* 레이아웃 구조를 비슷하게 만듭니다 */}
-        <div className="flex justify-between items-center mb-4">
-            <div className="h-8 bg-gray-300 rounded w-24"></div> {/* Title placeholder */}
-            <div className="w-8 h-8 bg-gray-300 rounded-full"></div> {/* Icon placeholder */}
+        {/* Header placeholder */}
+        <div className="flex justify-between items-center mb-6">
+            <div className="h-8 bg-gray-300 rounded w-24"></div>
+            <div className="w-8 h-8 bg-gray-300 rounded-full"></div>
         </div>
-        <div className="w-full h-12 bg-gray-300 rounded-lg mb-5"></div> {/* Button placeholder */}
-        <div className="flex justify-center space-x-6">
-            {/* Stat placeholders */}
+        {/* Stat placeholders */}
+        <div className="flex justify-center space-x-6 mb-4">
             <div className="flex items-center space-x-2">
                 <div className="w-6 h-6 bg-gray-300 rounded-full"></div>
                 <div className="h-4 bg-gray-300 rounded w-16"></div>
@@ -43,6 +42,17 @@ const DashboardSkeleton = () => (
                 <div className="h-4 bg-gray-300 rounded w-16"></div>
             </div>
         </div>
+        {/* Progress bar placeholder */}
+        <div className="w-[270px] h-4 bg-gray-300 rounded-full mx-auto mb-6"></div>
+        {/* Character placeholder */}
+        <div className="w-32 h-32 bg-gray-300 rounded-full mx-auto mb-6"></div>
+        {/* Message placeholders */}
+        <div className="space-y-2 mb-6">
+            <div className="h-4 bg-gray-300 rounded w-3/4 mx-auto"></div>
+            <div className="h-4 bg-gray-300 rounded w-1/2 mx-auto"></div>
+        </div>
+        {/* Action button placeholder */}
+        <div className="w-full h-14 bg-gray-300 rounded-xl"></div>
     </div>
 );
 
