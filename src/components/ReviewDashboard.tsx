@@ -21,7 +21,7 @@ interface ReviewDashboardProps {
 }
 
 const DashboardSkeleton = () => (
-    <div className="bg-white/50 backdrop-blur-sm rounded-3xl shadow-lg p-6 mb-6 animate-pulse">
+    <div className="bg-white/50 backdrop-blur-sm rounded-3xl shadow-lg p-6 mb-6 animate-pulse min-h-[432px]">
         {/* Header placeholder */}
         <div className="flex justify-between items-center mb-6">
             <div className="h-8 bg-gray-300 rounded w-24"></div>
@@ -74,7 +74,6 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
     const [animateProgress, setAnimateProgress] = useState(false)
     const [showStatsModal, setShowStatsModal] = useState(false)
     const [mounted, setMounted] = useState(false)
-    const [shouldShowSkeleton, setShouldShowSkeleton] = useState(false)
 
     useEffect(() => {
         const fetchReviewStats = async () => {
@@ -125,18 +124,6 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
         setMounted(true)
     }, [])
 
-    // 스켈레톤은 브라우저 새로고침 또는 리뷰 페이지 복귀 시에만 표시
-    useEffect(() => {
-        if (typeof window !== 'undefined') {
-            const entries = performance.getEntriesByType('navigation') as PerformanceNavigationTiming[]
-            const navType = entries.length > 0 ? entries[0].type : 'navigate'
-            if (navType === 'reload' || sessionStorage.getItem('fromReview') === 'true') {
-                setShouldShowSkeleton(true)
-                sessionStorage.removeItem('fromReview')
-            }
-        }
-    }, [])
-
     const handleStartReview = () => {
         // 리뷰 페이지에서 복귀할 때 스켈레톤 표시를 위해 플래그 설정
         if (typeof window !== 'undefined') {
@@ -163,7 +150,7 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
     console.log('Rendering Arch - TotalCards for Ratio:', totalCards);
     console.log('Rendering Arch - Ratios:', { newRatio, learningRatio, reviewRatio });
 
-    if (isLoading && shouldShowSkeleton) {
+    if (isLoading) {
         return <DashboardSkeleton />;
     }
 
@@ -195,7 +182,7 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
-                className="bg-[#B4B6E4] backdrop-blur-md rounded-3xl shadow-lg p-6 mb-6"
+                className="bg-[#B4B6E4] backdrop-blur-md rounded-3xl shadow-lg p-6 mb-6 min-h-[432px]"
             >
                 <div className="flex justify-between items-center mb-3">
                     <motion.div
@@ -350,7 +337,7 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="bg-[#B4B6E4] backdrop-blur-md rounded-3xl shadow-lg p-6 mb-6"
+            className="bg-[#B4B6E4] backdrop-blur-md rounded-3xl shadow-lg p-6 mb-6 min-h-[432px]"
         >
             {isNavigating && <LoadingOverlay />}
             <div className="flex justify-between items-center mb-6">
