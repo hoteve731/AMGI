@@ -43,16 +43,16 @@ const DashboardSkeleton = () => (
             </div>
         </div>
         {/* Progress bar placeholder */}
-        <div className="w-[270px] h-4 bg-gray-300 rounded-full mx-auto mb-6"></div>
+        <div className="w-[270px] h-4 bg-gray-300 rounded-full mx-auto mb-4"></div>
         {/* Character placeholder */}
-        <div className="w-32 h-32 bg-gray-300 rounded-full mx-auto mb-6"></div>
+        <div className="w-32 h-32 bg-gray-300 rounded-full mx-auto mt-8 mb-4"></div>
         {/* Message placeholders */}
-        <div className="space-y-2 mb-6">
+        <div className="space-y-2 mb-8">
             <div className="h-4 bg-gray-300 rounded w-3/4 mx-auto"></div>
             <div className="h-4 bg-gray-300 rounded w-1/2 mx-auto"></div>
         </div>
         {/* Action button placeholder */}
-        <div className="w-full h-14 bg-gray-300 rounded-xl"></div>
+        <div className="w-full h-12 bg-gray-300 rounded-xl"></div>
     </div>
 );
 
@@ -74,6 +74,7 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
     const [animateProgress, setAnimateProgress] = useState(false)
     const [showStatsModal, setShowStatsModal] = useState(false)
     const [mounted, setMounted] = useState(false)
+    const [shouldShowSkeleton, setShouldShowSkeleton] = useState(false)
 
     useEffect(() => {
         const fetchReviewStats = async () => {
@@ -124,7 +125,23 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
         setMounted(true)
     }, [])
 
+    // 스켈레톤은 브라우저 새로고침 또는 리뷰 페이지 복귀 시에만 표시
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const entries = performance.getEntriesByType('navigation') as PerformanceNavigationTiming[]
+            const navType = entries.length > 0 ? entries[0].type : 'navigate'
+            if (navType === 'reload' || sessionStorage.getItem('fromReview') === 'true') {
+                setShouldShowSkeleton(true)
+                sessionStorage.removeItem('fromReview')
+            }
+        }
+    }, [])
+
     const handleStartReview = () => {
+        // 리뷰 페이지에서 복귀할 때 스켈레톤 표시를 위해 플래그 설정
+        if (typeof window !== 'undefined') {
+            sessionStorage.setItem('fromReview', 'true')
+        }
         setIsNavigating(true)
         router.push('/review')
     }
@@ -146,7 +163,7 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
     console.log('Rendering Arch - TotalCards for Ratio:', totalCards);
     console.log('Rendering Arch - Ratios:', { newRatio, learningRatio, reviewRatio });
 
-    if (isLoading) {
+    if (isLoading && shouldShowSkeleton) {
         return <DashboardSkeleton />;
     }
 

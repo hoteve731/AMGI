@@ -8,43 +8,12 @@ import { useRouter } from 'next/navigation';
 
 // ContentTabs와 동일한 fetcher 함수 사용
 const fetcher = async (url: string) => {
-  try {
-    const response = await fetch(url, {
-      credentials: 'include'
-    });
-
-    if (response.status === 401) {
-      console.log('Session expired, attempting to refresh...');
-
-      // 세션 갱신 시도
-      const refreshResponse = await fetch('/api/auth/session', {
-        method: 'GET',
-        credentials: 'include',
-      });
-
-      if (refreshResponse.ok) {
-        // 원래 요청 한 번 더 시도
-        const retryResponse = await fetch(url, {
-          credentials: 'include'
-        });
-
-        if (!retryResponse.ok) {
-          throw new Error(`Failed to fetch contents: ${retryResponse.status}`);
-        }
-
-        return retryResponse.json();
-      }
-    }
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch contents: ${response.status}`);
-    }
-
-    return response.json();
-  } catch (error) {
-    console.error('Fetch error:', error);
-    throw error;
+  const response = await fetch(url, { credentials: 'include' });
+  if (!response.ok) {
+    console.error('Failed to fetch contents:', response.status);
+    return { contents: [] };
   }
+  return response.json();
 };
 
 const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onClose }) => {
