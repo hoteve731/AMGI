@@ -63,6 +63,16 @@ export async function updateSession(request: NextRequest) {
     // This refreshes the session if needed (triggers set/remove in cookies object)
     const { data: { session } } = await supabase.auth.getSession()
 
+    // Redirect to /auth if no session and not accessing public paths
+    const pathname = request.nextUrl.pathname
+    if (!session && !pathname.startsWith('/auth') && !pathname.startsWith('/api')) {
+      const redirectUrl = request.nextUrl.clone()
+      redirectUrl.pathname = '/auth'
+      // Optionally add a 'redirectedFrom' query parameter
+      // redirectUrl.searchParams.set('redirectedFrom', pathname) 
+      return NextResponse.redirect(redirectUrl)
+    }
+
     // Proactively refresh the session if it exists
     if (session) {
       const { data: { session: refreshedSession } } = await supabase.auth.refreshSession()

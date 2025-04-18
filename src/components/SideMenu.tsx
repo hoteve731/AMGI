@@ -134,7 +134,7 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
                         <div className="text-xs text-gray-600 mt-1 flex gap-3">
                           <span className="inline-flex items-center gap-1">
                             <FolderIcon className="w-4 h-4 text-[#7969F7]" />
-                           그룹 {content.groups_count ?? 0} 
+                            그룹 {content.groups_count ?? 0}
                           </span>
                           <span className="inline-flex items-center gap-1">
                             <svg
