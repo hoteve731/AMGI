@@ -35,7 +35,7 @@ export class RealtimeSubscription {
             const eventString = events.length === 3 ? '*' : events.join(','); // 이벤트 문자열 생성
             const channel = this.supabase
                 .channel(`table-db-changes-${table}`) // 각 테이블별 고유 채널 이름 사용
-                .on<any>( // payload 타입을 any로 지정 (혹은 구체적인 타입 정의 필요)
+                .on(  // payload 타입을 any로 지정 (혹은 구체적인 타입 정의 필요)
                     'postgres_changes',
                     {
                         event: eventString as any, // 타입 단언 사용 (혹은 더 정확한 타입 필요)
@@ -49,7 +49,7 @@ export class RealtimeSubscription {
                         }
                     }
                 )
-                .subscribe((status, err) => {
+                .subscribe((status: string, err?: Error) => {
                     if (status === 'SUBSCRIBED') {
                         console.log(`Subscribed to ${table} changes`);
                     }
