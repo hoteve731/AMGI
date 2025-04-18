@@ -287,7 +287,7 @@ export default function BottomSheet() {
                     </div>
                     <motion.button
                         onClick={handleConfirm}
-                        className="fixed bottom-4 left-1/2 transform -translate-x-1/2 px-8 py-3.5 bg-gradient-to-r from-[#7969F7] to-[#A99BFF] text-white rounded-full shadow-lg"
+                        className="fixed bottom-4 left-1/2 transform -translate-x-1/2 px-8 py-3.5 bg-gradient-to-r from-[#7969F7] to-[#A99BFF] text-white rounded-full shadow-lg/60"
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                     >
@@ -317,7 +317,7 @@ export default function BottomSheet() {
                 </AnimatePresence>
 
                 {/* 외부 컨테이너: 세이프 에리어 패딩 적용 */}
-                <div className="bg-white rounded-t-xl shadow-lg overflow-hidden z-[70] relative pb-[env(safe-area-inset-bottom,16px)]">
+                <div className="bg-white rounded-t-xl shadow-lg/60 overflow-hidden z-[70] relative pb-[env(safe-area-inset-bottom,16px)]">
                     {/* 내부 컨텐츠 컨테이너: 애니메이션 적용 */}
                     <motion.div
                         initial={{ height: "80px" }}
@@ -384,7 +384,7 @@ export default function BottomSheet() {
                                             type="button"
                                             onClick={handleSubmit}
                                             disabled={isLoading}
-                                            className="px-4 py-1.5 bg-[#7969F7] text-white rounded-full shadow-md text-sm font-bold absolute right-4"
+                                            className="px-4 py-1.5 bg-[#7969F7] text-white rounded-full shadow-lg/60 text-sm font-bold absolute right-4"
                                             whileHover={{ scale: 1.05 }}
                                             whileTap={{ scale: 0.95 }}
                                         >

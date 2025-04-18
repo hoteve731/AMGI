@@ -28,7 +28,7 @@ export default async function Home() {
       </header>
 
       {/* 리뷰 대시보드 추가 - 헤더 아래, 콘텐츠 위에 */}
-      <div className="pt-4 px-4">
+      <div className="pt-4 px-4 pb-0">
         <ReviewDashboard userName={user?.user_metadata.full_name || user?.email} />
       </div>
 

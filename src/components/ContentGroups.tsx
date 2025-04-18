@@ -303,7 +303,12 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                                     <h3 className="text-xl font-bold text-gray-800 text-center mt-4">
                                         {group.title} <span className="font-light text-gray-500">(<span className="font-bold">{group.chunks?.filter(c => c.id).length || 0}</span>)</span>
                                     </h3>
-                                    <GroupDetail content={content} group={group} hideHeader={true} hideCardCount={true} />
+                                    <GroupDetail
+                                        content={content}
+                                        group={group as any}
+                                        hideHeader={true}
+                                        hideCardCount={true}
+                                    />
                                 </div>
                             ))}
                         </motion.div>

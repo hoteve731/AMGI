@@ -21,7 +21,7 @@ interface ReviewDashboardProps {
 }
 
 const DashboardSkeleton = () => (
-    <div className="bg-white/50 backdrop-blur-sm rounded-3xl shadow-lg p-6 mb-6 animate-pulse min-h-[432px]">
+    <div className="bg-white/50 backdrop-blur-sm rounded-[16px] shadow-lg/60 p-6 mb-0 animate-pulse min-h-[432px]">
         {/* Header placeholder */}
         <div className="flex justify-between items-center mb-6">
             <div className="h-8 bg-gray-300 rounded w-24"></div>
@@ -156,7 +156,7 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
 
     if (error) {
         return (
-            <div className="bg-white/90 backdrop-blur-md rounded-xl border border-gray-200 shadow-lg p-6 mb-6">
+            <div className="bg-white/90 backdrop-blur-md rounded-[16px] border border-gray-200 shadow-lg/60 p-6 mb-0">
                 <div className="text-center py-4">
                     <p className="text-gray-500">{error}</p>
                 </div>
@@ -166,7 +166,7 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
 
     if (needsMigration) {
         return (
-            <div className="bg-white/90 backdrop-blur-md rounded-xl border border-gray-200 shadow-lg p-6 mb-6">
+            <div className="bg-white/90 backdrop-blur-md rounded-[16px] border border-gray-200 shadow-lg/60 p-6 mb-0">
                 <div className="text-center py-4">
                     <p className="text-gray-500">데이터베이스 마이그레이션이 필요합니다.</p>
                 </div>
@@ -182,7 +182,7 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
-                className="bg-[#B4B6E4] backdrop-blur-md rounded-3xl shadow-lg p-6 mb-6 min-h-[432px]"
+                className="bg-[#B4B6E4] backdrop-blur-md rounded-[16px] shadow-lg/60 p-6 mb-0 min-h-[432px]"
             >
                 <div className="flex justify-between items-center mb-3">
                     <motion.div
@@ -337,7 +337,7 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="bg-[#B4B6E4] backdrop-blur-md rounded-3xl shadow-lg p-6 mb-6 min-h-[432px]"
+            className="bg-[#B4B6E4] backdrop-blur-md rounded-[16px] shadow-lg/60 p-6 mb-0 min-h-[432px]"
         >
             {isNavigating && <LoadingOverlay />}
             <div className="flex justify-between items-center mb-6">

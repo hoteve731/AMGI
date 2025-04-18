@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation'
 import LoadingOverlay from './LoadingOverlay'
 import { motion } from 'framer-motion'
 import useSWR from 'swr'
+import { FolderIcon, Squares2X2Icon } from '@heroicons/react/24/outline'
 
 type Content = {
     id: string
@@ -16,6 +17,7 @@ type Content = {
     groups_count?: number
     chunks_count?: number
     isProcessing?: boolean
+    group_names?: string[]
 }
 
 type ContentListProps = {
@@ -153,7 +155,7 @@ export default function ContentList({ contents: externalContents, showTabs = fal
     const displayContents = processedContents.length > 0 ? processedContents : contentsToProcess;
 
     return (
-        <div className="flex-1 overflow-y-auto p-4 pb-[120px] relative">
+        <div className="flex-1 overflow-y-auto p-4 pt-5 pb-[120px] relative">
             {isLoading && <LoadingOverlay />}
             {isFetching && (
                 <div className="flex items-center justify-center h-64">
@@ -214,16 +216,16 @@ export default function ContentList({ contents: externalContents, showTabs = fal
                             ease: [0.25, 0.1, 0.25, 1.0]
                         }}
                         className={`
-                            bg-white rounded-xl shadow-sm overflow-hidden
-                            border border-gray-100 hover:border-[#A99BFF] hover:shadow-md
-                            transition-all duration-200
+                            bg-white/80 rounded-[16px] shadow-lg/60 overflow-hidden
+                            hover:bg-white/90 backdrop-blur-sm
+                            transition-all duration-200 active:scale-[0.98]
                         `}
                     >
-                        <div className="p-4">
+                        <div className="p-5">
                             <div className="flex justify-between items-start">
                                 {content.isProcessing ? (
                                     <div className="flex-1">
-                                        <h2 className="text-lg font-medium text-gray-800">
+                                        <h2 className="text-xl font-bold text-gray-800">
                                             {content.title}
                                         </h2>
                                         <div className="mt-2">
@@ -255,39 +257,42 @@ export default function ContentList({ contents: externalContents, showTabs = fal
                                         className="flex-1 cursor-pointer"
                                         onClick={() => handleContentClick(content.id)}
                                     >
-                                        <h2 className="text-lg font-medium text-gray-800">
+                                        <h2 className="text-xl font-bold text-gray-800">
                                             {content.title}
                                         </h2>
+
+                                        {content.group_names && content.group_names.length > 0 && (
+                                            <p className="text-sm text-gray-500 mt-1 line-clamp-2">
+                                                {content.group_names.join(', ')}
+                                            </p>
+                                        )}
+
+                                        <div className="flex items-center mt-3 space-x-4">
+                                            <div className="flex items-center gap-1">
+                                                <FolderIcon className="w-4 h-4 text-[#7969F7]" />
+                                                <span className="text-sm text-gray-600">그룹</span>
+                                                <span className="text-sm font-medium text-gray-800">{content.groups_count || 0}</span>
+                                            </div>
+
+                                            <div className="flex items-center gap-1">
+                                                <Squares2X2Icon className="w-4 h-4 text-[#F59E42]" />
+                                                <span className="text-sm text-gray-600">카드</span>
+                                                <span className="text-sm font-medium text-gray-800">{content.chunks_count || 0}</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="mt-2 text-xs text-gray-400">
+                                            {new Date(content.created_at).toLocaleString('ko-KR', {
+                                                year: 'numeric',
+                                                month: 'long',
+                                                day: 'numeric',
+                                                hour: '2-digit',
+                                                minute: '2-digit'
+                                            })}
+                                        </div>
                                     </div>
                                 )}
                             </div>
-
-                            {!content.isProcessing ? (
-                                <div className="flex items-center mt-2">
-                                    <div className="flex items-center gap-3 text-sm text-gray-500">
-                                        <div className="flex items-center gap-1">
-                                            <svg
-                                                className="w-4 h-4"
-                                                fill="none"
-                                                stroke="currentColor"
-                                                viewBox="0 0 24 24"
-                                            >
-                                                <path
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                    strokeWidth={2}
-                                                    d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
-                                                />
-                                            </svg>
-                                            <span className="text-gray-600">그룹</span>
-                                            <span className="font-medium text-gray-800">{content.groups_count || 0}</span>
-                                        </div>
-                                        <div>
-                                            {new Date(content.created_at).toLocaleDateString('ko-KR')} 시작
-                                        </div>
-                                    </div>
-                                </div>
-                            ) : null}
                         </div>
                     </motion.div>
                 ))}

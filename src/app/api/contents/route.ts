@@ -144,27 +144,30 @@ export async function GET(request: Request) {
 
         if (groupsCountError) {
           console.error('Error counting groups:', groupsCountError);
-          return { ...content, groups_count: 0, chunks_count: 0 };
+          return { ...content, groups_count: 0, chunks_count: 0, group_names: [] };
         }
 
         // 그룹이 없으면 청크도 없음
         if (groupsCount === 0) {
-          return { ...content, groups_count: 0, chunks_count: 0 };
+          return { ...content, groups_count: 0, chunks_count: 0, group_names: [] };
         }
 
-        // 콘텐츠에 속한 그룹 ID 가져오기
+        // 콘텐츠에 속한 그룹 ID와 제목 가져오기
         const { data: groupsData, error: groupsError } = await supabase
           .from('content_groups')
-          .select('id')
+          .select('id, title')
           .eq('content_id', content.id);
 
         if (groupsError || !groupsData) {
           console.error('Error fetching group IDs:', groupsError);
-          return { ...content, groups_count: groupsCount || 0, chunks_count: 0 };
+          return { ...content, groups_count: groupsCount || 0, chunks_count: 0, group_names: [] };
         }
 
         // 그룹 ID 배열 생성
         const groupIds = groupsData.map(group => group.id);
+
+        // 그룹 이름 배열 생성
+        const groupNames = groupsData.map(group => group.title);
 
         // 모든 그룹에 속한 총 청크 수 가져오기
         const { count: chunksCount, error: chunksCountError } = await supabase
@@ -174,13 +177,14 @@ export async function GET(request: Request) {
 
         if (chunksCountError) {
           console.error('Error counting chunks:', chunksCountError);
-          return { ...content, groups_count: groupsCount || 0, chunks_count: 0 };
+          return { ...content, groups_count: groupsCount || 0, chunks_count: 0, group_names: groupNames };
         }
 
         return {
           ...content,
           groups_count: groupsCount || 0,
-          chunks_count: chunksCount || 0
+          chunks_count: chunksCount || 0,
+          group_names: groupNames
         };
       })
     );
