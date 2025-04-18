@@ -319,7 +319,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
 
                                 return (
                                     <div key={group.id} className="space-y-4">
-                                        <h3 className="text-xl font-bold text-gray-800 text-center mt-4">
+                                        <h3 className="text-xl font-bold text-gray-800 text-center mt-14 mb-4">
                                             {group.title} <span className="font-light text-gray-500">(<span className="font-bold">{cardCount}</span>)</span>
                                         </h3>
                                         <GroupDetail

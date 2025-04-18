@@ -61,10 +61,10 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
             className="fixed top-0 left-0 h-full z-[9999] w-2/3 max-w-[340px] bg-gradient-to-b from-[#F8F4EF] to-[#E8D9C5] shadow-2xl flex flex-col"
           >
             {/* Header */}
-            <div className="flex items-center justify-between h-16 px-5 border-b border-[#D4C4B7] bg-[#F8F4EF]">
+            <div className="flex items-center justify-between h-16 px-5 bg-[#F8F4EF]">
               <div className="flex items-center gap-2">
                 <Image src="/icons/translogo.png" alt="LOOPA Logo" width={32} height={32} />
-                <span className="font-bold text-xl tracking-tight text-[#7969F7]">LOOPA</span>
+                <span className="font-semibold text-xl tracking-tight text-[#7969F7]">LOOPA</span>
               </div>
               <button
                 aria-label="메뉴 닫기"
@@ -115,13 +115,22 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
                 <div className="text-gray-600 text-center mt-8 font-medium">콘텐츠가 없습니다</div>
               ) : (
                 <ul className="space-y-3">
-                  {contents.map((content) => (
-                    <li key={content.id}>
+                  {contents.map((content, index) => (
+                    <motion.li
+                      key={content.id}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{
+                        duration: 0.3,
+                        delay: index * 0.05,
+                        ease: [0.25, 0.1, 0.25, 1.0]
+                      }}
+                    >
                       <button
-                        className="w-full text-left px-3 py-3 rounded-lg hover:bg-white/50 transition-colors duration-200 border border-[#D4C4B7] bg-white/30"
+                        className="w-full text-left p-3 rounded-lg hover:bg-white/90 transition-all duration-200 active:scale-[0.98] bg-white/80 shadow-lg/60 backdrop-blur-sm"
                         onClick={() => handleSelectContent(content.id)}
                       >
-                        <div className="truncate font-semibold text-gray-900 text-base">{content.title}</div>
+                        <div className="truncate font-medium text-gray-800 text-base">{content.title}</div>
                         <div className="text-xs text-gray-600 mt-1 flex gap-3">
                           <span className="inline-flex items-center gap-1">
                             <FolderIcon className="w-4 h-4 text-[#7969F7]" />
@@ -133,7 +142,7 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
                           </span>
                         </div>
                       </button>
-                    </li>
+                    </motion.li>
                   ))}
                 </ul>
               )}

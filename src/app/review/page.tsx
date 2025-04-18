@@ -290,7 +290,7 @@ export default function ReviewPage() {
     }
 
     return (
-        <main className="flex h-screen overflow-hidden flex-col bg-gradient-to-t from-[#D4C4B7] via-[#E8D9C5] to-[#F8F4EF]">
+        <main className="flex h-[100vh] overflow-hidden flex-col bg-gradient-to-t from-[#D4C4B7] via-[#E8D9C5] to-[#F8F4EF]">
             {/* 헤더 */}
             <div className="sticky top-0 bg-[#F8F4EF] border-b border-[#D4C4B7] h-12 z-50">
                 <button
@@ -302,12 +302,6 @@ export default function ReviewPage() {
                     </svg>
                     <span className="ml-2 font-medium group-hover:font-semibold transition-all duration-200">홈으로</span>
                 </button>
-
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center">
-                    <span className="text-sm text-gray-500">
-                        {currentCardIndex + 1}/{cards.length}
-                    </span>
-                </div>
             </div>
 
             <div className="flex-1 max-w-2xl mx-auto w-full p-4 flex flex-col min-h-[calc(100vh-3rem)]">
@@ -316,65 +310,76 @@ export default function ReviewPage() {
                     {currentCard?.content_groups?.title || '복습'}
                 </h1>
 
+                {/* 카드 진행 상태 태그 - 그룹 타이틀 아래 중앙에 배치 */}
+                <div className="flex justify-center mb-4">
+                    <div className="inline-flex items-center justify-center bg-white/80 backdrop-blur-sm rounded-full px-3 py-1 border border-gray-200 shadow-sm">
+                        <span className="text-sm text-gray-800 font-medium">
+                            {currentCardIndex + 1}/{cards.length}
+                        </span>
+                    </div>
+                </div>
+
                 {/* 카드 표시 영역 */}
                 <div className="relative flex-1 overflow-hidden">
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
                         <AnimatePresence mode="wait">
-                            <motion.div
-                                key={currentCard.id + (isFlipped ? '-back' : '-front')}
-                                initial={slideDirection === 'flip'
-                                    ? { opacity: 0, rotateY: isFlipped ? -90 : 90 }
-                                    : { opacity: 0, x: 300 }
-                                }
-                                animate={slideDirection === 'flip'
-                                    ? { opacity: 1, rotateY: 0 }
-                                    : { opacity: 1, x: 0 }
-                                }
-                                exit={slideDirection === 'flip'
-                                    ? { opacity: 0, rotateY: isFlipped ? 90 : -90 }
-                                    : { opacity: 0, x: -300 }
-                                }
-                                transition={slideDirection === 'flip'
-                                    ? {
-                                        type: "spring",
-                                        stiffness: 300,
-                                        damping: 30
+                            {currentCard && (
+                                <motion.div
+                                    key={currentCard.id + (isFlipped ? '-back' : '-front')}
+                                    initial={slideDirection === 'flip'
+                                        ? { opacity: 0, rotateY: isFlipped ? -90 : 90 }
+                                        : { opacity: 0, x: 300 }
                                     }
-                                    : {
-                                        type: "spring",
-                                        stiffness: 300,
-                                        damping: 30,
-                                        duration: 0.3
+                                    animate={slideDirection === 'flip'
+                                        ? { opacity: 1, rotateY: 0 }
+                                        : { opacity: 1, x: 0 }
                                     }
-                                }
-                                className="w-full max-w-md perspective-1000"
-                            >
-                                <div className="w-full min-h-[200px] bg-white/90 backdrop-blur-md rounded-xl border border-[#D4C4B7] p-6 shadow-lg">
-                                    {/* 카드 상태 태그 - 좌상단에 배치 */}
-                                    <div className="flex justify-start mb-4">
-                                        <div className="inline-flex items-center justify-center bg-white rounded-full px-3 py-1 border border-gray-200">
-                                            <div className="flex items-center">
-                                                <div className={`w-3 h-3 rounded-full mr-2 ${currentCard?.card_state === 'new' ? 'bg-[#FDFF8C]' :
-                                                    currentCard?.card_state === 'learning' || currentCard?.card_state === 'relearning' ? 'bg-[#B4B6E4]' :
-                                                        currentCard?.card_state === 'review' || currentCard?.card_state === 'graduated' ? 'bg-[#5F4BB6]' : 'bg-gray-400'
-                                                    }`}></div>
-                                                <span className="text-sm font-medium text-gray-800">
-                                                    {currentCard?.card_state === 'new' ? '새 카드' :
-                                                        currentCard?.card_state === 'learning' ? '학습 중' :
-                                                            currentCard?.card_state === 'graduated' || currentCard?.card_state === 'review' ? '복습' :
-                                                                '재학습'}
-                                                </span>
+                                    exit={slideDirection === 'flip'
+                                        ? { opacity: 0, rotateY: isFlipped ? 90 : -90 }
+                                        : { opacity: 0, x: -300 }
+                                    }
+                                    transition={slideDirection === 'flip'
+                                        ? {
+                                            type: "spring",
+                                            stiffness: 300,
+                                            damping: 30
+                                        }
+                                        : {
+                                            type: "spring",
+                                            stiffness: 300,
+                                            damping: 30,
+                                            duration: 0.3
+                                        }
+                                    }
+                                    className="w-full max-w-md perspective-1000"
+                                >
+                                    <div className="w-full min-h-[200px] bg-white/90 backdrop-blur-md rounded-xl border border-[#D4C4B7] p-6 shadow-lg">
+                                        {/* 카드 상태 태그 - 좌상단에 배치 */}
+                                        <div className="flex justify-start mb-4">
+                                            <div className="inline-flex items-center justify-center bg-white rounded-full px-3 py-1 border border-gray-200">
+                                                <div className="flex items-center">
+                                                    <div className={`w-3 h-3 rounded-full mr-2 ${currentCard?.card_state === 'new' ? 'bg-[#FDFF8C]' :
+                                                        currentCard?.card_state === 'learning' || currentCard?.card_state === 'relearning' ? 'bg-[#B4B6E4]' :
+                                                            currentCard?.card_state === 'review' || currentCard?.card_state === 'graduated' ? 'bg-[#5F4BB6]' : 'bg-gray-400'
+                                                        }`}></div>
+                                                    <span className="text-sm font-medium text-gray-800">
+                                                        {currentCard?.card_state === 'new' ? '새 카드' :
+                                                            currentCard?.card_state === 'learning' ? '학습 중' :
+                                                                currentCard?.card_state === 'graduated' || currentCard?.card_state === 'review' ? '복습' :
+                                                                    '재학습'}
+                                                    </span>
+                                                </div>
                                             </div>
                                         </div>
+                                        <div
+                                            className="text-gray-800 text-lg"
+                                            dangerouslySetInnerHTML={{
+                                                __html: processMaskedText(isFlipped ? currentCard.masked_text : currentCard.summary)
+                                            }}
+                                        />
                                     </div>
-                                    <div
-                                        className="text-gray-800 text-lg"
-                                        dangerouslySetInnerHTML={{
-                                            __html: processMaskedText(isFlipped ? currentCard.masked_text : currentCard.summary)
-                                        }}
-                                    />
-                                </div>
-                            </motion.div>
+                                </motion.div>
+                            )}
                         </AnimatePresence>
                     </div>
                 </div>
