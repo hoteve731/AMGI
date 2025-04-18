@@ -17,28 +17,6 @@ type ContentGroup = {
 type Content = {
     id: string
     title: string
-    status: 'studying' | 'completed' | 'paused'
-}
-
-const statusStyles = {
-    studying: {
-        bg: 'bg-blue-100',
-        text: 'text-blue-700',
-        dot: 'bg-blue-500',
-        label: '진행 중'
-    },
-    completed: {
-        bg: 'bg-green-100',
-        text: 'text-green-700',
-        dot: 'bg-green-500',
-        label: '완료'
-    },
-    paused: {
-        bg: 'bg-gray-100',
-        text: 'text-gray-700',
-        dot: 'bg-gray-500',
-        label: '시작 전'
-    }
 }
 
 export default function ContentDetail({
@@ -49,38 +27,10 @@ export default function ContentDetail({
     content: Content
 }) {
     const [showOriginal, setShowOriginal] = useState(false)
-    const [contentStatus, setContentStatus] = useState(content.status)
     const [isDeleting, setIsDeleting] = useState(false)
     const router = useRouter()
     const supabase = createClientComponentClient()
     const { mutate } = useSWRConfig()
-
-    const handleStatusChange = async (newStatus: Content['status']) => {
-        try {
-            const response = await fetch('/api/contents', {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    id: content.id,
-                    status: newStatus
-                }),
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || '상태 업데이트 중 오류가 발생했습니다');
-            }
-
-            setContentStatus(newStatus);
-            mutate('/api/contents');
-            router.refresh();
-        } catch (error) {
-            console.error('상태 업데이트 중 오류:', error);
-            alert('상태 업데이트 중 오류가 발생했습니다.');
-        }
-    };
 
     const handleDeleteContent = async () => {
         if (!confirm('정말로 이 콘텐츠를 삭제하시겠습니까? 모든 그룹과 기억 카드가 삭제되며, 이 작업은 되돌릴 수 없습니다.')) {
@@ -140,45 +90,6 @@ export default function ContentDetail({
                     <h1 className="text-3xl font-bold text-gray-800">{group.title}</h1>
                     <div className="text-sm text-gray-500">
                         {group.chunks.length}개의 청크로 구성됨
-                    </div>
-                    <div className="relative inline-block">
-                        <select
-                            value={contentStatus}
-                            onChange={(e) => handleStatusChange(e.target.value as Content['status'])}
-                            className={`
-                                appearance-none
-                                pl-7 pr-4 py-1.5
-                                rounded-full
-                                text-sm
-                                font-medium
-                                ${statusStyles[contentStatus].bg}
-                                ${statusStyles[contentStatus].text}
-                                transition-colors
-                                border-0
-                                focus:outline-none
-                                focus:ring-2
-                                focus:ring-offset-2
-                                focus:ring-blue-500
-                                whitespace-nowrap
-                                cursor-pointer
-                            `}
-                        >
-                            <option value="studying">진행 중</option>
-                            <option value="completed">완료</option>
-                            <option value="paused">시작 전</option>
-                        </select>
-                        <div
-                            className={`
-                                absolute 
-                                left-3 
-                                top-1/2 
-                                -translate-y-1/2 
-                                w-2 
-                                h-2 
-                                rounded-full 
-                                ${statusStyles[contentStatus].dot}
-                            `}
-                        />
                     </div>
                 </div>
 

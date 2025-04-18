@@ -32,7 +32,6 @@ type Content = {
     user_id: string
     original_text: string
     created_at: string
-    status: string
 }
 
 type NotificationInfo = {

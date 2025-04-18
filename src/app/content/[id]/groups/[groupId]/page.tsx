@@ -25,10 +25,10 @@ export default async function Page(props: any) {
 
   const supabase = await createClient()
 
-  // 콘텐츠 기본 정보 가져오기
+  // 콘텐츠 기본 정보 가져오기 (status 필드 제외)
   const { data: contentData, error: contentError } = await supabase
     .from('contents')
-    .select('*')
+    .select('id, title, created_at, user_id')
     .eq('id', contentId)
     .single()
 

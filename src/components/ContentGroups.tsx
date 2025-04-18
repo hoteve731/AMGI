@@ -12,17 +12,16 @@ type Content = {
     id: string
     title: string
     created_at: string
-    status: 'studying' | 'completed' | 'paused'
     user_id: string
     original_text: string
 }
 
 type Chunk = {
     id: string
-    group_id: string
     summary: string
     masked_text: string
-    position: number
+    group_id?: string
+    position?: number
     status?: 'active' | 'inactive'
     card_state?: 'new' | 'learning' | 'relearning' | 'review' | 'graduated'
 }
@@ -30,9 +29,11 @@ type Chunk = {
 type ContentGroup = {
     id: string
     title: string
+    content_id: string
     original_text: string
-    chunks?: Chunk[]
-    position: number
+    chunks: Chunk[]
+    chunks_count?: number
+    position?: number
 }
 
 type ContentWithGroups = Content & {
@@ -211,7 +212,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
     }
 
     return (
-        <main className="flex min-h-screen flex-col bg-gradient-to-b from-[#F8F4EF] to-[#E8D9C5]">
+        <main className="flex min-h-screen flex-col bg-gradient-to-b from-[#F8F4EF] to-[#E8D9C5] pb-12">
             {(isLoading || isDeleting || isDeletingContent || isNavigating) && <LoadingOverlay />}
             <div className="sticky top-0 bg-[#F8F4EF] border-b border-[#D4C4B7] h-12 z-50">
                 <button
@@ -278,10 +279,12 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
             </div>
 
             <div className="flex-1 max-w-2xl mx-auto w-full p-4">
-                <div className="space-y-2 mb-4 mt-2">
+                <div className="space-y-2 mb-8 mt-2 text-center">
                     <h1 className="text-3xl font-bold text-gray-800">{content.title}</h1>
-                    <div className="text-sm text-gray-500">
-                        {new Date(content.created_at).toLocaleDateString('ko-KR')} 시작
+                    <div className="flex justify-center">
+                        <div className="bg-white/80 backdrop-blur-md px-3 py-1 rounded-full text-sm text-gray-700 inline-block">
+                            {new Date(content.created_at).toLocaleDateString('ko-KR')}
+                        </div>
                     </div>
                 </div>
 
@@ -297,8 +300,8 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                         >
                             {content.groups.map((group) => (
                                 <div key={group.id} className="space-y-4">
-                                    <h3 className="text-xl font-medium text-gray-800">
-                                        {group.title} <span className="font-light text-gray-500">({group.chunks?.length || 0})</span>
+                                    <h3 className="text-xl font-bold text-gray-800 text-center mt-4">
+                                        {group.title} <span className="font-light text-gray-500">(<span className="font-bold">{group.chunks?.filter(c => c.id).length || 0}</span>)</span>
                                     </h3>
                                     <GroupDetail content={content} group={group} hideHeader={true} hideCardCount={true} />
                                 </div>
@@ -362,7 +365,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                                                     />
                                                 </svg>
                                                 <span className="text-gray-600">기억카드</span>
-                                                <span className="text-gray-700 font-bold">{group.chunks?.length || 0}</span>
+                                                <span className="text-gray-700 font-bold">{group.chunks?.filter(c => c.id).length || 0}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -391,7 +394,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                 </AnimatePresence>
 
                 {content.additional_memory && (
-                    <div className="flex flex-col mt-8">
+                    <div className="flex flex-col mt-8 mb-8">
                         <button
                             onClick={() => setShowAdditionalMemory(!showAdditionalMemory)}
                             className={`w-full bg-white/60 backdrop-blur-md rounded-xl p-4 flex items-center justify-between border border-white/20 ${showAdditionalMemory ? 'rounded-b-none border-b-0' : ''}`}

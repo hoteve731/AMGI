@@ -18,7 +18,7 @@ export async function GET(request: Request) {
         // 콘텐츠 기본 정보 가져오기
         const { data: contentData, error: contentError } = await supabase
             .from('contents')
-            .select('id, title, status')
+            .select('id, title')
             .eq('id', contentId)
             .eq('user_id', session.user.id)
             .single();
@@ -56,15 +56,18 @@ export async function GET(request: Request) {
             }
         }
 
+        // 그룹 생성 여부와 청크 생성 여부를 확인
+        const groupsGenerated = groupsData && groupsData.length > 0;
+        const chunksGenerated = chunksCount > 0;
+
         // 응답 데이터 구성
         const responseData = {
             ...contentData,
             groups: groupsData,
             chunksCount,
-            processingComplete: !(contentData.status === 'paused' && ((!groupsData || groupsData.length === 0) || chunksCount === 0)),
-            // 그룹 생성 여부와 청크 생성 여부를 명시적으로 전달
-            groupsGenerated: groupsData && groupsData.length > 0,
-            chunksGenerated: chunksCount > 0
+            processingComplete: groupsGenerated && chunksGenerated,
+            groupsGenerated,
+            chunksGenerated
         };
 
         return NextResponse.json(responseData);

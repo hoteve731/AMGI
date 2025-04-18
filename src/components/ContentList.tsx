@@ -7,44 +7,33 @@ import { useSWRConfig } from 'swr'
 import { useRouter } from 'next/navigation'
 import LoadingOverlay from './LoadingOverlay'
 import { motion } from 'framer-motion'
+import useSWR from 'swr'
 
 type Content = {
     id: string
     title: string
     created_at: string
-    status: 'studying' | 'completed' | 'paused'
     groups_count?: number
     chunks_count?: number
     isProcessing?: boolean
-    isManuallyPaused?: boolean
-}
-
-const statusStyles = {
-    studying: {
-        bg: 'bg-blue-100',
-        text: 'text-blue-800',
-        dot: 'bg-blue-500',
-    },
-    completed: {
-        bg: 'bg-green-100',
-        text: 'text-green-800',
-        dot: 'bg-green-500',
-    },
-    paused: {
-        bg: 'bg-gray-100',
-        text: 'text-gray-800',
-        dot: 'bg-gray-500',
-    },
 }
 
 type ContentListProps = {
-    contents: Content[]
+    contents?: Content[]
     showTabs?: boolean
     mutate?: () => void
 }
 
-export default function ContentList({ contents, showTabs = false, mutate: externalMutate }: ContentListProps) {
-    const [isStatusChanging, setIsStatusChanging] = useState(false)
+// API fetcher
+const fetcher = async (url: string) => {
+    const response = await fetch(url)
+    if (!response.ok) {
+        throw new Error('데이터를 불러오는데 실패했습니다.')
+    }
+    return response.json()
+}
+
+export default function ContentList({ contents: externalContents, showTabs = false, mutate: externalMutate }: ContentListProps) {
     const [isDeleting, setIsDeleting] = useState<string | null>(null)
     const [isLoading, setIsLoading] = useState(false)
     const [processedContents, setProcessedContents] = useState<Content[]>([])
@@ -53,22 +42,37 @@ export default function ContentList({ contents, showTabs = false, mutate: extern
     const supabase = createClientComponentClient()
     const { mutate: localMutate } = useSWRConfig()
 
+    // 외부에서 제공된 콘텐츠가 없을 경우 SWR로 데이터 가져오기
+    const { data, error, isLoading: isFetching, mutate } = useSWR<{ contents: Content[] }>(
+        !externalContents ? '/api/contents' : null,
+        fetcher,
+        {
+            refreshInterval: 0,
+            revalidateOnFocus: true,
+            revalidateOnReconnect: true,
+            dedupingInterval: 5000,
+        }
+    )
+
+    // 실제 사용할 콘텐츠 데이터 결정
+    const contentsToProcess = externalContents || data?.contents || []
+
     // 콘텐츠 처리 상태 설정
     useEffect(() => {
-        if (!contents || contents.length === 0) return;
+        if (contentsToProcess.length === 0) return;
 
         const processContents = () => {
-            const contentsCopy = [...contents];
+            const contentsCopy = [...contentsToProcess];
             const newProcessingIds: string[] = [];
 
             // 각 콘텐츠에 그룹 수에 따라 처리 상태 설정
             for (const content of contentsCopy) {
                 const index = contentsCopy.findIndex(c => c.id === content.id);
                 if (index !== -1) {
-                    // 'paused' 상태이면서 그룹이 없거나 청크가 없으면 처리 중으로 간주
+                    // 그룹이 없거나 청크가 없으면 처리 중으로 간주
                     const hasNoGroups = !content.groups_count || content.groups_count === 0;
                     const hasNoChunks = !content.chunks_count || content.chunks_count === 0;
-                    const isProcessing = content.status === 'paused' && (hasNoGroups || hasNoChunks);
+                    const isProcessing = hasNoGroups || hasNoChunks;
 
                     contentsCopy[index].isProcessing = isProcessing;
 
@@ -84,7 +88,7 @@ export default function ContentList({ contents, showTabs = false, mutate: extern
         };
 
         processContents();
-    }, [contents]);
+    }, [contentsToProcess]);
 
     // 처리 중인 콘텐츠의 상태 확인
     const checkContentStatus = useCallback(async () => {
@@ -97,8 +101,8 @@ export default function ContentList({ contents, showTabs = false, mutate: extern
 
                 const data = await response.json();
 
-                // studying 상태로 변경되었으면 처리 완료로 간주
-                if (data.status === 'studying') {
+                // 그룹과 청크가 생성되었는지 확인
+                if (data.groupsGenerated && data.chunksGenerated) {
                     needsRefresh = true;
                 }
             } catch (error) {
@@ -110,16 +114,16 @@ export default function ContentList({ contents, showTabs = false, mutate: extern
         if (needsRefresh) {
             if (externalMutate) {
                 externalMutate();
+            } else if (mutate) {
+                mutate();
             } else {
                 localMutate('/api/contents');
             }
         }
-    }, [processingContentIds, externalMutate, localMutate]);
+    }, [processingContentIds, externalMutate, mutate, localMutate]);
 
     useEffect(() => {
         if (processingContentIds.length === 0) return;
-
-        let checkTimeout: NodeJS.Timeout;
 
         // 최초 실행
         checkContentStatus();
@@ -135,42 +139,6 @@ export default function ContentList({ contents, showTabs = false, mutate: extern
         };
     }, [processingContentIds.length, checkContentStatus]);
 
-    const handleStatusChange = async (contentId: string, newStatus: Content['status']) => {
-        if (isStatusChanging) return
-
-        try {
-            setIsStatusChanging(true)
-
-            const response = await fetch('/api/contents', {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    id: contentId,
-                    status: newStatus,
-                }),
-            });
-
-            const result = await response.json();
-
-            if (!response.ok) {
-                throw new Error(result.error || '상태 업데이트 중 오류가 발생했습니다.');
-            }
-
-            if (externalMutate) {
-                externalMutate();
-            } else {
-                localMutate('/api/contents');
-            }
-        } catch (error) {
-            console.error('상태 업데이트 중 오류:', error);
-            alert(error instanceof Error ? error.message : '상태 업데이트 중 오류가 발생했습니다.');
-        } finally {
-            setIsStatusChanging(false);
-        }
-    };
-
     const handleContentClick = async (contentId: string) => {
         setIsLoading(true)
         try {
@@ -182,11 +150,58 @@ export default function ContentList({ contents, showTabs = false, mutate: extern
         }
     }
 
-    const displayContents = processedContents.length > 0 ? processedContents : contents;
+    const displayContents = processedContents.length > 0 ? processedContents : contentsToProcess;
 
     return (
         <div className="flex-1 overflow-y-auto p-4 pb-[120px] relative">
             {isLoading && <LoadingOverlay />}
+            {isFetching && (
+                <div className="flex items-center justify-center h-64">
+                    <div className="relative w-10 h-10">
+                        {[0, 1, 2, 3, 4].map((i) => (
+                            <motion.div
+                                key={i}
+                                className="absolute w-2 h-2 bg-[#7969F7] rounded-full"
+                                style={{
+                                    left: '50%',
+                                    top: '50%',
+                                    transform: 'translate(-50%, -50%)',
+                                }}
+                                animate={{
+                                    x: [
+                                        '0px',
+                                        `${Math.cos(i * (2 * Math.PI / 5)) * 16}px`,
+                                        '0px'
+                                    ],
+                                    y: [
+                                        '0px',
+                                        `${Math.sin(i * (2 * Math.PI / 5)) * 16}px`,
+                                        '0px'
+                                    ],
+                                }}
+                                transition={{
+                                    duration: 1.2,
+                                    repeat: Infinity,
+                                    delay: i * 0.1,
+                                    ease: [0.4, 0, 0.2, 1],
+                                    times: [0, 0.5, 1]
+                                }}
+                            />
+                        ))}
+                    </div>
+                </div>
+            )}
+            {error && (
+                <div className="text-center p-8 text-red-500">
+                    <p>데이터를 불러오는 중 오류가 발생했습니다.</p>
+                    <button
+                        onClick={() => window.location.reload()}
+                        className="mt-4 px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300"
+                    >
+                        새로고침
+                    </button>
+                </div>
+            )}
             <div className="space-y-5">
                 {displayContents.map((content, index) => (
                     <motion.div
@@ -198,43 +213,29 @@ export default function ContentList({ contents, showTabs = false, mutate: extern
                             delay: index * 0.05,
                             ease: [0.25, 0.1, 0.25, 1.0]
                         }}
-                        className="block relative hover:scale-[1.02] transition-transform duration-200"
+                        className={`
+                            bg-white rounded-xl shadow-sm overflow-hidden
+                            border border-gray-100 hover:border-[#A99BFF] hover:shadow-md
+                            transition-all duration-200
+                        `}
                     >
-                        <div className={`
-                            p-4 
-                            bg-white/60
-                            backdrop-blur-md 
-                            rounded-3xl
-                            shadow-lg
-                            border
-                            border-white/20
-                            hover:bg-white/70
-                            transition-colors
-                            [-webkit-backdrop-filter:blur(20px)]
-                            [backdrop-filter:blur(20px)]
-                            ${content.isProcessing ? 'opacity-70' : ''}
-                        `}>
-                            <div className="flex items-center justify-between">
+                        <div className="p-4">
+                            <div className="flex justify-between items-start">
                                 {content.isProcessing ? (
                                     <div className="flex-1">
-                                        <div className="flex items-center justify-between">
-                                            <h2 className="text-lg font-medium text-gray-800">
-                                                {content.title}
-                                            </h2>
-                                            <div className="flex items-center ml-2">
-                                                <div className="relative w-5 h-5">
+                                        <h2 className="text-lg font-medium text-gray-800">
+                                            {content.title}
+                                        </h2>
+                                        <div className="mt-2">
+                                            <div className="flex items-center justify-start">
+                                                <div className="flex">
                                                     {[0, 1, 2].map((i) => (
                                                         <motion.div
                                                             key={i}
-                                                            className="absolute w-1.5 h-1.5 bg-[#7969F7] rounded-full"
-                                                            style={{
-                                                                top: '50%',
-                                                                left: '50%',
-                                                                x: `calc(${Math.cos(2 * Math.PI * i / 3) * 6}px - 50%)`,
-                                                                y: `calc(${Math.sin(2 * Math.PI * i / 3) * 6}px - 50%)`,
-                                                            }}
+                                                            className="w-2 h-2 rounded-full bg-[#7969F7] mx-0.5"
                                                             animate={{
-                                                                scale: [1, 1.5, 1],
+                                                                opacity: [0.4, 1, 0.4],
+                                                                y: ['0px', '-4px', '0px']
                                                             }}
                                                             transition={{
                                                                 duration: 1,
@@ -262,7 +263,7 @@ export default function ContentList({ contents, showTabs = false, mutate: extern
                             </div>
 
                             {!content.isProcessing ? (
-                                <div className="flex items-center justify-between mt-2">
+                                <div className="flex items-center mt-2">
                                     <div className="flex items-center gap-3 text-sm text-gray-500">
                                         <div className="flex items-center gap-1">
                                             <svg
@@ -285,57 +286,11 @@ export default function ContentList({ contents, showTabs = false, mutate: extern
                                             {new Date(content.created_at).toLocaleDateString('ko-KR')} 시작
                                         </div>
                                     </div>
-
-                                    <div className="relative inline-block">
-                                        <select
-                                            data-content-id={content.id}
-                                            value={content.status}
-                                            onChange={(e) => handleStatusChange(content.id, e.target.value as Content['status'])}
-                                            className={`
-                                                appearance-none
-                                                pl-7 pr-4 py-1.5
-                                                rounded-full
-                                                text-sm
-                                                font-medium
-                                                ${statusStyles[content.status].bg}
-                                                ${statusStyles[content.status].text}
-                                                transition-colors
-                                                border-0
-                                                focus:outline-none
-                                                focus:ring-2
-                                                focus:ring-offset-2
-                                                focus:ring-blue-500
-                                            `}
-                                            disabled={isStatusChanging}
-                                        >
-                                            <option value="studying">Looping</option>
-                                            <option value="completed">Completed</option>
-                                            <option value="paused">Paused</option>
-                                        </select>
-                                        <div
-                                            className={`
-                                                absolute 
-                                                left-2 
-                                                top-1/2 
-                                                -translate-y-1/2 
-                                                w-2 
-                                                h-2 
-                                                rounded-full 
-                                                ${statusStyles[content.status].dot}
-                                            `}
-                                        />
-                                    </div>
                                 </div>
                             ) : null}
                         </div>
                     </motion.div>
                 ))}
-
-                {displayContents.length === 0 && (
-                    <div className="text-center py-10">
-                        <p className="text-gray-500">No contents here 😄</p>
-                    </div>
-                )}
             </div>
         </div>
     )

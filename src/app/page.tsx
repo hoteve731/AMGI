@@ -1,10 +1,10 @@
 import { redirect } from 'next/navigation'
 import LogoutButton from '@/components/LogoutButton'
-import ContentTabs from '@/components/ContentTabs'
-import BottomSheet from '@/components/BottomSheet'
 import { createClient } from '@/utils/supabase/server'
 import ReviewDashboard from '@/components/ReviewDashboard'
 import MenuButton from '@/components/MenuButton'
+import ContentList from '@/components/ContentList'
+import BottomSheet from '@/components/BottomSheet'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,14 +27,13 @@ export default async function Home() {
         <LogoutButton />
       </header>
 
-      {/* 리뷰 대시보드 추가 - 헤더 아래, 탭바 위에 */}
+      {/* 리뷰 대시보드 추가 - 헤더 아래, 콘텐츠 위에 */}
       <div className="pt-4 px-4">
         <ReviewDashboard userName={user?.user_metadata.full_name || user?.email} />
       </div>
 
-
       <div className="flex-1 overflow-hidden">
-        <ContentTabs />
+        <ContentList />
       </div>
 
       <BottomSheet />

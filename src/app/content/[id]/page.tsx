@@ -21,7 +21,6 @@ type Content = {
   chunks: Chunk[]
   masked_chunks: MaskedChunk[]
   created_at: string
-  status: string
 }
 
 type ContentGroup = {

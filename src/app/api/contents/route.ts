@@ -24,7 +24,7 @@ export async function GET(request: Request) {
         // 1. 콘텐츠 기본 정보 가져오기
         const { data: contentData, error: contentError } = await supabase
           .from('contents')
-          .select('id, title, status')
+          .select('id, title')
           .eq('id', contentId)
           .eq('user_id', user.id) // Use user.id from getUser()
           .single();
@@ -73,7 +73,7 @@ export async function GET(request: Request) {
         // 1. 콘텐츠 기본 정보 가져오기
         const { data: contentData, error: contentError } = await supabase
           .from('contents')
-          .select('id, title, created_at, status')
+          .select('id, title, created_at')
           .eq('id', contentId)
           .eq('user_id', user.id) // Use user.id from getUser()
           .single();
@@ -124,7 +124,7 @@ export async function GET(request: Request) {
     // 모든 콘텐츠 목록 요청인 경우
     const { data, error } = await supabase
       .from('contents')
-      .select('id, title, created_at, status')
+      .select('id, title, created_at')
       .eq('user_id', user.id) // Use user.id from getUser()
       .order('created_at', { ascending: false });
 
@@ -195,46 +195,6 @@ export async function GET(request: Request) {
   }
 }
 
-export async function PUT(request: Request) {
-  try {
-    const { id, status } = await request.json();
-
-    if (!id || !status) {
-      return NextResponse.json({ error: 'Content ID and status are required' }, { status: 400 });
-    }
-
-    const supabase = await createClient();
-
-    // Check authentication using getUser for better security
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      console.error('Authentication error:', userError?.message);
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Update content status
-    const { error } = await supabase
-      .from('contents')
-      .update({ status })
-      .eq('id', id)
-      .eq('user_id', user.id); // Ensure user owns the content
-
-    if (error) {
-      console.error('Error updating content status:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    return NextResponse.json({ message: 'Content status updated successfully' });
-  } catch (error) {
-    console.error('Unexpected error:', error);
-    return NextResponse.json(
-      { error: 'An unexpected error occurred' },
-      { status: 500 }
-    );
-  }
-}
-
 export async function DELETE(request: Request) {
   try {
     const { id } = await request.json()
@@ -248,25 +208,24 @@ export async function DELETE(request: Request) {
 
     const supabase = await createClient()
 
-    // 인증 확인
+    // 사용자 인증 확인
     const { data: { user }, error: userError } = await supabase.auth.getUser()
     if (userError || !user) {
-      console.error('Authentication error:', userError?.message);
       return NextResponse.json(
         { error: '인증되지 않은 사용자입니다.' },
         { status: 401 }
       )
     }
 
-    // 콘텐츠 소유자 확인
-    const { data: contentData, error: contentCheckError } = await supabase
+    // 삭제할 콘텐츠가 현재 사용자의 것인지 확인
+    const { data: contentData, error: contentError } = await supabase
       .from('contents')
       .select('user_id')
       .eq('id', id)
       .single()
 
-    if (contentCheckError) {
-      console.error('콘텐츠 확인 중 오류:', contentCheckError)
+    if (contentError) {
+      console.error('콘텐츠 조회 중 오류:', contentError)
       return NextResponse.json(
         { error: '콘텐츠를 찾을 수 없습니다.' },
         { status: 404 }
@@ -280,59 +239,66 @@ export async function DELETE(request: Request) {
       )
     }
 
-    // 1. 먼저 콘텐츠에 속한 모든 그룹을 찾습니다
-    const { data: groups, error: groupsFetchError } = await supabase
+    // 1. 콘텐츠에 속한 그룹 ID 가져오기
+    const { data: groupsData, error: groupsError } = await supabase
       .from('content_groups')
       .select('id')
       .eq('content_id', id)
 
-    if (groupsFetchError) {
-      console.error('그룹 조회 중 오류:', groupsFetchError)
-      throw groupsFetchError
+    if (groupsError) {
+      console.error('그룹 조회 중 오류:', groupsError)
+      // 그룹 조회 실패해도 계속 진행 (그룹이 없을 수 있음)
     }
 
-    // 2. 각 그룹에 속한 청크들을 삭제합니다
-    if (groups && groups.length > 0) {
-      for (const group of groups) {
-        const { error: chunksError } = await supabase
-          .from('content_chunks')
-          .delete()
-          .eq('group_id', group.id)
+    // 그룹 ID 배열 생성
+    const groupIds = (groupsData || []).map(group => group.id)
 
-        if (chunksError) {
-          console.error(`그룹 ${group.id}의 청크 삭제 중 오류:`, chunksError)
-          throw chunksError
-        }
+    // 2. 그룹에 속한 청크 삭제
+    if (groupIds.length > 0) {
+      const { error: chunksDeleteError } = await supabase
+        .from('content_chunks')
+        .delete()
+        .in('group_id', groupIds)
+
+      if (chunksDeleteError) {
+        console.error('청크 삭제 중 오류:', chunksDeleteError)
+        // 청크 삭제 실패해도 계속 진행
       }
     }
 
-    // 3. 그룹을 삭제합니다
-    const { error: groupsError } = await supabase
-      .from('content_groups')
-      .delete()
-      .eq('content_id', id)
+    // 3. 그룹 삭제
+    if (groupIds.length > 0) {
+      const { error: groupsDeleteError } = await supabase
+        .from('content_groups')
+        .delete()
+        .in('id', groupIds)
 
-    if (groupsError) {
-      console.error('그룹 삭제 중 오류:', groupsError)
-      throw groupsError
+      if (groupsDeleteError) {
+        console.error('그룹 삭제 중 오류:', groupsDeleteError)
+        // 그룹 삭제 실패해도 계속 진행
+      }
     }
 
-    // 4. 마지막으로 콘텐츠를 삭제합니다
-    const { error: contentError } = await supabase
+    // 4. 콘텐츠 삭제
+    const { error: contentDeleteError } = await supabase
       .from('contents')
       .delete()
       .eq('id', id)
 
-    if (contentError) {
-      console.error('콘텐츠 삭제 중 오류:', contentError)
-      throw contentError
+    if (contentDeleteError) {
+      console.error('콘텐츠 삭제 중 오류:', contentDeleteError)
+      return NextResponse.json(
+        { error: '콘텐츠 삭제 중 오류가 발생했습니다.' },
+        { status: 500 }
+      )
     }
 
     return NextResponse.json({ success: true })
+
   } catch (error) {
-    console.error('콘텐츠 삭제 중 오류:', error)
+    console.error('예상치 못한 오류:', error)
     return NextResponse.json(
-      { error: '콘텐츠 삭제 중 오류가 발생했습니다.' },
+      { error: '서버 오류가 발생했습니다.' },
       { status: 500 }
     )
   }
