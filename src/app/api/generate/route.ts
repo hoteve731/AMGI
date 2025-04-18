@@ -81,17 +81,14 @@ export async function POST(req: Request) {
         try {
             const { data: contentData, error: contentError } = await supabase
                 .from('contents')
-                .insert([
-                    {
-                        user_id: session.user.id,
-                        title,
-                        original_text: text,
-                        additional_memory: additionalMemory || '',
-                        status: 'paused',
-                        chunks: [],
-                        masked_chunks: []
-                    }
-                ])
+                .insert([{
+                    user_id: session.user.id,
+                    title,
+                    original_text: text,
+                    additional_memory: additionalMemory || '',
+                    chunks: [],
+                    masked_chunks: []
+                }])
                 .select('id')
 
             if (contentError) throw contentError
@@ -109,7 +106,6 @@ export async function POST(req: Request) {
         return NextResponse.json({
             content_id: contentId,
             title,
-            status: 'paused'
         })
 
     } catch (error) {

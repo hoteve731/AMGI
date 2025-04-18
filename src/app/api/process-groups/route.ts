@@ -135,14 +135,6 @@ export async function POST(req: Request) {
                 }
             }
 
-            // 콘텐츠 상태 업데이트
-            if (groupIds.length > 0) {
-                await supabase
-                    .from('contents')
-                    .update({ status: 'studying' })
-                    .eq('id', contentId)
-            }
-
             return NextResponse.json({
                 success: true,
                 content_id: contentId,

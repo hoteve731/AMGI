@@ -192,19 +192,6 @@ export async function POST(req: Request) {
 
                     // 일반 청크가 있는 그룹 ID 목록
                     const groupsWithNormalChunks = [...new Set(normalChunksData.map(c => c.group_id))];
-
-                    // 모든 그룹에 cloze 청크와 일반 청크가 모두 있으면 콘텐츠 상태를 'studying'으로 업데이트
-                    if (groupsWithClozeChunks.length === allGroupIds.length &&
-                        groupsWithNormalChunks.length === allGroupIds.length) {
-                        const { error: updateError } = await supabase
-                            .from('contents')
-                            .update({ status: 'studying' })
-                            .eq('id', content_id)
-
-                        if (updateError) {
-                            console.error('Content status update error:', updateError)
-                        }
-                    }
                 }
             }
 

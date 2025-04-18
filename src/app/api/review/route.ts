@@ -117,7 +117,6 @@ interface ContentChunk {
 
 interface StatsChunk {
     card_state: 'new' | 'learning' | 'graduated' | 'review' | 'relearning';
-    status: 'active' | 'inactive';
     due: number | null;
     content_groups: {
         contents: {
@@ -245,7 +244,6 @@ export async function GET(request: NextRequest) {
             .from('content_chunks')
             .select(`
                 card_state,
-                status,
                 due,
                 content_groups(
                     contents(
@@ -300,24 +298,21 @@ export async function GET(request: NextRequest) {
         }
 
         filteredStats.forEach(card => {
-            if (card.status === 'active') {
-                stats.total++
-
-                if (card.card_state === 'new') {
-                    stats.new++
+            if (card.card_state === 'new') {
+                stats.new++
+                stats.due++
+            } else if (card.card_state === 'learning' || card.card_state === 'relearning') {
+                stats.learning++
+                if (card.due && card.due <= new Date().getTime()) {
                     stats.due++
-                } else if (card.card_state === 'learning' || card.card_state === 'relearning') {
-                    stats.learning++
-                    if (card.due && card.due <= new Date().getTime()) {
-                        stats.due++
-                    }
-                } else if (card.card_state === 'graduated' || card.card_state === 'review') {
-                    stats.review++
-                    if (card.due && card.due <= new Date().getTime()) {
-                        stats.due++
-                    }
+                }
+            } else if (card.card_state === 'graduated' || card.card_state === 'review') {
+                stats.review++
+                if (card.due && card.due <= new Date().getTime()) {
+                    stats.due++
                 }
             }
+            stats.total++
         })
 
         return NextResponse.json({ cards: filteredCards, stats })

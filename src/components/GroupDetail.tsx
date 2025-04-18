@@ -727,7 +727,7 @@ export default function GroupDetail({
                     <button
                         onClick={handleDeleteGroup}
                         disabled={isDeletingGroup}
-                        className="absolute right-16 top-1/2 -translate-y-1/2 h-8 w-8 bg-[#8B4513]/60 backdrop-blur-md text-white rounded-full flex items-center justify-center hover:bg-red-500/90 transition-colors disabled:opacity-50"
+                        className="absolute right-4 top-1/2 -translate-y-1/2 p-1 text-gray-500 hover:text-red-600 transition-colors disabled:opacity-50"
                         aria-label="그룹 삭제"
                     >
                         {isDeletingGroup ? (
@@ -735,7 +735,7 @@ export default function GroupDetail({
                                 {[0, 1, 2, 3, 4].map((i) => (
                                     <motion.div
                                         key={i}
-                                        className="w-1.5 h-1.5 bg-white rounded-full"
+                                        className="w-1.5 h-1.5 bg-gray-500 rounded-full"
                                         animate={{
                                             y: ["0%", "-100%"],
                                         }}
@@ -757,27 +757,6 @@ export default function GroupDetail({
                             </svg>
                         )}
                     </button>
-
-                    {groups.length > 1 && (
-                        <button
-                            onClick={() => setShowGroupSelector(!showGroupSelector)}
-                            className="absolute right-4 top-1/2 -translate-y-1/2 h-8 w-8 bg-[#8B4513]/60 backdrop-blur-md text-white rounded-full flex items-center justify-center hover:bg-[#8B4513]/90 transition-colors"
-                            aria-label={showGroupSelector ? "닫기" : "그룹 리스트"}
-                        >
-                            <motion.div
-                                animate={{ rotate: showGroupSelector ? 90 : 0 }}
-                                transition={{ duration: 0.3, ease: "easeInOut" }}
-                            >
-                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    {showGroupSelector ? (
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                    ) : (
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
-                                    )}
-                                </svg>
-                            </motion.div>
-                        </button>
-                    )}
                 </div>
             )}
 
