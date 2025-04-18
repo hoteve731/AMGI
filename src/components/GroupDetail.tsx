@@ -16,6 +16,8 @@ type Chunk = {
     position: number
     status?: 'active' | 'inactive'
     card_state?: 'new' | 'learning' | 'relearning' | 'review' | 'graduated'
+    repetition_count?: number
+    last_result?: string
 }
 
 type ContentGroup = {
@@ -817,15 +819,17 @@ export default function GroupDetail({
                                         ${editingChunkId === chunk.id ? 'ring-2 ring-[#7969F7]' : ''}
                                     `}
                                     >
-                                        <div className="flex justify-between items-start mb-4">
+                                        <div className="flex justify-between items-start mb-6">
                                             {/* Review status tag - TOP LEFT */}
-                                            <div className="flex items-center">
+                                            <div className="flex items-center flex-wrap gap-2">
+                                                {/* Combined Card State and Repetition Count */}
                                                 {chunk.card_state && (
                                                     <div className="inline-flex items-center justify-center bg-white rounded-full px-3 py-1 border border-gray-200">
                                                         <div className="flex items-center">
                                                             <div className={`w-2 h-2 rounded-full mr-2 ${chunk.card_state === 'new' ? 'bg-[#FDFF8C]' :
                                                                 chunk.card_state === 'learning' || chunk.card_state === 'relearning' ? 'bg-[#B4B6E4]' :
-                                                                    chunk.card_state === 'review' || chunk.card_state === 'graduated' ? 'bg-[#5F4BB6]' : 'bg-gray-400'
+                                                                    chunk.card_state === 'review' || chunk.card_state === 'graduated' ? 'bg-[#5F4BB6]' :
+                                                                        'bg-gray-400'
                                                                 }`}></div>
                                                             <div className="text-sm font-medium text-gray-800">
                                                                 {chunk.card_state === 'new' ? '새 카드' :
@@ -833,6 +837,27 @@ export default function GroupDetail({
                                                                         chunk.card_state === 'relearning' ? '재학습' :
                                                                             chunk.card_state === 'graduated' || chunk.card_state === 'review' ? '복습' :
                                                                                 '미설정'}
+                                                                {chunk.repetition_count !== undefined &&
+                                                                    <span className="opacity-70"> (반복 {chunk.repetition_count}회)</span>
+                                                                }
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Styled Last Result Tag */}
+                                                {chunk.last_result && (
+                                                    <div className="inline-flex items-center justify-center bg-white rounded-full px-3 py-1 border border-gray-200">
+                                                        <div className="flex items-center">
+                                                            {/* Updated color mapping based on review page buttons */}
+                                                            <div className={`w-2 h-2 rounded-full mr-2 ${chunk.last_result === 'again' ? 'bg-red-500' : // Using text color for dot, assuming button bg is light
+                                                                chunk.last_result === 'hard' ? 'bg-orange-500' : // Using text color for dot
+                                                                    chunk.last_result === 'good' ? 'bg-green-500' : // Using text color for dot
+                                                                        chunk.last_result === 'easy' ? 'bg-blue-500' : // Using text color for dot
+                                                                            'bg-gray-400' // Default/fallback color
+                                                                }`}></div>
+                                                            <div className="text-sm font-medium text-gray-800">
+                                                                난이도 {chunk.last_result}
                                                             </div>
                                                         </div>
                                                     </div>

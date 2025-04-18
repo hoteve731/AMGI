@@ -6,7 +6,7 @@ import Image from "next/image";
 import useSWR from 'swr';
 import { useRouter } from 'next/navigation';
 import LoadingOverlay from "./LoadingOverlay";
-import { FolderIcon, Squares2X2Icon } from "@heroicons/react/24/outline";
+import { FolderIcon } from "@heroicons/react/24/outline";
 
 // ContentTabs와 동일한 fetcher 함수 사용
 const fetcher = async (url: string) => {
@@ -130,15 +130,27 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
                         className="w-full text-left p-3 rounded-lg hover:bg-white/90 transition-all duration-200 active:scale-[0.98] bg-white/80 shadow-lg/60 backdrop-blur-sm"
                         onClick={() => handleSelectContent(content.id)}
                       >
-                        <div className="truncate font-medium text-gray-800 text-base">{content.title}</div>
+                        <div className="line-clamp-2 font-medium text-gray-800 text-sm mb-3">{content.title}</div>
                         <div className="text-xs text-gray-600 mt-1 flex gap-3">
                           <span className="inline-flex items-center gap-1">
                             <FolderIcon className="w-4 h-4 text-[#7969F7]" />
-                            {content.groups_count ?? 0} 그룹
+                           그룹 {content.groups_count ?? 0} 
                           </span>
                           <span className="inline-flex items-center gap-1">
-                            <Squares2X2Icon className="w-4 h-4 text-[#F59E42]" />
-                            {content.chunks_count ?? 0} 카드
+                            <svg
+                              className="w-4 h-4 text-[#F59E42]"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                              />
+                            </svg>
+                            카드 {content.chunks_count ?? 0}
                           </span>
                         </div>
                       </button>

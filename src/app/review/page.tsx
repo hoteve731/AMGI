@@ -35,6 +35,7 @@ export default function ReviewPage() {
     const [isLoading, setIsLoading] = useState(true)
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [slideDirection, setSlideDirection] = useState<'right-to-left' | 'flip'>('flip')
+    const [isNavigatingBack, setIsNavigatingBack] = useState(false)
 
     const currentCard = cards[currentCardIndex]
 
@@ -252,6 +253,11 @@ export default function ReviewPage() {
         }
     }
 
+    const handleGoHome = () => {
+        setIsNavigatingBack(true)
+        router.push('/')
+    }
+
     // Process masked text
     const processMaskedText = (text: string) => {
         // First handle masked text within {{}}
@@ -291,10 +297,11 @@ export default function ReviewPage() {
 
     return (
         <main className="flex h-[100vh] overflow-hidden flex-col bg-gradient-to-t from-[#D4C4B7] via-[#E8D9C5] to-[#F8F4EF]">
+            {isNavigatingBack && <LoadingOverlay />}
             {/* 헤더 */}
             <div className="sticky top-0 bg-[#F8F4EF] border-b border-[#D4C4B7] h-12 z-50">
                 <button
-                    onClick={() => router.push('/')}
+                    onClick={handleGoHome}
                     className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center text-gray-600 hover:text-gray-900 transition-all duration-200 group"
                 >
                     <svg className="w-5 h-5 group-hover:scale-110 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -304,7 +311,7 @@ export default function ReviewPage() {
                 </button>
             </div>
 
-            <div className="flex-1 max-w-2xl mx-auto w-full p-4 flex flex-col min-h-[calc(100vh-3rem)]">
+            <div className="flex-1 max-w-2xl mx-auto w-full p-4 flex flex-col">
                 {/* 그룹 제목 */}
                 <h1 className="text-xl font-bold text-gray-800 mb-2 mt-6 text-center">
                     {currentCard?.content_groups?.title || '복습'}
