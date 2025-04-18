@@ -1,4 +1,4 @@
-import { RealtimeChannel } from '@supabase/supabase-js';
+import { RealtimeChannel, RealtimePayload } from '@supabase/supabase-js';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useEffect } from 'react';
 import { getSupabaseClient } from './supabase';
@@ -8,7 +8,7 @@ export class RealtimeSubscription {
     private static instances: { [key: string]: RealtimeSubscription } = {};
     private channels: RealtimeChannel[] = [];
     private supabase = getSupabaseClient();
-    private callbacks: { [table: string]: ((payload: any) => void)[] } = {};
+    private callbacks: { [table: string]: ((payload: RealtimePayload<any>) => void)[] } = {};
 
     // 싱글톤 인스턴스 가져오기
     public static getInstance(id: string = 'default'): RealtimeSubscription {
@@ -21,7 +21,7 @@ export class RealtimeSubscription {
     // 테이블 변경 구독
     public subscribeToTable(
         table: string,
-        callback: (payload: any) => void,
+        callback: (payload: RealtimePayload<any>) => void,
         events: ('INSERT' | 'UPDATE' | 'DELETE')[] = ['INSERT', 'UPDATE', 'DELETE']
     ): () => void {
         // 콜백 등록
@@ -40,7 +40,7 @@ export class RealtimeSubscription {
                         schema: 'public',
                         table: table
                     },
-                    (payload) => {
+                    (payload: RealtimePayload<any>) => {
                         // 해당 테이블에 등록된 모든 콜백 실행
                         if (this.callbacks[table]) {
                             this.callbacks[table].forEach(cb => cb(payload));
@@ -80,7 +80,7 @@ export class RealtimeSubscription {
 // React Hook으로 사용하기 위한 함수
 export function useRealtimeSubscription(
     table: string,
-    callback: (payload: any) => void,
+    callback: (payload: RealtimePayload<any>) => void,
     dependencies: any[] = []
 ): void {
     useEffect(() => {
