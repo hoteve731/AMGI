@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useSWRConfig } from 'swr'
 import LoadingOverlay from './LoadingOverlay'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -20,8 +20,8 @@ type Chunk = {
     id: string
     summary: string
     masked_text: string
-    group_id?: string
-    position?: number
+    group_id: string
+    position: number
     status?: 'active' | 'inactive'
     card_state?: 'new' | 'learning' | 'relearning' | 'review' | 'graduated'
 }
@@ -33,7 +33,7 @@ type ContentGroup = {
     original_text: string
     chunks: Chunk[]
     chunks_count?: number
-    position?: number
+    position: number
 }
 
 type ContentWithGroups = Content & {
@@ -53,6 +53,11 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
     const [isNavigating, setIsNavigating] = useState(false);
     const [isDeleting, setIsDeleting] = useState<string | null>(null);
     const [isDeletingContent, setIsDeletingContent] = useState(false);
+
+    console.log('ContentGroups rendering with content:', content);
+    useEffect(() => {
+        console.log('ContentGroups content prop updated:', content);
+    }, [content]);
 
     // Helper function to format text with double asterisks (**) as bold text
     const formatBoldText = (text: string) => {
@@ -211,6 +216,16 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
         router.push('/')
     }
 
+    const handleChunkUpdate = async () => {
+        console.log('handleChunkUpdate triggered in ContentGroups');
+        try {
+            const updatedData = await mutate('/api/contents');
+            console.log('Data after mutate in ContentGroups:', updatedData);
+        } catch (error) {
+            console.error('Error during mutate in handleChunkUpdate:', error);
+        }
+    };
+
     return (
         <main className="flex min-h-screen flex-col bg-gradient-to-b from-[#F8F4EF] to-[#E8D9C5] pb-12">
             {(isLoading || isDeleting || isDeletingContent || isNavigating) && <LoadingOverlay />}
@@ -298,19 +313,29 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                             transition={{ duration: 0.2, ease: "easeInOut" }}
                             className="space-y-8"
                         >
-                            {content.groups.map((group) => (
-                                <div key={group.id} className="space-y-4">
-                                    <h3 className="text-xl font-bold text-gray-800 text-center mt-4">
-                                        {group.title} <span className="font-light text-gray-500">(<span className="font-bold">{group.chunks?.filter(c => c.id).length || 0}</span>)</span>
-                                    </h3>
-                                    <GroupDetail
-                                        content={content}
-                                        group={group as any}
-                                        hideHeader={true}
-                                        hideCardCount={true}
-                                    />
-                                </div>
-                            ))}
+                            {content.groups.map((group) => {
+                                const cardCount = group.chunks?.filter(c => c.group_id === group.id).length || 0;
+                                console.log(`Rendering group ${group.id} (${group.title}) with count: ${cardCount}`);
+
+                                return (
+                                    <div key={group.id} className="space-y-4">
+                                        <h3 className="text-xl font-bold text-gray-800 text-center mt-4">
+                                            {group.title} <span className="font-light text-gray-500">(<span className="font-bold">{cardCount}</span>)</span>
+                                        </h3>
+                                        <GroupDetail
+                                            content={content}
+                                            group={{
+                                                ...group,
+                                                chunks: group.chunks?.filter(chunk => chunk.group_id === group.id) || []
+                                            }}
+                                            hideHeader={true}
+                                            hideCardCount={true}
+                                            key={group.id}
+                                            onChunkUpdate={handleChunkUpdate}
+                                        />
+                                    </div>
+                                );
+                            })}
                         </motion.div>
                     )}
                 </AnimatePresence>

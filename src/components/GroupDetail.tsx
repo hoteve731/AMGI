@@ -40,12 +40,24 @@ type NotificationInfo = {
     status: 'pending' | 'sent' | 'failed';
 }
 
-export default function GroupDetail({ content, group: initialGroup, hideHeader = false, hideCardCount = false }: { content: Content; group: ContentGroup; hideHeader?: boolean; hideCardCount?: boolean }) {
+export default function GroupDetail({
+    content,
+    group: initialGroup,
+    hideHeader = false,
+    hideCardCount = false,
+    onChunkUpdate
+}: {
+    content: Content;
+    group: ContentGroup;
+    hideHeader?: boolean;
+    hideCardCount?: boolean;
+    onChunkUpdate?: () => void;
+}) {
     const router = useRouter()
     const [isLoading, setIsLoading] = useState(false)
     const [isNavigating, setIsNavigating] = useState(false)
     const [groups, setGroups] = useState<ContentGroup[]>([])
-    const [currentGroup, setCurrentGroup] = useState<ContentGroup | null>(initialGroup)
+    const [currentGroup, setCurrentGroup] = useState<ContentGroup | null>(null)
     const [showOriginalText, setShowOriginalText] = useState(false)
     const [notifications, setNotifications] = useState<NotificationInfo[]>([])
     const [fcmToken, setFcmToken] = useState<string | null>(null)
@@ -83,45 +95,63 @@ export default function GroupDetail({ content, group: initialGroup, hideHeader =
         }
     }, [supabase])
 
-    // 그룹 데이터 가져오기
+    // 그룹 데이터 가져오기 및 currentGroup 설정 useEffect (기존 로직 수정)
     useEffect(() => {
-        async function fetchGroups() {
-            setIsLoading(true)
+        // hideHeader가 true일 경우 (ContentGroups 내에서 사용될 때)
+        if (hideHeader) {
+            // initialGroup prop으로 직접 currentGroup 설정
+            setCurrentGroup(initialGroup);
+            setGroups([]); // 다른 그룹 목록은 필요 없으므로 초기화
+            return; // 내부 fetch 로직 실행 안 함
+        }
+
+        // hideHeader가 false일 경우 (독립 그룹 페이지)
+        async function fetchGroupsAndSetCurrent() {
+            setIsLoading(true);
+            let determinedGroup: ContentGroup | null = initialGroup; // 기본값으로 initialGroup 사용
+
             try {
                 const { data, error } = await supabase
                     .from('content_groups')
                     .select('*, chunks:content_chunks(*)')
                     .eq('content_id', content.id)
-                    .order('id')
+                    .order('id');
 
                 if (error) {
-                    console.error('Error fetching groups:', error)
-                    return
-                }
+                    console.error('Error fetching groups:', error);
+                    // 오류 발생 시에도 determinedGroup은 initialGroup 유지
+                } else if (data && data.length > 0) {
+                    setGroups(data); // 그룹 선택기를 위해 전체 그룹 목록 저장
 
-                if (data && data.length > 0) {
-                    setGroups(data)
+                    // localStorage에서 저장된 그룹 ID 확인
+                    const savedGroupId = localStorage.getItem(`content_${content.id}_selected_group`);
+                    const savedGroup = savedGroupId ? data.find(g => g.id.toString() === savedGroupId) : null;
 
-                    // 저장된 그룹 ID가 있는지 확인
-                    const savedGroupId = localStorage.getItem(`content_${content.id}_selected_group`)
-
-                    if (savedGroupId) {
-                        // 저장된 그룹 ID가 현재 그룹 목록에 있는지 확인
-                        const savedGroup = data.find(g => g.id.toString() === savedGroupId)
-                        if (savedGroup) {
-                            setCurrentGroup(savedGroup)
-                        }
+                    if (savedGroup) {
+                        determinedGroup = savedGroup; // 저장된 그룹 사용
+                    } else if (!initialGroup && data.length > 0) {
+                        // 저장된 그룹 없고, initialGroup도 없으면 첫 번째 그룹 사용
+                        determinedGroup = data[0];
                     }
+                    // 그 외의 경우 (initialGroup이 있거나, 저장된 그룹이 없으면) determinedGroup은 initialGroup 유지
+                } else {
+                    // 데이터가 없는 경우
+                    setGroups([]);
+                    // determinedGroup은 initialGroup 유지
                 }
             } catch (error) {
-                console.error('Error:', error)
+                console.error('Error in fetchGroups logic:', error);
+                // 오류 발생 시에도 determinedGroup은 initialGroup 유지
             } finally {
-                setIsLoading(false)
+                setCurrentGroup(determinedGroup); // 최종적으로 결정된 그룹을 currentGroup으로 설정
+                setIsLoading(false);
             }
         }
 
-        fetchGroups()
-    }, [content.id, supabase, initialGroup?.id])
+        fetchGroupsAndSetCurrent();
+
+        // 의존성 배열: content.id 또는 hideHeader 변경 시 재실행
+    }, [content.id, supabase, hideHeader, initialGroup]); // initialGroup도 의존성에 추가하여 prop 변경 시 대응
 
     // FCM 토큰 요청 및 알림 권한 획득
     useEffect(() => {
@@ -528,6 +558,9 @@ export default function GroupDetail({ content, group: initialGroup, hideHeader =
                 console.error('Error updating chunk status:', error)
                 throw error
             }
+
+            onChunkUpdate?.();
+
         } catch (error) {
             console.error('Error toggling chunk status:', error)
             alert('상태 변경 중 오류가 발생했습니다.')
@@ -576,6 +609,8 @@ export default function GroupDetail({ content, group: initialGroup, hideHeader =
                 console.error('Error updating chunk:', error)
                 throw error
             }
+
+            onChunkUpdate?.();
 
             // Reset editing state
             setEditingChunkId(null)
@@ -626,6 +661,9 @@ export default function GroupDetail({ content, group: initialGroup, hideHeader =
                 console.error('Error deleting chunk:', error)
                 throw error
             }
+
+            onChunkUpdate?.();
+
         } catch (error) {
             console.error('Error deleting chunk:', error)
             alert('기억카드 삭제 중 오류가 발생했습니다.')
