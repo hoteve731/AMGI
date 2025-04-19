@@ -450,8 +450,8 @@ export default function BottomSheet() {
             // 제목 업데이트
             setGeneratedTitle(generateData.title || '제목 없음');
             setLoadingUIType('group');
-            setLoadingProgress(25);
-            setLoadingStatusMessage('그룹 생성 중...');
+            setLoadingProgress(90);
+            setLoadingStatusMessage('콘텐츠 분석 및 그룹 생성 중...');
 
             // 콘텐츠가 준비될 때까지 폴링 실행
             pollReadyStatus(contentId);
@@ -467,12 +467,12 @@ export default function BottomSheet() {
     const pollReadyStatus = async (contentId: string) => {
         console.log('콘텐츠 준비 상태 체크 시작:', contentId);
 
-        // 폴링 상태 업데이트
+        // 폴링 상태 업데이트 (초기 상태 유지)
         setLoadingStatusMessage('그룹 생성 중...');
         setLoadingUIType('group');
 
         let retryCount = 0;
-        const maxRetries = 10; // 최대 10번 시도 (약 15초)
+        const maxRetries = 7; // 최대 시도 횟수 줄이기 (7번 = 약 10.5초)
         const pollInterval = 1500; // 1.5초마다 체크
 
         const checkReadyStatus = async () => {
@@ -549,23 +549,26 @@ export default function BottomSheet() {
                     return;
                 }
 
-                // 5. 최대 시도 횟수에 도달했는지 확인 
+                // 5. 최대 시도 횟수에 도달했는지 확인
                 if (retryCount >= maxRetries) {
-                    console.log('[최대 시도 횟수 도달] 로딩 상태 업데이트 중지, 백그라운드 처리로 전환');
+                    console.log('[최대 시도 횟수 도달] 로딩 상태 업데이트 중지, 결과 페이지로 이동');
 
-                    // 완전히 처리될 때까지 기다린다는 메시지 표시
+                    // 결과 페이지로 이동한다는 메시지 표시
                     setLoadingUIType('chunk');
                     setLoadingProgress(95);
-                    setLoadingStatusMessage('데이터 처리 중입니다. 완료 후 결과를 확인하세요.');
+                    setLoadingStatusMessage('데이터 처리 시간이 예상보다 길어지고 있습니다. 결과 페이지로 이동합니다.');
 
-                    // 토스트 메시지 표시 및 홈으로 이동
+                    // 토스트 메시지 표시 및 결과 페이지로 이동
                     toast({
-                        title: "백그라운드 처리 중",
-                        description: "데이터가 백그라운드에서 계속 처리됩니다. 홈화면에서 처리 완료 후 결과를 확인하세요.",
+                        title: "처리 시간 지연",
+                        description: "백그라운드에서 계속 처리됩니다. 결과 페이지에서 잠시 후 확인해주세요.",
                         type: "info",
-                        duration: 5000,
+                        duration: 3000,
                         onClose: () => {
-                            window.location.href = '/';
+                            // 홈 대신 결과 페이지로 이동
+                            const targetUrl = `/content/${contentId}/groups`;
+                            console.log('타임아웃 리다이렉트 경로:', targetUrl);
+                            window.location.href = targetUrl;
                         }
                     });
 
@@ -579,20 +582,24 @@ export default function BottomSheet() {
 
                 // 오류 발생 시에도 최대 5번 시도
                 if (retryCount >= 5) {
-                    console.log('[오류 발생] 백그라운드 처리로 전환');
+                    console.log('[오류 발생] 결과 페이지로 이동');
 
+                    // 결과 페이지로 이동한다는 메시지 표시
                     setLoadingUIType('chunk');
                     setLoadingProgress(90);
-                    setLoadingStatusMessage('데이터 처리 중입니다. 홈화면에서 상태를 확인하세요.');
+                    setLoadingStatusMessage('상태 확인 중 오류 발생. 결과 페이지로 이동하여 확인해주세요.');
 
-                    // 토스트 메시지 표시 및 홈으로 이동
+                    // 토스트 메시지 표시 및 결과 페이지로 이동
                     toast({
-                        title: "처리 중 오류 발생",
-                        description: "데이터가 백그라운드에서 계속 처리됩니다. 홈화면에서 처리 상태를 확인하세요.",
+                        title: "상태 확인 오류",
+                        description: "결과 페이지로 이동하여 처리 상태를 확인해주세요.",
                         type: "warning",
-                        duration: 5000,
+                        duration: 3000,
                         onClose: () => {
-                            window.location.href = '/';
+                            // 홈 대신 결과 페이지로 이동
+                            const targetUrl = `/content/${contentId}/groups`;
+                            console.log('오류 발생 리다이렉트 경로:', targetUrl);
+                            window.location.href = targetUrl;
                         }
                     });
 
