@@ -76,7 +76,7 @@ export async function POST(req: Request) {
             )
         }
 
-        // 2. 콘텐츠 저장 (청크와 그룹은 아직 생성하지 않음)
+        // 2. 콘텐츠 저장
         let contentId
         try {
             const { data: contentData, error: contentError } = await supabase
@@ -87,12 +87,31 @@ export async function POST(req: Request) {
                     original_text: text,
                     additional_memory: additionalMemory || '',
                     chunks: [],
-                    masked_chunks: []
+                    masked_chunks: [],
+                    processing_status: 'pending' // 상태 초기값 설정
                 }])
                 .select('id')
 
             if (contentError) throw contentError
             contentId = contentData[0].id
+
+            // 백그라운드 파이프라인 트리거 (Fire-and-forget)
+            // /api/process/pipeline 엔드포인트를 호출합니다.
+            fetch(new URL('/api/process/pipeline', req.url).toString(), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    // 필요 시 인증 정보 전달
+                },
+                body: JSON.stringify({ contentId, text, additionalMemory }),
+            }).catch(err => {
+                // 호출 자체에서 오류가 발생할 경우 로깅
+                console.error('[Generate API] Failed to trigger processing pipeline:', err);
+                // 추가적인 오류 처리 (예: 콘텐츠 상태 업데이트)
+            });
+
+            console.log(`[Generate API] Triggered processing pipeline for contentId: ${contentId}`)
+
         } catch (error) {
             console.error('Content database error:', error)
             const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.'
@@ -102,7 +121,7 @@ export async function POST(req: Request) {
             )
         }
 
-        // 즉시 응답 반환 (그룹 생성은 별도 API 호출로 처리)
+        // 즉시 응답 반환
         return NextResponse.json({
             content_id: contentId,
             title,
