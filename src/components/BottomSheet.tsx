@@ -447,65 +447,171 @@ export default function BottomSheet() {
                 throw new Error('생성된 콘텐츠 ID가 없습니다.');
             }
 
-            // 제목 업데이트 및 로딩 상태 설정
+            // 제목 업데이트
             setGeneratedTitle(generateData.title || '제목 없음');
-            setLoadingUIType('complete');
-            setLoadingProgress(100);
-            setLoadingStatusMessage('처리가 완료되었습니다. 결과 페이지로 이동합니다...');
+            setLoadingUIType('group');
+            setLoadingProgress(25);
+            setLoadingStatusMessage('그룹 생성 중...');
 
-            // 성공 시 바로 리다이렉션 (폴링 없이)
-            console.log("콘텐츠 생성 완료, 리다이렉트: ", contentId);
-
-            // 콘텐츠가 서버에 완전히 저장되었는지 확인 후 리다이렉트 (총 3번 시도)
-            let checkCount = 0;
-            const checkInterval = setInterval(async () => {
-                try {
-                    checkCount++;
-                    console.log(`[데이터 확인] ${checkCount}번째 시도...`);
-
-                    // 콘텐츠 그룹 데이터 확인 요청
-                    const checkResponse = await fetch(`/api/check-content?id=${contentId}`, {
-                        method: 'GET',
-                    }).then(res => res.json());
-
-                    if (checkResponse.isReady) {
-                        console.log('[데이터 확인] 콘텐츠 준비 완료, 리다이렉트 진행');
-                        clearInterval(checkInterval);
-
-                        const targetUrl = `/content/${contentId}/groups`;
-                        console.log('리다이렉트 경로:', targetUrl);
-                        window.location.href = targetUrl;
-                    } else if (checkCount >= 5) {
-                        // 5번 시도 후에도 준비되지 않았으면 그냥 리다이렉트
-                        console.log('[데이터 확인] 최대 시도 횟수 도달, 리다이렉트 진행');
-                        clearInterval(checkInterval);
-
-                        const targetUrl = `/content/${contentId}/groups`;
-                        console.log('리다이렉트 경로:', targetUrl);
-                        window.location.href = targetUrl;
-                    } else {
-                        console.log('[데이터 확인] 아직 준비되지 않음, 대기 중...');
-                        setLoadingStatusMessage(`콘텐츠 저장 중... (${checkCount}/5)`);
-                    }
-                } catch (error) {
-                    console.error('[데이터 확인] 오류:', error);
-
-                    if (checkCount >= 5) {
-                        // 에러가 발생해도 5번 시도 후에는 리다이렉트
-                        clearInterval(checkInterval);
-
-                        const targetUrl = `/content/${contentId}/groups`;
-                        console.log('리다이렉트 경로:', targetUrl);
-                        window.location.href = targetUrl;
-                    }
-                }
-            }, 1500); // 1.5초마다 확인 (최대 7.5초까지 기다림)
+            // 콘텐츠가 준비될 때까지 폴링 실행
+            pollReadyStatus(contentId);
 
         } catch (error) {
             console.error('Error during submission:', error);
             // 콘텐츠 ID가 없으므로 삭제 요청 없이 에러 처리
             handleError(error instanceof Error ? error.message : '콘텐츠 생성 시작 중 오류 발생');
         }
+    };
+
+    // 콘텐츠 준비 상태 폴링 함수
+    const pollReadyStatus = async (contentId: string) => {
+        console.log('콘텐츠 준비 상태 체크 시작:', contentId);
+
+        // 폴링 상태 업데이트
+        setLoadingStatusMessage('그룹 생성 중...');
+        setLoadingUIType('group');
+
+        let retryCount = 0;
+        const maxRetries = 10; // 최대 10번 시도 (약 15초)
+        const pollInterval = 1500; // 1.5초마다 체크
+
+        const checkReadyStatus = async () => {
+            try {
+                retryCount++;
+                console.log(`[데이터 확인] ${retryCount}번째 시도...`);
+
+                const checkResponse = await fetch(`/api/check-content?id=${contentId}`);
+                const checkData = await checkResponse.json();
+
+                console.log('[데이터 확인 결과]:', checkData);
+
+                // 1. 그룹 생성 확인 (그룹이 하나라도 있으면 다음 단계로 진행)
+                if (checkData.groupsCount > 0 && loadingUIType === 'group') {
+                    console.log('[진행 업데이트] 그룹 생성 완료, 청크 생성 단계로 진행');
+                    setLoadingUIType('chunk');
+                    setLoadingProgress(50);
+                    setLoadingStatusMessage('기억 카드 생성 중...');
+                }
+
+                // 2. 청크 생성 확인 및 진행률 업데이트
+                if (checkData.totalChunksCount > 0) {
+                    const progress = Math.min(90, 50 + Math.min(checkData.totalChunksCount * 5, 40));
+                    setLoadingProgress(progress);
+                }
+
+                // 3. 처리 상태에 따른 UI 업데이트
+                if (checkData.processingStatus) {
+                    setProcessingStatus(checkData.processingStatus);
+
+                    // 처리 상태에 따른 메시지 업데이트
+                    if (checkData.processingStatus === 'completed') {
+                        if (loadingUIType !== 'complete') {
+                            setLoadingUIType('complete');
+                            setLoadingProgress(100);
+                            setLoadingStatusMessage('처리 완료! 결과 페이지로 이동합니다...');
+                        }
+                    } else if (checkData.processingStatus === 'processing') {
+                        // 청크 생성 중인 경우
+                        if (checkData.groupsCount > 0) {
+                            setLoadingUIType('chunk');
+                            setLoadingStatusMessage('기억 카드 생성 중...');
+                        }
+                    } else if (checkData.processingStatus === 'failed') {
+                        // 처리 실패
+                        setLoadingStatusMessage('처리 중 오류가 발생했습니다. 홈으로 이동합니다...');
+
+                        // 홈으로 리다이렉트
+                        setTimeout(() => {
+                            window.location.href = '/';
+                        }, 3000);
+
+                        return;
+                    }
+                }
+
+                // 4. 완전히 준비되었을 때만 리다이렉트
+                if (checkData.isReady) {
+                    console.log('[데이터 준비 완료] 리다이렉트 준비');
+
+                    if (loadingUIType !== 'complete') {
+                        setLoadingUIType('complete');
+                        setLoadingProgress(100);
+                        setLoadingStatusMessage('처리 완료! 결과 페이지로 이동합니다...');
+                    }
+
+                    // 리다이렉트
+                    setTimeout(() => {
+                        const targetUrl = `/content/${contentId}/groups`;
+                        console.log('리다이렉트 경로:', targetUrl);
+                        window.location.href = targetUrl;
+                    }, 1000);
+
+                    return;
+                }
+
+                // 5. 최대 시도 횟수에 도달했는지 확인 
+                if (retryCount >= maxRetries) {
+                    console.log('[최대 시도 횟수 도달] 로딩 상태 업데이트 중지, 백그라운드 처리로 전환');
+
+                    // 완전히 처리될 때까지 기다린다는 메시지 표시
+                    setLoadingUIType('chunk');
+                    setLoadingProgress(95);
+                    setLoadingStatusMessage('데이터 처리 중입니다. 완료 후 결과를 확인하세요.');
+
+                    // 토스트 메시지 표시 및 홈으로 이동
+                    toast({
+                        title: "백그라운드 처리 중",
+                        description: "데이터가 백그라운드에서 계속 처리됩니다. 홈화면에서 처리 완료 후 결과를 확인하세요.",
+                        type: "info",
+                        duration: 5000,
+                        onClose: () => {
+                            window.location.href = '/';
+                        }
+                    });
+
+                    return;
+                }
+
+                // 계속 폴링
+                setTimeout(checkReadyStatus, pollInterval);
+            } catch (error) {
+                console.error('[데이터 확인 오류]', error);
+
+                // 오류 발생 시에도 최대 5번 시도
+                if (retryCount >= 5) {
+                    console.log('[오류 발생] 백그라운드 처리로 전환');
+
+                    setLoadingUIType('chunk');
+                    setLoadingProgress(90);
+                    setLoadingStatusMessage('데이터 처리 중입니다. 홈화면에서 상태를 확인하세요.');
+
+                    // 토스트 메시지 표시 및 홈으로 이동
+                    toast({
+                        title: "처리 중 오류 발생",
+                        description: "데이터가 백그라운드에서 계속 처리됩니다. 홈화면에서 처리 상태를 확인하세요.",
+                        type: "warning",
+                        duration: 5000,
+                        onClose: () => {
+                            window.location.href = '/';
+                        }
+                    });
+
+                    return;
+                }
+
+                // 오류 발생 시 재시도
+                setTimeout(checkReadyStatus, pollInterval);
+            }
+        };
+
+        // 첫 번째 확인 시작
+        await checkReadyStatus();
+    };
+
+    // 그룹 정보 가져오기 - 성능 개선을 위해 비활성화
+    const fetchGroupsInfo = async (contentId: string) => {
+        // 성능 최적화를 위해 그룹 정보 가져오기 비활성화
+        return;
     };
 
     const expandSheet = () => {
