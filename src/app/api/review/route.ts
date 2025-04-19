@@ -168,7 +168,6 @@ export async function GET(request: NextRequest) {
             .eq('status', 'active')
             .or(`due.lt.${new Date().getTime()},card_state.eq.new`)
             .order('due')
-            .limit(50)
 
         // First check if the card_state column exists
         const { data: columnCheck, error: columnError } = await supabase
@@ -251,6 +250,7 @@ export async function GET(request: NextRequest) {
                     )
                 )
             `)
+            .eq('status', 'active')
 
         if (statsError) {
             console.error('Error fetching stats:', statsError)
@@ -293,24 +293,17 @@ export async function GET(request: NextRequest) {
             new: 0,
             learning: 0,
             review: 0,
-            due: 0,
+            due: filteredCards.length,
             total: 0
         }
 
         filteredStats.forEach(card => {
             if (card.card_state === 'new') {
                 stats.new++
-                stats.due++
             } else if (card.card_state === 'learning' || card.card_state === 'relearning') {
                 stats.learning++
-                if (card.due && card.due <= new Date().getTime()) {
-                    stats.due++
-                }
             } else if (card.card_state === 'graduated' || card.card_state === 'review') {
                 stats.review++
-                if (card.due && card.due <= new Date().getTime()) {
-                    stats.due++
-                }
             }
             stats.total++
         })
