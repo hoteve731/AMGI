@@ -105,8 +105,8 @@ async function runPipelineInBackground(payload: PipelinePayload) {
             .eq('id', contentId);
 
         const splitter = new RecursiveCharacterTextSplitter({
-            chunkSize: 1500,
-            chunkOverlap: 150,
+            chunkSize: 500,
+            chunkOverlap: 20,
         });
         const segmentsText = await splitter.splitText(text);
         console.log(`[Pipeline-BG][${contentId}] Split into ${segmentsText.length} segments.`);
