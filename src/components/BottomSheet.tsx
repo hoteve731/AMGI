@@ -292,74 +292,54 @@ export default function BottomSheet() {
                 }
 
                 // 데이터 상태 업데이트
-                if (data.status === 'Title Generated' && !generatedTitle) {
-                    console.log('[Polling] 제목 생성 완료:', data.title);
-                    setGeneratedTitle(data.title);
-                    setLoadingStatusMessage('그룹 생성 중...');
+                if (data.status === 'processing_title') {
+                    setLoadingUIType('title');
+                    setLoadingProgress(10);
+                    setLoadingStatusMessage('제목 생성 중...');
+                } else if (data.status === 'processing_groups') {
                     setLoadingUIType('group');
-                    setLoadingProgress(25);
-                }
-                else if (data.status === 'Group Processing') {
-                    // 그룹 처리 중일 때
-                    if (!firstGroupDetected && data.groupIds && data.groupIds.length > 0) {
-                        console.log('[Polling] 첫 그룹 감지:', data.groupIds);
-                        setFirstGroupDetected(true);
-                        setLoadingProgress(50);
-                    }
-
-                    const progress = firstGroupDetected ? 75 : 50;
-                    setLoadingProgress(progress);
+                    setLoadingProgress(30);
                     setLoadingStatusMessage('그룹 생성 중...');
-                }
-                else if (data.status === 'Card Processing') {
-                    // 카드 처리 중일 때
-                    console.log('[Polling] 카드 생성 중');
-                    setLoadingStatusMessage('카드 생성 중...');
-                    setLoadingProgress(90);
-                }
-                else if (data.status === 'completed') {
-                    // 처리 완료
-                    console.log('[Polling] 모든 처리 완료, 결과 페이지로 이동 준비');
+                    if (data.title && !generatedTitle) setGeneratedTitle(data.title);
+                    // 여기서 그룹 데이터 업데이트
+                    setProcessedGroups(data.groups || []);
+                    console.log('[Polling] setProcessedGroups called with:', data.groups || []); // 상태 업데이트 직후 확인
+                } else if (data.status === 'processing_chunks') {
+                    setLoadingUIType('chunk');
+                    setLoadingProgress(60);
+                    setLoadingStatusMessage('기억 카드 생성 중...');
+                    if (data.title && !generatedTitle) setGeneratedTitle(data.title);
+                    // 여기서도 그룹 데이터 (청크 포함) 업데이트
+                    setProcessedGroups(data.groups || []);
+                } else if (data.status === 'completed') {
+                    setLoadingUIType('complete');
                     setLoadingProgress(100);
-                    setLoadingStatusMessage('처리 완료! 잠시 후 결과 페이지로 이동합니다...');
-
-                    if (!isRedirecting) {
-                        setIsRedirecting(true);
-                        console.log(`[Redirection] 리다이렉션 대기 중. 1초 후 이동 예정: /content/${pollingContentId}/groups`);
-
-                        // 리다이렉션 전에 1초 대기
-                        setTimeout(() => {
-                            handlePollingComplete(data);
-                        }, 1000);
-                    }
+                    setLoadingStatusMessage('처리가 완료되었습니다.');
+                    setProcessedGroups(data.groups || []);
+                    handlePollingComplete({ content_id: pollingContentId });
+                } else if (data.status === 'failed') {
+                    handleError('처리 실패');
                 }
+
+                // 성공적인 응답 후 폴링 카운터 초기화
+                pollCount.current = 0;
+
             } catch (error) {
-                console.error('[Polling] 오류:', error);
-                setLoadingStatusMessage('오류가 발생했습니다. 새로고침을 시도해주세요.');
-                setIsLoading(false);
+                console.error('[Polling] 에러:', error);
+                if (pollCount.current > 3) {
+                    handleError('폴링 중 알 수 없는 오류 발생');
+                }
             }
         }
-    }, [isLoading, pollingContentId, generatedTitle, firstGroupDetected, isRedirecting, handlePollingComplete]);
+    }, [isLoading, pollingContentId, generatedTitle, handlePollingComplete, handleError]);
 
+    // 폴링 시작
     useEffect(() => {
-        let intervalId: NodeJS.Timeout | undefined;
-
         if (isLoading && pollingContentId) {
-            console.log(`[Effect] ${pollingContentId}에 대한 폴링 시작`);
-            pollStatus();
-
-            intervalId = setInterval(() => {
-                pollStatus();
-            }, 3000);
+            const interval = setInterval(pollStatus, 3000); // 3초마다 상태 확인
+            return () => clearInterval(interval);
         }
-
-        return () => {
-            if (intervalId) {
-                clearInterval(intervalId);
-                console.log(`[Effect] 폴링 중지`);
-            }
-        };
-    }, [pollingContentId, isLoading, pollStatus]);
+    }, [isLoading, pollingContentId, pollStatus]);
 
     // 로딩 관련 상태 변화 감지용 useEffect 추가
     useEffect(() => {
@@ -767,6 +747,7 @@ export default function BottomSheet() {
                                             status={loadingUIType}
                                             progress={loadingProgress}
                                             previewTitle={generatedTitle}
+                                            processedGroups={processedGroups}
                                         />
                                         <p className="mt-4 text-sm text-gray-500">{loadingStatusMessage}</p>
                                     </div>

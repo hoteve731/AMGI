@@ -7,7 +7,6 @@ type LoadingScreenProps = {
     progress: number
     status: 'title' | 'content' | 'group' | 'chunk' | 'complete'
     previewTitle?: string
-    previewContent?: string
     processedGroups?: any[]
     onClose?: () => void
 }
@@ -85,56 +84,11 @@ function TypewriterText({
     );
 }
 
-// 스켈레톤 로딩 컴포넌트
-function SkeletonLoader({ type }: { type: 'group' | 'card' }) {
-    return type === 'group' ? (
-        <div className="space-y-2 animate-pulse">
-            {[1, 2, 3].map((i) => (
-                <div key={i} className="flex items-center">
-                    <div className="w-4 h-4 bg-gray-200 rounded-full mr-2"></div>
-                    <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                </div>
-            ))}
-        </div>
-    ) : (
-        <div className="space-y-2 animate-pulse">
-            {[1, 2, 3].map((i) => (
-                <div key={i} className="p-2 bg-gray-100 rounded-md border border-gray-200">
-                    <div className="h-3 bg-gray-200 rounded w-1/3 mb-2"></div>
-                    <div className="h-4 bg-gray-200 rounded w-5/6"></div>
-                </div>
-            ))}
-        </div>
-    );
-}
-
-export default function LoadingScreen({ progress, status, previewTitle, previewContent, processedGroups = [], onClose }: LoadingScreenProps) {
+export default function LoadingScreen({ progress, status, previewTitle, processedGroups = [], onClose }: LoadingScreenProps) {
     const [seconds, setSeconds] = useState(0)
     const [timeDisplay, setTimeDisplay] = useState('00:00:00')
     const [prevStatus, setPrevStatus] = useState(status)
     const [animateStep, setAnimateStep] = useState<number | null>(null)
-
-    // 실시간 생성되는 데이터를 추적하기 위한 상태 추가
-    const [displayedGroups, setDisplayedGroups] = useState<any[]>([]);
-
-    // 그룹이 새로 추가될 때마다 타이핑 효과로 표시하기 위한 상태
-    const [newGroupsAdded, setNewGroupsAdded] = useState(false);
-
-    // 실시간 업데이트를 위해 processedGroups 변경 감지
-    useEffect(() => {
-        if (processedGroups.length > displayedGroups.length) {
-            // 새로 추가된 그룹이 있음
-            setDisplayedGroups(processedGroups);
-            setNewGroupsAdded(true);
-
-            // 잠시 후 새 그룹 추가 효과 종료
-            const timer = setTimeout(() => {
-                setNewGroupsAdded(false);
-            }, 1000);
-
-            return () => clearTimeout(timer);
-        }
-    }, [processedGroups, displayedGroups]);
 
     // 상태가 변경될 때마다 애니메이션 트리거
     useEffect(() => {
@@ -163,12 +117,12 @@ export default function LoadingScreen({ progress, status, previewTitle, previewC
                 id: 1,
                 label: '텍스트 분석 및 제목 생성',
                 status: 'completed',
-                description: '콘텐츠를 분석하여 적절한 제목을 생성하는 단계입니다.'
+                description: '텍스트의 적절한 제목을 생성합니다.'
             },
             {
                 id: 2,
                 label: '그룹 생성',
-                description: '콘텐츠를 주제별로 그룹화하여 학습 체계를 만드는 중입니다.',
+                description: '텍스트를 주제별 그룹으로 나눕니다.',
                 status: status === 'title' ? 'progress' :
                     (status === 'content' || status === 'group') ? 'progress' :
                         status === 'chunk' || status === 'complete' ? 'completed' : 'pending'
@@ -176,14 +130,14 @@ export default function LoadingScreen({ progress, status, previewTitle, previewC
             {
                 id: 3,
                 label: '기억 카드 생성',
-                description: '각 그룹별 효과적인 기억 카드를 생성하여 학습 자료를 준비합니다.',
+                description: '각 그룹별 기억 카드를 생성합니다.',
                 status: status === 'chunk' ? 'progress' :
                     status === 'complete' ? 'completed' : 'pending'
             },
             {
                 id: 4,
                 label: '완료',
-                description: '모든 처리가 완료되었습니다. 곧 결과 페이지로 이동합니다.',
+                description: '완료되었습니다. 결과 페이지로 이동합니다.',
                 status: status === 'complete' ? 'completed' : 'pending'
             }
         ]
@@ -234,7 +188,7 @@ export default function LoadingScreen({ progress, status, previewTitle, previewC
         switch (status) {
             case 'title': return '제목을 생성하는 중입니다...';
             case 'group': return `주제별 그룹을 생성하는 중입니다... ${processedGroups.length > 0 ? `(${processedGroups.length}개 생성됨)` : ''}`;
-            case 'chunk': return '기억 카드를 생성하는 중입니다...';
+            case 'chunk': return `기억 카드를 생성하는 중입니다... (${processedGroups.flatMap(g => g.chunks || []).length}개)`;
             case 'complete': return '모든 처리가 완료되었습니다.';
             default: return '처리 중입니다...';
         }
@@ -417,77 +371,31 @@ export default function LoadingScreen({ progress, status, previewTitle, previewC
                                     />
                                 </p>
 
-                                {/* 실제 그룹 정보 - 실시간 업데이트 */}
-                                {processedGroups && processedGroups.length > 0 ? (
+                                {/* 실제 그룹 정보 표시 */}
+                                {processedGroups && processedGroups.length > 0 && (
                                     <>
-                                        <h3 className="text-sm font-medium text-gray-500 mt-3 mb-1">
-                                            생성된 그룹 ({processedGroups.length}):
+                                        <h3 className="text-sm font-medium text-gray-500 mt-3 mb-2">
+                                            생성된 그룹 ({processedGroups.length}개):
                                         </h3>
-                                        <div className="max-h-28 overflow-y-auto">
+                                        <div className="max-h-48 overflow-y-auto space-y-1.5 pr-2">
                                             {processedGroups.map((group, idx) => (
-                                                <div
-                                                    key={group.id || idx}
-                                                    className={`mb-1 last:mb-0 ${idx >= displayedGroups.length - 1 && newGroupsAdded ? 'animate-pulse bg-blue-50 rounded p-1' : ''}`}
-                                                >
-                                                    <p className="text-xs text-gray-700">
-                                                        {idx + 1}. {idx >= displayedGroups.length - 1 && newGroupsAdded ? (
-                                                            <TypewriterText
-                                                                text={group.title || `그룹 ${idx + 1}`}
-                                                                speed={30}
-                                                            />
-                                                        ) : (
-                                                            group.title || `그룹 ${idx + 1}`
-                                                        )}
+                                                <div key={group.id || idx} className="bg-white p-2 rounded border border-gray-100 shadow-sm">
+                                                    <p className="text-xs font-medium text-gray-700">
+                                                        {idx + 1}.
+                                                        <TypewriterText
+                                                            text={group.title || `그룹 ${idx + 1}`}
+                                                            speed={30}
+                                                            delay={idx * 150}
+                                                            className="ml-1"
+                                                        />
                                                     </p>
-
-                                                    {/* 각 그룹의 카드 개수 표시 (있는 경우) */}
-                                                    {group.chunks && group.chunks.length > 0 && (
-                                                        <div className="ml-4 mt-0.5">
-                                                            <p className="text-[10px] text-gray-500">
-                                                                카드 {group.chunks.length}개
-                                                            </p>
-
-                                                            {/* 생성된 첫 번째 카드 미리보기 (카드 생성 단계일 때) */}
-                                                            {status === 'chunk' && (
-                                                                <div className="mt-1 text-[10px] text-gray-600 bg-gray-50 rounded p-1 border border-gray-100">
-                                                                    <TypewriterText
-                                                                        text={group.chunks[0]?.summary || ''}
-                                                                        speed={15}
-                                                                        className="line-clamp-1"
-                                                                    />
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    )}
                                                 </div>
                                             ))}
                                         </div>
                                     </>
-                                ) : (
-                                    <>
-                                        {/* 그룹 생성 중 스켈레톤 로더 - 그룹 단계일 때만 표시 */}
-                                        {(status === 'group' || status === 'content') && (
-                                            <>
-                                                <h3 className="text-sm font-medium text-gray-500 mt-3 mb-2">
-                                                    그룹 생성 중...
-                                                </h3>
-                                                <SkeletonLoader type="group" />
-                                            </>
-                                        )}
-
-                                        {/* 카드 생성 중 스켈레톤 로더 - 카드 단계일 때만 표시 */}
-                                        {status === 'chunk' && (
-                                            <>
-                                                <h3 className="text-sm font-medium text-gray-500 mt-3 mb-2">
-                                                    기억 카드 생성 중...
-                                                </h3>
-                                                <SkeletonLoader type="card" />
-                                            </>
-                                        )}
-                                    </>
                                 )}
 
-                                {/* 진행 상태 표시 (그룹 또는 카드 정보 아래에 표시) */}
+                                {/* 진행 상태 표시 (그룹 정보 아래에 표시) */}
                                 {status !== 'complete' && processedGroups.length > 0 && (
                                     <div className="mt-3 px-2 py-1.5 bg-blue-50 rounded-md text-xs text-blue-700 flex items-center justify-between">
                                         <div className="flex items-center">
@@ -507,21 +415,6 @@ export default function LoadingScreen({ progress, status, previewTitle, previewC
                     {/* 상태 메시지 */}
                     <div className="mt-4 text-center">
                         <p className="text-sm text-gray-600">{getLoadingMessage()}</p>
-                        <div className="mt-2 h-1 bg-gray-200 rounded-full overflow-hidden">
-                            <motion.div
-                                className="h-full bg-[#7969F7]"
-                                initial={{ width: '0%' }}
-                                animate={{ width: `${progress}%` }}
-                                transition={{ duration: 0.5 }}
-                            />
-                        </div>
-                    </div>
-
-                    {/* 경고 메시지 */}
-                    <div className="mt-4 py-2 flex items-center text-xs text-gray-500">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
                     </div>
                 </div>
             </motion.div>
