@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import { createClient } from '@/utils/supabase/server'
-import { generateClozeChunksPrompt } from '@/prompt_generator'
+import { generateUnifiedChunksPrompt } from '@/prompt_generator'
 
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
@@ -81,7 +81,7 @@ export async function POST(req: Request) {
             console.log(`Generating cloze chunks for group: ${groupData.title}`)
 
             // 프롬프트 생성기를 사용하여 Cloze 청크 시스템 프롬프트 생성
-            const chunkSystemPrompt = generateClozeChunksPrompt(additionalMemory);
+            const chunkSystemPrompt = generateUnifiedChunksPrompt(additionalMemory);
 
             const chunksCompletion = await withTimeout(openai.chat.completions.create({
                 model: "gpt-4o-mini-2024-07-18",
