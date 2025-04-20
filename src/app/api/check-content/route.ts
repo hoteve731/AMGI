@@ -37,7 +37,7 @@ export async function GET(request: Request) {
 
         // 그룹 데이터 조회
         const { data: groups, error: groupsError } = await supabase
-            .from('groups')
+            .from('content_groups')
             .select('id')
             .eq('content_id', contentId);
 
