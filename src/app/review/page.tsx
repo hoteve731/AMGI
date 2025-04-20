@@ -296,7 +296,7 @@ export default function ReviewPage() {
     }
 
     return (
-        <main className="flex h-[100vh] overflow-hidden flex-col bg-gradient-to-t from-[#D4C4B7] via-[#E8D9C5] to-[#F8F4EF]">
+        <main className="flex h-screen overflow-hidden flex-col bg-gradient-to-t from-[#D4C4B7] via-[#E8D9C5] to-[#F8F4EF]">
             {isNavigatingBack && <LoadingOverlay />}
             {/* 헤더 */}
             <div className="sticky top-0 bg-[#F8F4EF] border-b border-[#D4C4B7] h-12 z-50">
@@ -361,7 +361,7 @@ export default function ReviewPage() {
                                     className="w-full max-w-md perspective-1000"
                                 >
                                     <div className="w-full min-h-[200px] bg-white/90 backdrop-blur-md rounded-xl border border-[#D4C4B7] p-6 shadow-lg">
-                                        {/* 카드 상태 태그 - 좌상단에 배치 */}
+                                        {/* 카드 상태 및 반복 수 태그 - 좌상단에 통합 표시 */}
                                         <div className="flex justify-start mb-4">
                                             <div className="inline-flex items-center justify-center bg-white rounded-full px-3 py-1 border border-gray-200">
                                                 <div className="flex items-center">
@@ -374,6 +374,11 @@ export default function ReviewPage() {
                                                             currentCard?.card_state === 'learning' ? '학습 중' :
                                                                 currentCard?.card_state === 'graduated' || currentCard?.card_state === 'review' ? '복습' :
                                                                     '재학습'}
+                                                        {currentCard?.repetition_count !== undefined && (
+                                                            <span className="ml-1 text-gray-600">
+                                                                (반복 {currentCard.repetition_count}회)
+                                                            </span>
+                                                        )}
                                                     </span>
                                                 </div>
                                             </div>
