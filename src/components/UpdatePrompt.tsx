@@ -6,7 +6,7 @@ export default function UpdatePrompt() {
     const [showReload, setShowReload] = useState(false)
 
     useEffect(() => {
-        if ('serviceWorker' in navigator) {
+        if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
             navigator.serviceWorker.addEventListener('message', (event) => {
                 if (event.data.type === 'UPDATE_AVAILABLE') {
                     setShowReload(true)
