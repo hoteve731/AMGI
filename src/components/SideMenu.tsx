@@ -6,7 +6,8 @@ import Image from "next/image";
 import useSWR from 'swr';
 import { useRouter } from 'next/navigation';
 import LoadingOverlay from "./LoadingOverlay";
-import { FolderIcon } from "@heroicons/react/24/outline";
+import { FolderIcon, ChevronLeftIcon, DocumentTextIcon } from "@heroicons/react/24/outline";
+import { SparklesIcon } from "@heroicons/react/24/solid";
 
 // ContentTabs와 동일한 fetcher 함수 사용
 const fetcher = async (url: string) => {
@@ -18,9 +19,14 @@ const fetcher = async (url: string) => {
   return response.json();
 };
 
+// 최대 콘텐츠 수 상수 정의
+const MAX_FREE_CONTENTS = 5;
+
 const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onClose }) => {
   const router = useRouter();
   const [isNavigating, setIsNavigating] = useState(false);
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+
   const { data, error, isLoading } = useSWR<{ contents: any[] }>('/api/contents', fetcher, {
     refreshInterval: 0,  // 자동 폴링 없음
     revalidateOnFocus: true,  // 창이 포커스를 얻을 때 재검증
@@ -29,6 +35,9 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
   });
 
   const contents = data?.contents || [];
+  const contentCount = contents.length;
+  const percentUsed = (contentCount / MAX_FREE_CONTENTS) * 100;
+  const isLimitReached = contentCount >= MAX_FREE_CONTENTS;
 
   // 디버깅을 위한 로그
   useEffect(() => {
@@ -46,6 +55,31 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
       onClose();
     }, 300);
   };
+
+  const handleSubscriptionClick = () => {
+    setShowSubscriptionModal(true);
+  };
+
+  // 이메일로 구독 신청 기능 추가
+  const handleSubscriptionEmail = () => {
+    const emailAddress = 'fbghtks1000@gmail.com';
+    const subject = 'LOOPA 프리미엄 엑세스 신청';
+    const body = '사유를 간단하게 작성하여 보내주세요! 24시간 내로 답장을 드립니다.';
+
+    window.location.href = `mailto:${emailAddress}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    setShowSubscriptionModal(false); // 모달 닫기
+  };
+
+  // 구독 모달 표시 이벤트 리스너
+  useEffect(() => {
+    const handleShowSubscriptionModal = () => {
+      console.log('구독 모달 표시 이벤트 수신됨');
+      setShowSubscriptionModal(true);
+    };
+
+    window.addEventListener('showSubscriptionModal', handleShowSubscriptionModal);
+    return () => window.removeEventListener('showSubscriptionModal', handleShowSubscriptionModal);
+  }, []);
 
   return (
     <>
@@ -68,10 +102,10 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
               </div>
               <button
                 aria-label="메뉴 닫기"
-                className="p-2 rounded hover:bg-gray-100 transition-colors duration-200"
+                className="p-1.5 rounded-full bg-white shadow-sm hover:bg-gray-100 transition-colors duration-200"
                 onClick={onClose}
               >
-                <svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500"><line x1="4" y1="4" x2="16" y2="16" /><line x1="16" y1="4" x2="4" y2="16" /></svg>
+                <ChevronLeftIcon className="w-5 h-5 text-gray-500" />
               </button>
             </div>
             {/* Content List */}
@@ -159,6 +193,36 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
                 </ul>
               )}
             </nav>
+
+            {/* 프로그레스 바 및 구독 버튼 */}
+            <div className="p-4 border-t border-gray-200 bg-white/60 backdrop-blur-sm">
+              <button
+                onClick={handleSubscriptionClick}
+                className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-[#7969F7] to-[#9F94F8] text-white py-2.5 px-4 rounded-lg font-medium shadow-md hover:shadow-lg transition-all duration-200 active:scale-[0.98] mb-3"
+              >
+                <SparklesIcon className="w-5 h-5" />
+                <span>유료 구독하기</span>
+              </button>
+
+              <p className="text-gray-700 text-sm text-center mb-3">
+                더 많은 기능과 무제한 액세스를 누리세요.
+              </p>
+
+              <div className="mb-2">
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <DocumentTextIcon className="w-4 h-4 text-gray-600" />
+                  <span className="text-sm font-medium text-gray-700">
+                    <span className="font-bold">{contentCount}</span>/{MAX_FREE_CONTENTS}개 콘텐츠 무료
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2.5">
+                  <div
+                    className={`h-2.5 rounded-full ${isLimitReached ? 'bg-red-500' : 'bg-[#7969F7]'}`}
+                    style={{ width: `${Math.min(percentUsed, 100)}%` }}
+                  ></div>
+                </div>
+              </div>
+            </div>
           </motion.aside>
         )}
         {open && (
@@ -171,6 +235,91 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
             className="fixed inset-0 bg-black z-[9998]"
             onClick={onClose}
           />
+        )}
+      </AnimatePresence>
+
+      {/* 구독 모달 - 상시 표시 가능하도록 AnimatePresence를 별도로 구성 */}
+      <AnimatePresence>
+        {showSubscriptionModal && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[10000]"
+              onClick={() => setShowSubscriptionModal(false)}
+            />
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ type: "spring", bounce: 0.3, duration: 0.4 }}
+              className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-md bg-white/95 backdrop-filter backdrop-blur-md rounded-2xl p-6 shadow-2xl z-[10001] overflow-hidden border border-white/20"
+            >
+              <div className="absolute top-3 right-3">
+                <button
+                  onClick={() => setShowSubscriptionModal(false)}
+                  className="p-1.5 rounded-full hover:bg-gray-100 transition-colors"
+                >
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500"><line x1="4" y1="4" x2="16" y2="16" /><line x1="16" y1="4" x2="4" y2="16" /></svg>
+                </button>
+              </div>
+
+              <div className="text-center mb-6">
+                <div className="flex justify-center mb-4">
+                  <div className="bg-[#F6F3FF] p-3 rounded-full">
+                    <SparklesIcon className="w-8 h-8 text-[#7969F7]" />
+                  </div>
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">LOOPA 프리미엄 구독</h3>
+                <p className="text-gray-600">더 많은 기능으로 학습 효율을 높이세요!</p>
+              </div>
+
+              <div className="space-y-4 mb-6">
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 w-6 h-6 bg-[#F6F3FF] rounded-full flex items-center justify-center">
+                    <svg className="w-4 h-4 text-[#7969F7]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-800">콘텐츠 무제한 생성</p>
+                    <p className="text-sm text-gray-600">5개 제한 없이 무한히 콘텐츠를 만들 수 있어요</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 w-6 h-6 bg-[#F6F3FF] rounded-full flex items-center justify-center">
+                    <svg className="w-4 h-4 text-[#7969F7]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-800">글자수 무제한</p>
+                    <p className="text-sm text-gray-600">더 자세한 학습을 위해 텍스트 길이 제한이 없어요</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 w-6 h-6 bg-[#F6F3FF] rounded-full flex items-center justify-center">
+                    <svg className="w-4 h-4 text-[#7969F7]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-800">PDF 업로드 지원</p>
+                    <p className="text-sm text-gray-600">PDF 문서를 업로드하여 바로 학습 카드로 변환할 수 있어요</p>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                className="w-full py-3 bg-gradient-to-r from-[#7969F7] to-[#9F94F8] text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-200 active:scale-[0.98]"
+                onClick={handleSubscriptionEmail}
+              >
+                프리미엄으로 업그레이드
+              </button>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
     </>

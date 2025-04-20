@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import LoadingScreen from './LoadingScreen'
 import { useRouter } from 'next/navigation'
+import { ContentLimitManager } from '../App'
 
 // 토스트 타입 정의
 type ToastType = 'info' | 'success' | 'error' | 'warning';
@@ -390,6 +391,14 @@ export default function BottomSheet() {
             }
         }
 
+        // 콘텐츠 제한 확인
+        const isAllowed = await ContentLimitManager.handleBottomSheetOpen();
+        if (!isAllowed) {
+            // 제한에 도달하면 바텀시트를 닫고 구독 모달이 표시됨
+            collapseSheet();
+            return;
+        }
+
         // 로딩 상태 초기화 및 설정
         setIsLoading(true);
         setShowLoadingScreen(true); // 로딩 화면 표시
@@ -624,36 +633,37 @@ export default function BottomSheet() {
     };
 
     const expandSheet = () => {
-        setIsExpanded(true)
+        setIsExpanded(true);
         setTimeout(() => {
-            textareaRef.current?.focus()
-        }, 300)
+            textareaRef.current?.focus();
+        }, 300);
     }
 
     const collapseSheet = () => {
-        if (isLoading) return
-        setIsExpanded(false)
+        if (isLoading) return;
+        setIsExpanded(false);
     }
 
     useEffect(() => {
         const handleEscape = (e: KeyboardEvent) => {
             if (e.key === 'Escape' && isExpanded && !isLoading) {
-                collapseSheet()
+                collapseSheet();
             }
         }
-        window.addEventListener('keydown', handleEscape)
-        return () => window.removeEventListener('keydown', handleEscape)
-    }, [isExpanded, isLoading])
+        window.addEventListener('keydown', handleEscape);
+        return () => window.removeEventListener('keydown', handleEscape);
+    }, [isExpanded, isLoading]);
 
     useEffect(() => {
-        const handleOpenBottomSheet = (e: CustomEvent) => {
-            console.log('바텀시트 열기 이벤트 수신됨')
-            resetForm()
-            expandSheet()
+        const handleOpenBottomSheet = (e: Event) => {
+            console.log('바텀시트 열기 이벤트 수신됨');
+            resetForm();
+            expandSheet();
         }
-        window.addEventListener('openBottomSheet', handleOpenBottomSheet as EventListener)
-        return () => window.removeEventListener('openBottomSheet', handleOpenBottomSheet as EventListener)
-    }, [isLoading])
+
+        window.addEventListener('openBottomSheet', handleOpenBottomSheet);
+        return () => window.removeEventListener('openBottomSheet', handleOpenBottomSheet);
+    }, [isLoading]);
 
     if (showLoadingScreen) {
         return <LoadingScreen
