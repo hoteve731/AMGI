@@ -124,37 +124,10 @@ ${additionalMemory
  * @param additionalMemory 사용자가 기억하고 싶은 내용에 대한 선택적 입력
  * @returns 공통 프롬프트 문자열
  */
-function generateCommonChunksPromptParts(additionalMemory?: string): { intro: string, outro: string } {
-   const intro = `당신은 학습과 기억력 향상을 극대화하는 효과적인 '기억 카드'를 만드는 전문가입니다. 다음 지침을 정확히 따라주세요:
-
-1. 주어진 텍스트에 대한 효과적인 기억을 돕는 2~5개 내외의 '기억 카드'를 만드세요. 텍스트의 분량과 복잡성에 따라 유연하게 조절 가능하며, 핵심 개념을 빠짐없이 다루는 것을 우선시합니다. 오직 주어진 텍스트만을 활용해서 생성하세요.
-
-2. 중요한 형식 요구사항:
-   - 질문은 한국어로 작성하고 답변도 한국어로 작성
-   - 각 카드는 반드시 하나의 개념에 집중하고 정확하고 명확해야 함`;
-
-   const outro = `6. 반드시 다음 형식으로 출력해야 합니다:
-카드 1: 앞면 / 뒷면
-카드 2: 앞면 / 뒷면
-...
-
-7. 각 기억 카드는 다음 5가지 원칙을 따라야 합니다:
-   - Focused: 하나의 주제에 집중
-   - Precise: 모호함 없이 명확하게
-   - Consistent: 형식과 언어의 일관성
-   - Tractable: 현실적으로 회상 가능한 수준
-   - Effortful: 쉽게 보지 않고 떠올릴 수 있는 난이도
-
-${additionalMemory
-         ? `
-8. 사용자가 특별히 기억하고 싶어하는 내용: "${additionalMemory}"
-   이 내용과 관련된 기억 카드를 반드시 포함해야 하며, 가능한 한 우선적으로 배치하세요.
-   해당 개념이나 단어는 앞면/뒷면 모두에서 명확히 드러나야 합니다.`
-         : ""
-      }`;
-
-   return { intro, outro };
-}
+// function generateCommonChunksPromptParts(additionalMemory?: string): { intro: string, outro: string } {
+// 주석 처리: 새로운 통합 프롬프트 함수 내에서 직접 구성
+// ... (기존 generateCommonChunksPromptParts 내용)
+// }
 
 /**
  * Cloze 형식의 기억 카드 생성을 위한 시스템 프롬프트
@@ -162,7 +135,10 @@ ${additionalMemory
  * @returns 시스템 프롬프트 문자열
  */
 export function generateClozeChunksPrompt(additionalMemory?: string): string {
-   const { intro, outro } = generateCommonChunksPromptParts(additionalMemory);
+   // 수정: generateCommonChunksPromptParts 호출 제거하고 직접 intro/outro 정의 또는 상수로 분리
+   // const { intro, outro } = generateCommonChunksPromptParts(additionalMemory);
+   const intro = `... (generateUnifiedChunksPrompt의 intro 부분 참고하여 Cloze용으로 재구성) ...`;
+   const outro = `... (generateUnifiedChunksPrompt의 outro 부분 참고하여 Cloze용으로 재구성) ...`;
 
    return `${intro}
 
@@ -186,7 +162,10 @@ ${outro}`;
  * @returns 시스템 프롬프트 문자열
  */
 export function generateNormalChunksPrompt(additionalMemory?: string): string {
-   const { intro, outro } = generateCommonChunksPromptParts(additionalMemory);
+   // 수정: generateCommonChunksPromptParts 호출 제거하고 직접 intro/outro 정의 또는 상수로 분리
+   // const { intro, outro } = generateCommonChunksPromptParts(additionalMemory);
+   const intro = `... (generateUnifiedChunksPrompt의 intro 부분 참고하여 Normal용으로 재구성) ...`;
+   const outro = `... (generateUnifiedChunksPrompt의 outro 부분 참고하여 Normal용으로 재구성) ...`;
 
    return `${intro}
 
@@ -199,7 +178,7 @@ export function generateNormalChunksPrompt(additionalMemory?: string): string {
 2. 다음 3가지 유형의 카드를 골고루 포함하세요:
    1) Explanation: '왜?', '어떻게?'로 깊은 이해 유도. 예: 왜 **간헐적 복습**이 **장기 기억**에 효과적인가요? / **간헐적 복습**은 망각 곡선을 고려한 반복으로 **장기 기억**을 강화하기 때문입니다.
    2) Salience: 일상적 행동이나 선택과 연결. 예: 일상에서 **주의력 회복**을 위한 좋은 방법은? / **자연 속 산책**은 뇌의 주의 회로를 회복시키는 데 도움을 줍니다.
-   3) Mnemonic: 기억을 돕기 위한 말장난, 비유. 예: **심장 판막** 순서를 기억하는 유쾌한 문장은? / "Toilet Paper My Ass" → **Tricuspid, Pulmonary, Mitral, Aortic**
+   3) Mnemonic: 기억을 돕기 위한 말장난, 비유. 예: **심장 판막** 순서를 기억하는 유쾌한 문장은? / \"Toilet Paper My Ass\" → **Tricuspid, Pulmonary, Mitral, Aortic**
 
 3. 모든 카드는 반드시 질문/답변 형식이어야 합니다. Cloze 형식의 카드는 생성하지 마세요.
 
@@ -232,8 +211,26 @@ ${outro}`;
 //    1) Explanation: '왜?', '어떻게?'로 깊은 이해 유도. 예: 왜 **간헐적 복습**이 **장기 기억**에 효과적인가요? / **간헐적 복습**은 망각 곡선을 고려한 반복으로 **장기 기억**을 강화하기 때문입니다.
 //    2) Salience: 일상적 행동이나 선택과 연결. 예:일상에서 **주의력 회복**을 위한 좋은 방법은? / **자연 속 산책**은 뇌의 주의 회로를 회복시키는 데 도움을 줍니다.
 //    3) Mnemonic: 기억을 돕기 위한 말장난, 비유. 예: **심장 판막** 순서를 기억하는 유쾌한 문장은? / "Toilet Paper My Ass" → **Tricuspid, Pulmonary, Mitral, Aortic**
-  
+
 // 5. 카드 유형 비율: 약 30%는 Cloze 형식, 70%는 질문/답변 형식으로 구성하세요.
 
 // ${outro}`;
 // }
+
+/**
+ * 통합 형식 (Cloze + 일반) 기억 카드 생성을 위한 시스템 프롬프트
+ * @param additionalMemory 사용자가 기억하고 싶은 내용에 대한 선택적 입력
+ * @returns 시스템 프롬프트 문자열
+ */
+export function generateUnifiedChunksPrompt(additionalMemory?: string): string {
+   // 수정: Cloze 형식 및 일반 카드 볼드 처리 지침 강화
+   const intro = `당신은 학습과 기억력 향상을 극대화하는 효과적인 \'기억 카드\'를 만드는 전문가입니다. 다음 지침을 **매우 정확하게** 따라주세요:\n\n1. 주어진 텍스트 그룹에 대해, 가장 중요하고 기억할 만한 내용을 중심으로 **정확히 2~5개**의 \'기억 카드\'를 생성하세요. 오직 주어진 텍스트 내용만을 활용하세요.\n\n2. 반드시 다음 두 가지 유형의 카드를 **지정된 비율로 혼합**하여 생성해야 합니다:\n   - **Cloze 카드 (약 30~40% 비율):** 아래 3-1 형식 규칙을 따릅니다.\n   - **일반 카드 (질문/답변, 약 60~70% 비율):** 아래 3-2 형식 규칙을 따릅니다.\n\n3. 모든 카드는 다음 **매우 엄격한 형식**을 따라야 합니다:\n   - 각 카드는 반드시 "카드 N: "으로 시작합니다. (N은 1부터 시작하는 순차적 번호)\n   - 앞면과 뒷면은 반드시 ' / ' (슬래시 양쪽에 공백) 구분자를 사용합니다.\n\n   **3-1. Cloze 카드 형식 규칙:**\n    Cloze 기억 카드는 다음 형식을 따릅니다: 
+   - Cloze 카드 예시: {{간헐적 복습}}은 {{장기 기억}}에 유리하다. / **간헐적 복습**은 **장기 기억**에 유리하다. - 앞면: 문장의 핵심 키워드 **하나 또는 두 개**를 {{}}로 감싼 완전한 문장.\n     - 뒷면: 앞면과 **완전히 동일한 문장**이어야 하며, {{}}로 감쌌던 동일한 키워드를 **(별표 두 개)로 감싸서 표시합니다.\"\n\n   **3-2. 일반 카드 형식 규칙:**\n     - 앞면: 명확하고 구체적인 질문. 반드시 물음표(?)로 끝나야 합니다. 질문 내의 핵심 키워드는 **로 감싸세요.\n     - 뒷면: 질문에 대한 간결하고 정확한 답변. 반드시 **마침표(.)**로 끝나야 합니다. 답변 내의 핵심 키워드도 **로 감싸세요.\n     - **일반 카드 예시:** \"카드 N: **간헐적 복습**이 **장기 기억**에 효과적인 이유는 무엇인가요? / **간헐적 복습**은 망각 곡선을 고려하여 **장기 기억**을 강화하기 때문입니다.\"\n     - (Explanation, Salience, Mnemonic 유형을 자연스럽게 포함시키세요.)\n\n4. 카드 생성 시 다음 5가지 원칙을 준수하세요:\n   - Focused: 하나의 명확한 개념 또는 사실에 집중\n   - Precise: 모호함 없이 정확하게\n   - Consistent: 일관된 스타일과 용어 사용\n   - Tractable: 너무 어렵거나 쉽지 않은 적절한 난이도\n   - Effortful: 단순 암기보다 이해와 회상을 유도`;
+
+   const outro = `5. 출력은 반드시 위에서 설명한 **엄격한 형식**(\"카드 N: 앞면 / 뒷면\")만 포함해야 합니다. 각 카드는 새 줄로 구분하세요. 다른 어떤 설명, 머리말, 꼬리말도 **절대** 추가하지 마세요.\n\n${additionalMemory
+      ? `6. 사용자가 특별히 기억하고 싶어하는 내용: \"${additionalMemory}\"\n   이 내용과 관련된 기억 카드를 최소 1개 이상 반드시 포함하세요. 해당 내용이 카드에서 명확히 드러나야 합니다.`
+      : "\"\""
+      }`;
+
+   return `${intro}\n\n${outro}`;
+}
