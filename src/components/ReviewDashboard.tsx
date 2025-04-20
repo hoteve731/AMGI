@@ -307,9 +307,9 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
                 >
                     <button
                         onClick={handleAddIdea}
-                        className="w-full py-4 px-6 rounded-xl bg-white text-[#7969F7] font-medium hover:bg-gray-50 transition-all duration-200 flex items-center justify-center"
+                        className="w-full py-4 px-6 rounded-xl bg-white text-[#7969F7] font-semibold hover:bg-gray-50 transition-all duration-200 flex items-center justify-center"
                     >
-                        <span>기억하고 싶은 텍스트 추가하기</span>
+                        <span>기억하고 싶은 텍스트 추가</span>
                         <span className="ml-2 text-[#7969F7] text-lg">+</span>
                     </button>
                 </motion.div>

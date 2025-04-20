@@ -87,7 +87,7 @@ function useToast() {
 }
 
 const MIN_LENGTH = 50;
-const MAX_LENGTH = 2000;
+const MAX_LENGTH = 1000;
 
 export default function BottomSheet() {
     const router = useRouter()

@@ -47,17 +47,47 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
     const [showAdditionalMemory, setShowAdditionalMemory] = useState(false);
     const [editingChunkId, setEditingChunkId] = useState<string | null>(null);
     const [isDeletingChunk, setIsDeletingChunk] = useState<string | null>(null);
+    const [groupOriginalTextVisibility, setGroupOriginalTextVisibility] = useState<Record<string, boolean>>({});
     const router = useRouter();
     const { mutate } = useSWRConfig();
     const [isLoading, setIsLoading] = useState(false);
     const [isNavigating, setIsNavigating] = useState(false);
     const [isDeleting, setIsDeleting] = useState<string | null>(null);
     const [isDeletingContent, setIsDeletingContent] = useState(false);
+    const [isMounted, setIsMounted] = useState(false);
 
     console.log('ContentGroups rendering with content:', content);
     useEffect(() => {
         console.log('ContentGroups content prop updated:', content);
     }, [content]);
+
+    useEffect(() => {
+        setIsMounted(true);
+
+        const loadedVisibility: Record<string, boolean> = {};
+
+        if (typeof window !== 'undefined' && content?.groups) {
+            content.groups.forEach(group => {
+                const key = `show_original_${group.id}`;
+                loadedVisibility[group.id] = localStorage.getItem(key) === 'true';
+            });
+        }
+
+        setGroupOriginalTextVisibility(loadedVisibility);
+    }, [content?.groups]);
+
+    const toggleGroupOriginalText = (groupId: string) => {
+        if (typeof window === 'undefined') return;
+
+        const newState = !groupOriginalTextVisibility[groupId];
+
+        localStorage.setItem(`show_original_${groupId}`, newState.toString());
+
+        setGroupOriginalTextVisibility(prev => ({
+            ...prev,
+            [groupId]: newState
+        }));
+    };
 
     // Helper function to format text with double asterisks (**) as bold text
     const formatBoldText = (text: string) => {
@@ -321,6 +351,57 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                                         <h3 className="text-xl font-bold text-gray-800 text-center mt-14 mb-4">
                                             {group.title} <span className="font-light text-gray-500">(<span className="font-bold">{cardCount}</span>)</span>
                                         </h3>
+
+                                        {group.original_text && isMounted && (
+                                            <div
+                                                className="mx-4 mb-4 bg-white/70 backdrop-blur-sm rounded-xl border border-white/20 overflow-hidden"
+                                            >
+                                                <button
+                                                    type="button"
+                                                    className="flex items-center justify-between w-full px-4 py-3 text-sm text-gray-700 hover:bg-white/30 transition-colors"
+                                                    onClick={() => toggleGroupOriginalText(group.id)}
+                                                    aria-expanded={groupOriginalTextVisibility[group.id]}
+                                                >
+                                                    <span className="font-medium">
+                                                        {groupOriginalTextVisibility[group.id] ? "접기" : "원본 문단 보기"}
+                                                    </span>
+                                                    <motion.div
+                                                        animate={{ rotate: groupOriginalTextVisibility[group.id] ? 180 : 0 }}
+                                                        transition={{ duration: 0.3, ease: "easeInOut" }}
+                                                    >
+                                                        <svg
+                                                            className="w-5 h-5 text-gray-500"
+                                                            fill="none"
+                                                            stroke="currentColor"
+                                                            viewBox="0 0 24 24"
+                                                        >
+                                                            <path
+                                                                strokeLinecap="round"
+                                                                strokeLinejoin="round"
+                                                                strokeWidth={2}
+                                                                d="M19 9l-7 7-7-7"
+                                                            />
+                                                        </svg>
+                                                    </motion.div>
+                                                </button>
+                                                <AnimatePresence>
+                                                    {groupOriginalTextVisibility[group.id] && (
+                                                        <motion.div
+                                                            initial={{ height: 0, opacity: 0 }}
+                                                            animate={{ height: "auto", opacity: 1 }}
+                                                            exit={{ height: 0, opacity: 0 }}
+                                                            transition={{ duration: 0.3, ease: "easeInOut" }}
+                                                            className="overflow-hidden"
+                                                        >
+                                                            <div className="px-4 py-3 text-sm text-gray-700 whitespace-pre-wrap border-t border-gray-100">
+                                                                {group.original_text}
+                                                            </div>
+                                                        </motion.div>
+                                                    )}
+                                                </AnimatePresence>
+                                            </div>
+                                        )}
+
                                         <GroupDetail
                                             content={content}
                                             group={{
