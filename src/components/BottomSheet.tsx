@@ -86,6 +86,9 @@ function useToast() {
     return { toast: addToast, ToastContainer };
 }
 
+const MIN_LENGTH = 50;
+const MAX_LENGTH = 2000;
+
 export default function BottomSheet() {
     const router = useRouter()
     const [text, setText] = useState('')
@@ -104,6 +107,11 @@ export default function BottomSheet() {
     const textareaRef = useRef<HTMLTextAreaElement>(null)
     const additionalMemoryRef = useRef<HTMLTextAreaElement>(null)
 
+    const textLength = text.length; // 글자 수 계산
+    const isLengthValid = textLength >= MIN_LENGTH && textLength <= MAX_LENGTH;
+    const isLengthUnderMin = textLength > 0 && textLength < MIN_LENGTH; // 0보다 클 때만 미만으로 간주
+    const isLengthOverMax = textLength > MAX_LENGTH;
+
     // 토스트 기능 추가
     const { toast, ToastContainer } = useToast();
 
@@ -119,6 +127,20 @@ export default function BottomSheet() {
 
     // 폴링 카운터 추가
     const pollCount = useRef(0);
+
+    // 글자 수에 따른 카운터 텍스트 스타일 결정 함수
+    const getCounterColor = () => {
+        if (isLengthUnderMin) return 'text-yellow-600'; // 최소 미만일 때 노란색 경고
+        if (isLengthOverMax) return 'text-red-600'; // 최대 초과일 때 빨간색 경고
+        return 'text-gray-500'; // 유효 범위일 때 회색
+    };
+
+    const getCounterText = () => {
+        if (textLength === 0) return `${MAX_LENGTH}자까지 입력 가능`;
+        if (isLengthUnderMin) return `${MIN_LENGTH}자 이상 입력해주세요. (${textLength}/${MAX_LENGTH})`;
+        if (isLengthOverMax) return `글자 수 초과 (${textLength}/${MAX_LENGTH})`;
+        return `${textLength}/${MAX_LENGTH}`;
+    }
 
     const handlePollingComplete = (data: any) => {
         console.log('폴링 완료 처리 - 콘텐츠 ID:', data.content_id);
@@ -671,11 +693,10 @@ export default function BottomSheet() {
                 <AnimatePresence>
                     {isExpanded && (
                         <motion.div
-                            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[65]"
+                            className="fixed inset-0 bg-black/30 z-40"
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            transition={{ duration: 0.3 }}
                             onClick={collapseSheet}
                         />
                     )}
@@ -731,10 +752,10 @@ export default function BottomSheet() {
                                     <motion.button
                                         type="button"
                                         onClick={handleSubmit}
-                                        disabled={isLoading || (showAdditionalMemoryInput ? false : !text.trim())}
+                                        disabled={isLoading || (!showAdditionalMemoryInput && (text.trim().length === 0 || !isLengthValid))}
                                         className="px-4 py-1.5 bg-[#7969F7] text-white rounded-full shadow-lg/60 text-sm font-bold absolute right-4 disabled:opacity-50 disabled:cursor-not-allowed"
-                                        whileHover={{ scale: 1.05 }}
-                                        whileTap={{ scale: 0.95 }}
+                                        whileHover={{ scale: (isLoading || (!showAdditionalMemoryInput && (text.trim().length === 0 || !isLengthValid))) ? 1 : 1.05 }}
+                                        whileTap={{ scale: (isLoading || (!showAdditionalMemoryInput && (text.trim().length === 0 || !isLengthValid))) ? 1 : 0.95 }}
                                     >
                                         {showAdditionalMemoryInput ? '생성하기' : '다음'}
                                     </motion.button>
@@ -783,9 +804,12 @@ export default function BottomSheet() {
                                                         value={text}
                                                         onChange={(e) => setText(e.target.value)}
                                                         placeholder="여기에 타이핑하거나 붙여넣으세요..."
-                                                        className="w-full flex-1 resize-none border-none focus:outline-none focus:ring-0 text-base"
+                                                        className={`flex-grow w-full p-3 border ${isLengthOverMax ? 'border-red-300' : 'border-gray-200'} rounded-lg resize-none focus:outline-none focus:ring-2 ${isLengthOverMax ? 'focus:ring-red-500/50' : 'focus:ring-[#9488f7]/50'} focus:border-transparent transition-shadow duration-150 text-sm leading-relaxed`}
                                                         disabled={isLoading}
                                                     />
+                                                    <div className={`text-right text-xs mt-1.5 ${getCounterColor()}`}>
+                                                        {getCounterText()}
+                                                    </div>
                                                 </motion.div>
                                             )}
                                         </AnimatePresence>

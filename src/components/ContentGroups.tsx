@@ -249,56 +249,55 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                 </button>
             </div>
 
-            {/* 탭 네비게이션 - 홈 디자인과 동일하게 적용 */}
-            <div className="sticky top-12 z-40 px-4 pt-3 pb-2">
-                <div className="relative flex justify-center max-w-md mx-auto">
-                    <div className="relative flex w-full justify-between bg-white/70 backdrop-blur-xl rounded-full p-1 [box-shadow:0_2px_8px_rgba(0,0,0,0.1)] ring-1 ring-gray-200/70 ring-inset">
-                        {[
-                            { id: 'cards', label: '기억카드' },
-                            { id: 'groups', label: '그룹' },
-                            { id: 'text', label: '원본' }
-                        ].map((tab) => {
-                            const isActive = activeTab === tab.id;
-                            return (
-                                <div key={tab.id} className="relative z-10 flex-1">
-                                    {isActive && (
-                                        <motion.div
-                                            layoutId="activeTabBackground"
-                                            className="absolute inset-0 bg-[#7969F7] rounded-full"
-                                            transition={{
-                                                type: "spring",
-                                                stiffness: 500,
-                                                damping: 30
-                                            }}
-                                        />
-                                    )}
-                                    <button
-                                        onClick={() => setActiveTab(tab.id as 'cards' | 'groups' | 'text')}
-                                        className={`
-                                            relative z-20
-                                            w-full py-2 px-1
-                                            text-sm
-                                            transition-colors duration-200
-                                            ${isActive
-                                                ? 'text-white font-bold'
-                                                : 'text-gray-500 hover:text-gray-700 font-medium'}
-                                        `}
-                                    >
-                                        {tab.label}
-                                    </button>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
-            </div>
-
             <div className="flex-1 max-w-2xl mx-auto w-full p-4">
                 <div className="space-y-2 mb-8 mt-2 text-center">
                     <h1 className="text-3xl font-bold text-gray-800">{content.title}</h1>
                     <div className="flex justify-center">
                         <div className="bg-white/80 backdrop-blur-md px-3 py-1 rounded-full text-sm text-gray-700 inline-block">
                             {new Date(content.created_at).toLocaleDateString('ko-KR')}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="sticky top-12 z-40 px-4 pt-2 pb-4">
+                    <div className="relative flex justify-center max-w-md mx-auto">
+                        <div className="relative flex w-full justify-between bg-white/70 backdrop-blur-xl rounded-full p-1 [box-shadow:0_2px_8px_rgba(0,0,0,0.1)] ring-1 ring-gray-200/70 ring-inset">
+                            {[
+                                { id: 'cards', label: '기억카드' },
+                                { id: 'groups', label: '그룹' },
+                                { id: 'text', label: '원본' }
+                            ].map((tab) => {
+                                const isActive = activeTab === tab.id;
+                                return (
+                                    <div key={tab.id} className="relative z-10 flex-1">
+                                        {isActive && (
+                                            <motion.div
+                                                layoutId="activeTabBackground"
+                                                className="absolute inset-0 bg-[#7969F7] rounded-full"
+                                                transition={{
+                                                    type: "spring",
+                                                    stiffness: 500,
+                                                    damping: 30
+                                                }}
+                                            />
+                                        )}
+                                        <button
+                                            onClick={() => setActiveTab(tab.id as 'cards' | 'groups' | 'text')}
+                                            className={`
+                                                relative z-20
+                                                w-full py-2 px-1
+                                                text-sm
+                                                transition-colors duration-200
+                                                ${isActive
+                                                    ? 'text-white font-bold'
+                                                    : 'text-gray-500 hover:text-gray-700 font-medium'}
+                                            `}
+                                        >
+                                            {tab.label}
+                                        </button>
+                                    </div>
+                                );
+                            })}
                         </div>
                     </div>
                 </div>
