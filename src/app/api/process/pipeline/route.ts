@@ -105,8 +105,8 @@ async function runPipelineInBackground(payload: PipelinePayload) {
             .eq('id', contentId);
 
         const splitter = new RecursiveCharacterTextSplitter({
-            chunkSize: 500,
-            chunkOverlap: 20,
+            chunkSize: 400,
+            chunkOverlap: 40,
         });
         const segmentsText = await splitter.splitText(text);
         console.log(`[Pipeline-BG][${contentId}] Split into ${segmentsText.length} segments.`);
@@ -150,7 +150,7 @@ async function runPipelineInBackground(payload: PipelinePayload) {
 
         // --- 단계 2: 병렬 그룹/카드 생성 (제한된 동시성 사용) ---
         console.log(`[Pipeline-BG][${contentId}] Step 2: Parallel Group/Chunk Generation`);
-        const limit = pLimit(5);
+        const limit = pLimit(15);
         const processingPromises = segmentsToProcess.map(segment => {
             return limit(() => processSingleSegment(supabase, segment));
         });

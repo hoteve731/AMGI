@@ -767,8 +767,62 @@ export default function GroupDetail({
                     <div className="mt-4 mb-6">
                         {/* 현재 그룹 제목 (크게 표시) */}
                         <div>
-                            <div className="flex justify-between items-center">
-                                <h2 className="text-3xl font-bold text-gray-800">{currentGroup?.title}</h2>
+                            <div className="flex flex-col gap-1">
+                                <div className="flex items-center justify-between">
+                                    <h2 className="text-3xl font-bold text-gray-800">{currentGroup?.title}</h2>
+                                </div>
+                                {/* 첨부 이미지 스타일 토글 */}
+                                {currentGroup?.original_text && (
+                                    <>
+                                        <div
+                                            className="mt-2 mb-2 bg-white/70 backdrop-blur-sm rounded-xl border border-white/20 overflow-hidden"
+                                        >
+                                            <button
+                                                type="button"
+                                                className="flex items-center justify-between w-full px-4 py-3 text-sm text-gray-700 hover:bg-white/30 transition-colors"
+                                                onClick={() => setShowOriginalText(v => !v)}
+                                                aria-expanded={showOriginalText}
+                                            >
+                                                <span className="font-medium">
+                                                    {showOriginalText ? "접기" : "원본 문단 보기"}
+                                                </span>
+                                                <motion.div
+                                                    animate={{ rotate: showOriginalText ? 180 : 0 }}
+                                                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                                                >
+                                                    <svg
+                                                        className="w-5 h-5 text-gray-500"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        viewBox="0 0 24 24"
+                                                    >
+                                                        <path
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                            strokeWidth={2}
+                                                            d="M19 9l-7 7-7-7"
+                                                        />
+                                                    </svg>
+                                                </motion.div>
+                                            </button>
+                                            <AnimatePresence>
+                                                {showOriginalText && (
+                                                    <motion.div
+                                                        initial={{ height: 0, opacity: 0 }}
+                                                        animate={{ height: "auto", opacity: 1 }}
+                                                        exit={{ height: 0, opacity: 0 }}
+                                                        transition={{ duration: 0.3, ease: "easeInOut" }}
+                                                        className="overflow-hidden"
+                                                    >
+                                                        <div className="px-4 py-3 text-sm text-gray-700 whitespace-pre-wrap border-t border-gray-100">
+                                                            {currentGroup.original_text}
+                                                        </div>
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         </div>
                     </div>
