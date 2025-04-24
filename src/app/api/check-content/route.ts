@@ -61,10 +61,14 @@ export async function GET(request: Request) {
 
         // 청크 존재 여부만 간단히 확인 (첫 번째 그룹에 대해서만)
         const { count, error: chunksCountError } = await supabase
-            .from('chunks')
+            .from('content_chunks')
             .select('id', { count: 'exact', head: true })
             .eq('group_id', groups[0].id)
             .limit(1);
+
+        if (chunksCountError) {
+            console.error('Error checking chunks:', chunksCountError);
+        }
 
         const chunksExist = count && count > 0;
 

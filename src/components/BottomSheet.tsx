@@ -88,7 +88,7 @@ function useToast() {
 }
 
 const MIN_LENGTH = 50;
-const MAX_LENGTH = 1000;
+const MAX_LENGTH = 2000;
 
 export default function BottomSheet() {
     const router = useRouter()
@@ -364,42 +364,7 @@ export default function BottomSheet() {
             return;
         }
 
-        // 입력 길이 검증
-        const trimmedText = text.trim();
-        if (trimmedText.length < 50) { // 최소 50자 필요
-            alert('텍스트가 너무 짧습니다. 최소 50자 이상 입력해주세요.');
-            return;
-        }
-
-        // 입력 텍스트 품질 검사 - 의미 없는 반복 문자 검사
-        const repeatedCharsPattern = /(.)\1{15,}/;  // 같은 문자가 15개 이상 연속되는 패턴
-        if (repeatedCharsPattern.test(trimmedText)) {
-            alert('의미 없는 반복 문자가 포함되어 있습니다. 유효한 텍스트를 입력해주세요.');
-            return;
-        }
-
-        // 의미 없는 문자열 패턴 검사
-        const meaninglessPatterns = [
-            /^[a-zA-Z0-9\s]{100,}$/,  // 랜덤 문자/숫자만 있는 경우
-            /[^\w\s\uAC00-\uD7A3.,?!;:()\-'"\[\]]{20,}/  // 특수문자가 20개 이상 연속되는 경우
-        ];
-
-        for (const pattern of meaninglessPatterns) {
-            if (pattern.test(trimmedText)) {
-                alert('의미 없는 텍스트 패턴이 감지되었습니다. 유효한 텍스트를 입력해주세요.');
-                return;
-            }
-        }
-
-        // 콘텐츠 제한 확인
-        const isAllowed = await ContentLimitManager.handleBottomSheetOpen();
-        if (!isAllowed) {
-            // 제한에 도달하면 바텀시트를 닫고 구독 모달이 표시됨
-            collapseSheet();
-            return;
-        }
-
-        // 로딩 상태 초기화 및 설정
+        // 즉시 로딩 상태 설정 (검증 전에 UI 먼저 업데이트)
         setIsLoading(true);
         setShowLoadingScreen(true); // 로딩 화면 표시
         setIsBgProcessing(false);   // 백그라운드 처리 아님
@@ -413,7 +378,53 @@ export default function BottomSheet() {
         setProcessedChunks({});
         setGeneratedTitle('');
 
+        // 입력 길이 검증
+        const trimmedText = text.trim();
+        if (trimmedText.length < 50) { // 최소 50자 필요
+            // 검증 실패 시 로딩 상태 해제
+            setIsLoading(false);
+            setShowLoadingScreen(false);
+            alert('텍스트가 너무 짧습니다. 최소 50자 이상 입력해주세요.');
+            return;
+        }
+
+        // 입력 텍스트 품질 검사 - 의미 없는 반복 문자 검사
+        const repeatedCharsPattern = /(.)\1{15,}/;  // 같은 문자가 15개 이상 연속되는 패턴
+        if (repeatedCharsPattern.test(trimmedText)) {
+            // 검증 실패 시 로딩 상태 해제
+            setIsLoading(false);
+            setShowLoadingScreen(false);
+            alert('의미 없는 반복 문자가 포함되어 있습니다. 유효한 텍스트를 입력해주세요.');
+            return;
+        }
+
+        // 의미 없는 문자열 패턴 검사
+        const meaninglessPatterns = [
+            /^[a-zA-Z0-9\s]{100,}$/,  // 랜덤 문자/숫자만 있는 경우
+            /[^\w\s\uAC00-\uD7A3.,?!;:()\-'"\[\]]{20,}/  // 특수문자가 20개 이상 연속되는 경우
+        ];
+
+        for (const pattern of meaninglessPatterns) {
+            if (pattern.test(trimmedText)) {
+                // 검증 실패 시 로딩 상태 해제
+                setIsLoading(false);
+                setShowLoadingScreen(false);
+                alert('의미 없는 텍스트 패턴이 감지되었습니다. 유효한 텍스트를 입력해주세요.');
+                return;
+            }
+        }
+
         try {
+            // 콘텐츠 제한 확인 (비동기 작업이므로 로딩 상태 유지)
+            const isAllowed = await ContentLimitManager.handleBottomSheetOpen();
+            if (!isAllowed) {
+                // 제한에 도달하면 바텀시트를 닫고 구독 모달이 표시됨
+                setIsLoading(false);
+                setShowLoadingScreen(false);
+                collapseSheet();
+                return;
+            }
+
             // 축소된 바텀시트 (사용자 입력 화면)
             setIsExpanded(false);
 
@@ -422,7 +433,6 @@ export default function BottomSheet() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ text: trimmedText, additionalMemory }),
             });
-
             let generateData;
             let responseText;
 
@@ -521,6 +531,13 @@ export default function BottomSheet() {
                             setLoadingProgress(100);
                             setLoadingStatusMessage('처리 완료! 결과 페이지로 이동합니다...');
                         }
+
+                        // 완료 상태이지만 청크가 없는 경우 추가 폴링
+                        if (!checkData.chunksExist && retryCount < maxRetries) {
+                            console.log('[완료 상태지만 청크 없음] 추가 폴링 진행...');
+                            setTimeout(checkReadyStatus, pollInterval);
+                            return;
+                        }
                     } else if (checkData.processingStatus === 'processing') {
                         // 청크 생성 중인 경우
                         if (checkData.groupsCount > 0) {
@@ -544,18 +561,27 @@ export default function BottomSheet() {
                 if (checkData.isReady) {
                     console.log('[데이터 준비 완료] 리다이렉트 준비');
 
+                    // 아직 완료 UI로 전환되지 않았다면 전환
                     if (loadingUIType !== 'complete') {
+                        console.log('[UI 업데이트] 완료 상태로 전환');
                         setLoadingUIType('complete');
                         setLoadingProgress(100);
                         setLoadingStatusMessage('처리 완료! 결과 페이지로 이동합니다...');
-                    }
 
-                    // 리다이렉트
-                    setTimeout(() => {
-                        const targetUrl = `/content/${contentId}/groups`;
-                        console.log('리다이렉트 경로:', targetUrl);
-                        window.location.href = targetUrl;
-                    }, 1000);
+                        // UI 업데이트가 반영된 후 리다이렉트 타이머 설정 (상태 업데이트 후 실행되도록 setTimeout 사용)
+                        setTimeout(() => {
+                            console.log('[타이머 설정] 리다이렉트 타이머 설정 (5초 후)');
+                            // 리다이렉트 전에 추가 지연 시간 부여 (5초로 늘림)
+                            setTimeout(() => {
+                                const targetUrl = `/content/${contentId}/groups`;
+                                console.log('[리다이렉트] 결과 페이지로 이동:', targetUrl);
+                                window.location.href = targetUrl;
+                            }, 5000);
+                        }, 100);
+                    } else {
+                        // 이미 완료 UI로 전환된 경우에는 추가 작업 없음 (리다이렉트 타이머가 이미 설정되어 있음)
+                        console.log('[이미 완료 상태] 추가 작업 없음');
+                    }
 
                     return;
                 }
@@ -785,7 +811,7 @@ export default function BottomSheet() {
                                                         <div className="mb-2 text-xs text-[#7969F7] flex items-center">
                                                             수정
                                                         </div>
-                                                        <p className="text-gray-700 whitespace-pre-wrap">{text}</p>
+                                                        <p className="text-gray-700 whitespace-pre-wrap text-base">{text}</p>
                                                     </div>
                                                 </motion.div>
                                             ) : (
@@ -795,7 +821,7 @@ export default function BottomSheet() {
                                                         value={text}
                                                         onChange={(e) => setText(e.target.value)}
                                                         placeholder="여기에 타이핑하거나 붙여넣으세요..."
-                                                        className={`flex-grow w-full p-3 border ${isLengthOverMax ? 'border-red-300' : 'border-gray-200'} rounded-lg resize-none focus:outline-none focus:ring-2 ${isLengthOverMax ? 'focus:ring-red-500/50' : 'focus:ring-[#9488f7]/50'} focus:border-transparent transition-shadow duration-150 text-sm leading-relaxed`}
+                                                        className={`flex-grow w-full p-3 border ${isLengthOverMax ? 'border-red-300' : 'border-gray-200'} rounded-lg resize-none focus:outline-none focus:ring-2 ${isLengthOverMax ? 'focus:ring-red-500/50' : 'focus:ring-[#9488f7]/50'} focus:border-transparent transition-shadow duration-150 text-base leading-relaxed`}
                                                         disabled={isLoading}
                                                     />
                                                     <div className={`text-right text-xs mt-1.5 ${getCounterColor()}`}>

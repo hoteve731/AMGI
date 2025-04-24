@@ -296,7 +296,7 @@ functions.http('processPipeline', async (req, res) => {
         await updateContentStatus(supabase, contentId, 'segmenting');
 
         // 2. 텍스트 세분화 (Langchain)
-        const splitter = new RecursiveCharacterTextSplitter({ chunkSize: 400, chunkOverlap: 40 });
+        const splitter = new RecursiveCharacterTextSplitter({ chunkSize: 1500, chunkOverlap: 100 });
         const segmentsText = await splitter.splitText(text);
         console.log(`[Main][${contentId}] Text split into ${segmentsText.length} segments.`);
         if (segmentsText.length === 0) segmentsText.push(text); // 최소 1개 보장
