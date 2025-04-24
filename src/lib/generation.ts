@@ -122,12 +122,12 @@ export async function processSingleSegment(
 
                     await asyncRetry(async () => {
                         const completion = await openai.chat.completions.create({
-                            model: "gpt-4o-mini-2024-07-18", // 모델 유지 또는 변경 고려
+                            model: "gpt-4.1-mini-2025-04-14", // 모델 유지 또는 변경 고려
                             messages: [
                                 { role: "system", content: unifiedSystemPrompt },
                                 { role: "user", content: group.original_text } // 그룹 원본 텍스트 사용
                             ],
-                            temperature: 0.1, max_tokens: 1500, // 토큰 수 증가 고려
+                            temperature: 0.1, max_tokens: 2000, // 토큰 수 증가 고려
                         });
                         unifiedChunkResponse = completion.choices[0].message.content;
                         if (!unifiedChunkResponse) throw new Error('LLM returned empty content for unified chunks');
