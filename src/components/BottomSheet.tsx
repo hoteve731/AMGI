@@ -493,8 +493,8 @@ export default function BottomSheet() {
         setLoadingUIType('group');
 
         let retryCount = 0;
-        const maxRetries = 7; // 최대 시도 횟수 줄이기 (7번 = 약 10.5초)
-        const pollInterval = 1500; // 1.5초마다 체크
+        const maxRetries = 10; // 최대 시도 횟수 증가 (10번 = 약 20초)
+        const pollInterval = 2000; // 2초마다 체크 (1.5초에서 2초로 증가)
 
         const checkReadyStatus = async () => {
             try {
@@ -532,8 +532,8 @@ export default function BottomSheet() {
                             setLoadingStatusMessage('처리 완료! 결과 페이지로 이동합니다...');
                         }
 
-                        // 완료 상태이지만 청크가 없는 경우 추가 폴링
-                        if (!checkData.chunksExist && retryCount < maxRetries) {
+                        // 완료 상태이지만 청크가 없는 경우 추가 폴링 (최대 5번 더 시도)
+                        if (!checkData.chunksExist && retryCount < maxRetries + 5) {
                             console.log('[완료 상태지만 청크 없음] 추가 폴링 진행...');
                             setTimeout(checkReadyStatus, pollInterval);
                             return;
@@ -558,7 +558,7 @@ export default function BottomSheet() {
                 }
 
                 // 4. 완전히 준비되었을 때만 리다이렉트
-                if (checkData.isReady) {
+                if (checkData.isReady && checkData.chunksExist) {
                     console.log('[데이터 준비 완료] 리다이렉트 준비');
 
                     // 아직 완료 UI로 전환되지 않았다면 전환
@@ -570,13 +570,13 @@ export default function BottomSheet() {
 
                         // UI 업데이트가 반영된 후 리다이렉트 타이머 설정 (상태 업데이트 후 실행되도록 setTimeout 사용)
                         setTimeout(() => {
-                            console.log('[타이머 설정] 리다이렉트 타이머 설정 (5초 후)');
-                            // 리다이렉트 전에 추가 지연 시간 부여 (5초로 늘림)
+                            console.log('[타이머 설정] 리다이렉트 타이머 설정 (3초 후)');
+                            // 리다이렉트 전에 추가 지연 시간 부여 (3초로 조정)
                             setTimeout(() => {
                                 const targetUrl = `/content/${contentId}/groups`;
                                 console.log('[리다이렉트] 결과 페이지로 이동:', targetUrl);
                                 window.location.href = targetUrl;
-                            }, 5000);
+                            }, 3000);
                         }, 100);
                     } else {
                         // 이미 완료 UI로 전환된 경우에는 추가 작업 없음 (리다이렉트 타이머가 이미 설정되어 있음)

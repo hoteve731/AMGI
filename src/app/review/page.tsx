@@ -34,6 +34,7 @@ export default function ReviewPage() {
     const [isFlipped, setIsFlipped] = useState(false)
     const [isLoading, setIsLoading] = useState(true)
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const [activeButton, setActiveButton] = useState<'again' | 'hard' | 'good' | 'easy' | null>(null)
     const [slideDirection, setSlideDirection] = useState<'right-to-left' | 'flip'>('flip')
     const [isNavigatingBack, setIsNavigatingBack] = useState(false)
 
@@ -165,6 +166,7 @@ export default function ReviewPage() {
 
         try {
             setIsSubmitting(true)
+            setActiveButton(result)
             setSlideDirection('right-to-left')
             console.log(`Submitting card action: ${result} for card ID: ${currentCard.id}`)
 
@@ -204,6 +206,7 @@ export default function ReviewPage() {
             alert('카드 처리 중 오류가 발생했습니다: ' + (error instanceof Error ? error.message : String(error)))
         } finally {
             setIsSubmitting(false)
+            setActiveButton(null)
         }
     }
 
@@ -279,14 +282,14 @@ export default function ReviewPage() {
     if (!cards || cards.length === 0) {
         return (
             <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-t from-[#D4C4B7] via-[#E8D9C5] to-[#F8F4EF] p-4">
-                <div className="bg-white/90 backdrop-blur-md rounded-xl border border-gray-200 shadow-lg p-6 max-w-md w-full">
+                <div className="bg-white/90 backdrop-blur-md rounded-xl shadow-lg p-6 max-w-md w-full">
                     <h1 className="text-2xl font-bold text-center mb-4">복습 완료!</h1>
                     <p className="text-gray-600 text-center mb-6">
                         현재 복습할 카드가 없습니다. 모든 복습을 완료했습니다.
                     </p>
                     <button
                         onClick={() => router.push('/')}
-                        className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition-colors"
+                        className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white font-light rounded-lg transition-colors"
                     >
                         홈으로 돌아가기
                     </button>
@@ -296,7 +299,7 @@ export default function ReviewPage() {
     }
 
     return (
-        <main className="flex h-screen overflow-hidden flex-col bg-gradient-to-t from-[#D4C4B7] via-[#E8D9C5] to-[#F8F4EF]">
+        <main className="flex h-screen overflow-hidden flex-col bg-gradient-to-t from-[#D4C4B7] via-[#E8D9C5] to-[#F8F4EF] touch-none">
             {isNavigatingBack && <LoadingOverlay />}
             {/* 헤더 */}
             <div className="sticky top-0 bg-[#F8F4EF] border-b border-[#D4C4B7] h-12 z-50">
@@ -307,20 +310,20 @@ export default function ReviewPage() {
                     <svg className="w-5 h-5 group-hover:scale-110 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                     </svg>
-                    <span className="ml-2 font-medium group-hover:font-semibold transition-all duration-200">홈으로</span>
+                    <span className="ml-2 font-bold group-hover:font-bold transition-all duration-200">홈으로</span>
                 </button>
             </div>
 
-            <div className="flex-1 max-w-2xl mx-auto w-full p-4 flex flex-col">
+            <div className="flex-1 max-w-2xl mx-auto w-full p-4 flex flex-col overflow-hidden">
                 {/* 그룹 제목 */}
-                <h1 className="text-xl font-bold text-gray-800 mb-2 mt-6 text-center">
+                <h1 className="text-xl font-bold text-gray-800 mb-2 mt-4 text-center">
                     {currentCard?.content_groups?.title || '복습'}
                 </h1>
 
                 {/* 카드 진행 상태 태그 - 그룹 타이틀 아래 중앙에 배치 */}
-                <div className="flex justify-center mb-4">
-                    <div className="inline-flex items-center justify-center bg-white/80 backdrop-blur-sm rounded-full px-3 py-1 border border-gray-200 shadow-sm">
-                        <span className="text-sm text-gray-800 font-medium">
+                <div className="flex justify-center mb-2">
+                    <div className="inline-flex items-center justify-center bg-white/80 backdrop-blur-sm rounded-full px-3 py-1 shadow-sm">
+                        <span className="text-sm text-gray-800 font-bold">
                             {currentCardIndex + 1}/{cards.length}
                         </span>
                     </div>
@@ -329,10 +332,10 @@ export default function ReviewPage() {
                 {/* 카드 표시 영역 */}
                 <div className="relative flex-1 overflow-hidden">
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <AnimatePresence mode="wait">
+                        <AnimatePresence mode="wait" key={`${currentCard?.id}-${isFlipped ? 'flipped' : 'front'}`}>
                             {currentCard && (
                                 <motion.div
-                                    key={currentCard.id + (isFlipped ? '-back' : '-front')}
+                                    key={`card-${currentCard.id}`}
                                     initial={slideDirection === 'flip'
                                         ? { opacity: 0, rotateY: isFlipped ? -90 : 90 }
                                         : { opacity: 0, x: 300 }
@@ -360,16 +363,17 @@ export default function ReviewPage() {
                                     }
                                     className="w-full max-w-md perspective-1000"
                                 >
-                                    <div className="w-full min-h-[200px] bg-white/90 backdrop-blur-md rounded-xl border border-[#D4C4B7] p-6 shadow-lg">
+                                    <div className="w-full min-h-[200px] bg-white/90 backdrop-blur-md rounded-xl shadow-lg p-6">
                                         {/* 카드 상태 및 반복 수 태그 - 좌상단에 통합 표시 */}
-                                        <div className="flex justify-start mb-4">
+                                        <div className="flex justify-start mb-2">
                                             <div className="inline-flex items-center justify-center bg-white rounded-full px-3 py-1 border border-gray-200">
                                                 <div className="flex items-center">
-                                                    <div className={`w-3 h-3 rounded-full mr-2 ${currentCard?.card_state === 'new' ? 'bg-[#FDFF8C]' :
-                                                        currentCard?.card_state === 'learning' || currentCard?.card_state === 'relearning' ? 'bg-[#B4B6E4]' :
-                                                            currentCard?.card_state === 'review' || currentCard?.card_state === 'graduated' ? 'bg-[#5F4BB6]' : 'bg-gray-400'
+                                                    <div className={`w-2 h-2 rounded-full mr-2 ${currentCard?.card_state === 'new' ? 'bg-[#FDFF8C]' :
+                                                            currentCard?.card_state === 'learning' || currentCard?.card_state === 'relearning' ? 'bg-[#B4B6E4]' :
+                                                                currentCard?.card_state === 'review' || currentCard?.card_state === 'graduated' ? 'bg-[#5F4BB6]' :
+                                                                    'bg-gray-400'
                                                         }`}></div>
-                                                    <span className="text-sm font-medium text-gray-800">
+                                                    <div className="text-sm font-medium text-gray-800">
                                                         {currentCard?.card_state === 'new' ? '새 카드' :
                                                             currentCard?.card_state === 'learning' ? '학습 중' :
                                                                 currentCard?.card_state === 'graduated' || currentCard?.card_state === 'review' ? '복습' :
@@ -379,7 +383,7 @@ export default function ReviewPage() {
                                                                 (반복 {currentCard.repetition_count}회)
                                                             </span>
                                                         )}
-                                                    </span>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -397,7 +401,7 @@ export default function ReviewPage() {
                 </div>
 
                 {/* 카드 관리 버튼 */}
-                <div className="flex justify-center mt-4 mb-2">
+                <div className="flex justify-center mt-2 mb-1">
                     <button
                         onClick={() => handleCardStatus('inactive')}
                         className="text-gray-500 hover:text-red-500 transition-colors mx-2 flex items-center"
@@ -407,73 +411,92 @@ export default function ReviewPage() {
                         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                         </svg>
-                        <span className="ml-1 text-m">이 카드 비활성화 (스킵)</span>
+                        <span className="ml-1 text-m font-medium">이 카드 비활성화 (스킵)</span>
                     </button>
                 </div>
 
                 {/* 하단 버튼 영역 */}
-                <div className="mt-auto pt-4 h-[150px]">
-                    {isSubmitting && <LoadingOverlay />}
+                <div className="mt-auto pt-2">
                     {!isFlipped ? (
                         // 앞면: 정답 보기 버튼
                         <div>
-                            <p className="text-center text-gray-600 text-sm mb-4">
+                            <p className="text-center text-gray-600 text-sm mb-2">
                                 정답을 확인하려면 클릭하세요
                             </p>
-                            <div className="grid grid-cols-1 gap-2 mb-8">
+                            <div className="grid grid-cols-1 gap-2 mb-4">
                                 <button
                                     onClick={handleFlip}
-                                    className="flex flex-col items-center justify-center p-4 rounded-xl bg-white border border-[#D4C4B7] hover:bg-gray-50 transition-colors shadow-lg"
+                                    className="flex flex-col items-center justify-center p-4 rounded-xl bg-white hover:bg-gray-50 transition-colors shadow-lg"
                                     disabled={isSubmitting}
                                 >
-                                    <span className="text-gray-800 font-medium">정답 보기</span>
+                                    <span className="text-gray-800 font-semibold">정답 보기</span>
                                 </button>
                             </div>
                         </div>
                     ) : (
                         // 뒷면: 난이도 버튼들
                         <div>
-                            <p className="text-center text-gray-600 text-sm mb-4">
+                            <p className="text-center text-gray-600 text-sm mb-2">
                                 난이도에 따른 복습 간격을 선택하세요
                             </p>
-                            <div className="grid grid-cols-4 gap-2 mb-8">
+                            <div className="grid grid-cols-4 gap-2 mb-4">
                                 <button
                                     onClick={() => handleCardAction('again')}
-                                    className="flex flex-col items-center justify-center p-4 rounded-xl bg-red-50 hover:bg-red-100 transition-colors"
+                                    className="flex flex-col items-center justify-center p-4 rounded-xl bg-red-50 hover:bg-red-100 transition-colors relative"
                                     disabled={isSubmitting}
                                 >
-                                    <span className="text-red-500 font-medium">Again</span>
-                                    <span className="text-red-400 text-sm">
+                                    {activeButton === 'again' && (
+                                        <div className="absolute inset-0 flex items-center justify-center bg-red-50/90 backdrop-blur-sm rounded-xl">
+                                            <div className="w-4 h-4 rounded-full bg-red-400 animate-pulse"></div>
+                                        </div>
+                                    )}
+                                    <span className="text-red-700 font-bold">Again</span>
+                                    <span className="text-red-600 text-sm font-bold">
                                         {getNextIntervalPreview(currentCard, 'again')}
                                     </span>
                                 </button>
                                 <button
                                     onClick={() => handleCardAction('hard')}
-                                    className="flex flex-col items-center justify-center p-4 rounded-xl bg-orange-50 hover:bg-orange-100 transition-colors"
+                                    className="flex flex-col items-center justify-center p-4 rounded-xl bg-orange-50 hover:bg-orange-100 transition-colors relative"
                                     disabled={isSubmitting}
                                 >
-                                    <span className="text-orange-500 font-medium">Hard</span>
-                                    <span className="text-orange-400 text-sm">
+                                    {activeButton === 'hard' && (
+                                        <div className="absolute inset-0 flex items-center justify-center bg-orange-50/90 backdrop-blur-sm rounded-xl">
+                                            <div className="w-4 h-4 rounded-full bg-orange-400 animate-pulse"></div>
+                                        </div>
+                                    )}
+                                    <span className="text-orange-700 font-bold">Hard</span>
+                                    <span className="text-orange-600 text-sm font-bold">
                                         {getNextIntervalPreview(currentCard, 'hard')}
                                     </span>
                                 </button>
                                 <button
                                     onClick={() => handleCardAction('good')}
-                                    className="flex flex-col items-center justify-center p-4 rounded-xl bg-green-50 hover:bg-green-100 transition-colors"
+                                    className="flex flex-col items-center justify-center p-4 rounded-xl bg-green-50 hover:bg-green-100 transition-colors relative"
                                     disabled={isSubmitting}
                                 >
-                                    <span className="text-green-500 font-medium">Good</span>
-                                    <span className="text-green-400 text-sm">
+                                    {activeButton === 'good' && (
+                                        <div className="absolute inset-0 flex items-center justify-center bg-green-50/90 backdrop-blur-sm rounded-xl">
+                                            <div className="w-4 h-4 rounded-full bg-green-400 animate-pulse"></div>
+                                        </div>
+                                    )}
+                                    <span className="text-green-700 font-bold">Good</span>
+                                    <span className="text-green-600 text-sm font-bold">
                                         {getNextIntervalPreview(currentCard, 'good')}
                                     </span>
                                 </button>
                                 <button
                                     onClick={() => handleCardAction('easy')}
-                                    className="flex flex-col items-center justify-center p-4 rounded-xl bg-blue-50 hover:bg-blue-100 transition-colors"
+                                    className="flex flex-col items-center justify-center p-4 rounded-xl bg-blue-50 hover:bg-blue-100 transition-colors relative"
                                     disabled={isSubmitting}
                                 >
-                                    <span className="text-blue-500 font-medium">Easy</span>
-                                    <span className="text-blue-400 text-sm">
+                                    {activeButton === 'easy' && (
+                                        <div className="absolute inset-0 flex items-center justify-center bg-blue-50/90 backdrop-blur-sm rounded-xl">
+                                            <div className="w-4 h-4 rounded-full bg-blue-400 animate-pulse"></div>
+                                        </div>
+                                    )}
+                                    <span className="text-blue-700 font-bold">Easy</span>
+                                    <span className="text-blue-600 text-sm font-bold">
                                         {getNextIntervalPreview(currentCard, 'easy')}
                                     </span>
                                 </button>
