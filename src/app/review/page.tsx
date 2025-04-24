@@ -37,6 +37,7 @@ export default function ReviewPage() {
     const [activeButton, setActiveButton] = useState<'again' | 'hard' | 'good' | 'easy' | null>(null)
     const [slideDirection, setSlideDirection] = useState<'right-to-left' | 'flip'>('flip')
     const [isNavigatingBack, setIsNavigatingBack] = useState(false)
+    const [isInitialized, setIsInitialized] = useState(false)
 
     const currentCard = cards[currentCardIndex]
 
@@ -72,6 +73,7 @@ export default function ReviewPage() {
             }
 
             setIsLoading(false)
+            setIsInitialized(true)
         } catch (error) {
             console.error('Error fetching review cards:', error)
             setIsLoading(false)
@@ -369,9 +371,9 @@ export default function ReviewPage() {
                                             <div className="inline-flex items-center justify-center bg-white rounded-full px-3 py-1 border border-gray-200">
                                                 <div className="flex items-center">
                                                     <div className={`w-2 h-2 rounded-full mr-2 ${currentCard?.card_state === 'new' ? 'bg-[#FDFF8C]' :
-                                                            currentCard?.card_state === 'learning' || currentCard?.card_state === 'relearning' ? 'bg-[#B4B6E4]' :
-                                                                currentCard?.card_state === 'review' || currentCard?.card_state === 'graduated' ? 'bg-[#5F4BB6]' :
-                                                                    'bg-gray-400'
+                                                        currentCard?.card_state === 'learning' || currentCard?.card_state === 'relearning' ? 'bg-[#B4B6E4]' :
+                                                            currentCard?.card_state === 'review' || currentCard?.card_state === 'graduated' ? 'bg-[#5F4BB6]' :
+                                                                'bg-gray-400'
                                                         }`}></div>
                                                     <div className="text-sm font-medium text-gray-800">
                                                         {currentCard?.card_state === 'new' ? '새 카드' :
@@ -442,61 +444,57 @@ export default function ReviewPage() {
                             <div className="grid grid-cols-4 gap-2 mb-4">
                                 <button
                                     onClick={() => handleCardAction('again')}
-                                    className="flex flex-col items-center justify-center p-4 rounded-xl bg-red-50 hover:bg-red-100 transition-colors relative"
+                                    className={`flex flex-col items-center justify-center p-4 rounded-xl ${isInitialized ? 'bg-red-100 hover:bg-red-200' : 'bg-red-100'} transition-colors relative`}
                                     disabled={isSubmitting}
                                 >
                                     {activeButton === 'again' && (
-                                        <div className="absolute inset-0 flex items-center justify-center bg-red-50/90 backdrop-blur-sm rounded-xl">
-                                            <div className="w-4 h-4 rounded-full bg-red-400 animate-pulse"></div>
+                                        <div className="absolute inset-0 flex items-center justify-center bg-red-100/90 backdrop-blur-sm rounded-xl">
                                         </div>
                                     )}
-                                    <span className="text-red-700 font-bold">Again</span>
-                                    <span className="text-red-600 text-sm font-bold">
+                                    <span className="text-black/70 font-semibold">Again</span>
+                                    <span className="text-black/70 text-sm font-normal">
                                         {getNextIntervalPreview(currentCard, 'again')}
                                     </span>
                                 </button>
                                 <button
                                     onClick={() => handleCardAction('hard')}
-                                    className="flex flex-col items-center justify-center p-4 rounded-xl bg-orange-50 hover:bg-orange-100 transition-colors relative"
+                                    className={`flex flex-col items-center justify-center p-4 rounded-xl ${isInitialized ? 'bg-yellow-100 hover:bg-yellow-200' : 'bg-yellow-100'} transition-colors relative`}
                                     disabled={isSubmitting}
                                 >
                                     {activeButton === 'hard' && (
-                                        <div className="absolute inset-0 flex items-center justify-center bg-orange-50/90 backdrop-blur-sm rounded-xl">
-                                            <div className="w-4 h-4 rounded-full bg-orange-400 animate-pulse"></div>
+                                        <div className="absolute inset-0 flex items-center justify-center bg-yellow-100/90 backdrop-blur-sm rounded-xl">
                                         </div>
                                     )}
-                                    <span className="text-orange-700 font-bold">Hard</span>
-                                    <span className="text-orange-600 text-sm font-bold">
+                                    <span className="text-black/70 font-semibold">Hard</span>
+                                    <span className="text-black/70 text-sm font-normal">
                                         {getNextIntervalPreview(currentCard, 'hard')}
                                     </span>
                                 </button>
                                 <button
                                     onClick={() => handleCardAction('good')}
-                                    className="flex flex-col items-center justify-center p-4 rounded-xl bg-green-50 hover:bg-green-100 transition-colors relative"
+                                    className={`flex flex-col items-center justify-center p-4 rounded-xl ${isInitialized ? 'bg-green-100 hover:bg-green-200' : 'bg-green-100'} transition-colors relative`}
                                     disabled={isSubmitting}
                                 >
                                     {activeButton === 'good' && (
-                                        <div className="absolute inset-0 flex items-center justify-center bg-green-50/90 backdrop-blur-sm rounded-xl">
-                                            <div className="w-4 h-4 rounded-full bg-green-400 animate-pulse"></div>
+                                        <div className="absolute inset-0 flex items-center justify-center bg-green-100/90 backdrop-blur-sm rounded-xl">
                                         </div>
                                     )}
-                                    <span className="text-green-700 font-bold">Good</span>
-                                    <span className="text-green-600 text-sm font-bold">
+                                    <span className="text-black/70 font-semibold">Good</span>
+                                    <span className="text-black/70 text-sm font-normal">
                                         {getNextIntervalPreview(currentCard, 'good')}
                                     </span>
                                 </button>
                                 <button
                                     onClick={() => handleCardAction('easy')}
-                                    className="flex flex-col items-center justify-center p-4 rounded-xl bg-blue-50 hover:bg-blue-100 transition-colors relative"
+                                    className={`flex flex-col items-center justify-center p-4 rounded-xl ${isInitialized ? 'bg-blue-100 hover:bg-blue-200' : 'bg-blue-100'} transition-colors relative`}
                                     disabled={isSubmitting}
                                 >
                                     {activeButton === 'easy' && (
-                                        <div className="absolute inset-0 flex items-center justify-center bg-blue-50/90 backdrop-blur-sm rounded-xl">
-                                            <div className="w-4 h-4 rounded-full bg-blue-400 animate-pulse"></div>
+                                        <div className="absolute inset-0 flex items-center justify-center bg-blue-100/90 backdrop-blur-sm rounded-xl">
                                         </div>
                                     )}
-                                    <span className="text-blue-700 font-bold">Easy</span>
-                                    <span className="text-blue-600 text-sm font-bold">
+                                    <span className="text-black/70 font-semibold">Easy</span>
+                                    <span className="text-black/70 text-sm font-normal">
                                         {getNextIntervalPreview(currentCard, 'easy')}
                                     </span>
                                 </button>
