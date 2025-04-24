@@ -1,0 +1,21 @@
+    // cloud-functions/process-pipeline/tsconfig.json
+    {
+      "compilerOptions": {
+        "target": "es2017", // Node.js 런타임과 호환되는 버전
+        "module": "NodeNext",
+        "moduleResolution": "NodeNext",
+        "outDir": "./dist", // 컴파일된 JavaScript 파일이 저장될 디렉토리
+        "rootDir": "./src", // TypeScript 소스 파일이 있는 디렉토리
+        "strict": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true
+      },
+      "include": [
+        "src/**/*"
+      ], // 컴파일할 파일 범위
+      "exclude": [
+        "node_modules",
+        "**/*.spec.ts"
+      ]
+    }

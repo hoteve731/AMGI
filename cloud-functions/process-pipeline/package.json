@@ -1,0 +1,25 @@
+{
+  "name": "process-pipeline",
+  "version": "1.0.0",
+  "description": "",
+  "main": "dist/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@google-cloud/functions-framework": "^3.5.1",
+    "@supabase/supabase-js": "^2.49.4",
+    "langchain": "^0.3.23",
+    "openai": "^4.95.1",
+    "p-limit": "^6.2.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.1",
+    "@types/node": "^22.14.1",
+    "typescript": "^5.8.3"
+  }
+}

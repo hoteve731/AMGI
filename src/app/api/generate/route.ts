@@ -77,7 +77,7 @@ export async function POST(req: Request) {
         }
 
         // 2. 콘텐츠 저장
-        let contentId
+        let contentId: string | undefined; // 타입을 명시적으로 지정
         try {
             const { data: contentData, error: contentError } = await supabase
                 .from('contents')
@@ -95,8 +95,9 @@ export async function POST(req: Request) {
             if (contentError) throw contentError
             contentId = contentData[0].id
 
-            // 백그라운드 파이프라인 트리거 (Fire-and-forget)
-            // /api/process/pipeline 엔드포인트를 호출합니다.
+            // --- 백그라운드 파이프라인 트리거 (Fire-and-forget) ---
+            // 기존 로컬 API 호출은 주석 처리 또는 삭제
+            /*
             fetch(new URL('/api/process/pipeline', req.url).toString(), {
                 method: 'POST',
                 headers: {
@@ -105,12 +106,74 @@ export async function POST(req: Request) {
                 },
                 body: JSON.stringify({ contentId, text, additionalMemory }),
             }).catch(err => {
-                // 호출 자체에서 오류가 발생할 경우 로깅
-                console.error('[Generate API] Failed to trigger processing pipeline:', err);
-                // 추가적인 오류 처리 (예: 콘텐츠 상태 업데이트)
+                console.error('[Generate API] Failed to trigger local processing pipeline:', err);
+            });
+            */
+
+            // 새로 배포한 Google Cloud Function 호출
+            const gcfUrl = 'https://asia-northeast3-amgi-454605.cloudfunctions.net/processPipeline';
+            console.log(`[Generate API] Calling GCF for contentId: ${contentId} with userId: ${session.user.id}`);
+
+            // 요청 데이터 준비 및 로깅
+            const requestData = { contentId, text, additionalMemory, userId: session.user.id, title };
+            console.log(`[Generate API] Request data summary: contentId=${contentId}, textLength=${text.length}, userId=${session.user.id}, title=${title}`);
+
+            fetch(gcfUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    // 중요: GCF가 --allow-unauthenticated 상태이므로 별도 인증 헤더 불필요
+                    // 만약 GCF에 인증을 추가한다면 여기에 해당 인증 정보 추가 필요 (예: Authorization 헤더)
+                },
+                body: JSON.stringify(requestData),
+            }).then(async response => {
+                // GCF 응답 상태 확인 (선택 사항, fire-and-forget이므로 깊게 처리 안 함)
+                if (!response.ok) {
+                    console.warn(`[Generate API] GCF trigger request for ${contentId} returned status: ${response.status}`);
+
+                    // 응답 본문 확인 (오류 진단용)
+                    try {
+                        const responseText = await response.text();
+                        console.warn(`[Generate API] GCF error response body: ${responseText}`);
+
+                        // 오류 상태에 따라 콘텐츠 상태 업데이트 (선택적)
+                        const { error: updateError } = await supabase
+                            .from('contents')
+                            .update({ processing_status: 'trigger_failed' })
+                            .eq('id', contentId);
+
+                        if (updateError) {
+                            console.error(`[Generate API] Failed to update content status to trigger_failed: ${updateError.message}`);
+                        }
+                    } catch (readError) {
+                        console.error(`[Generate API] Failed to read GCF error response: ${readError}`);
+                    }
+                } else {
+                    // 성공 응답 로깅
+                    try {
+                        const responseData = await response.json();
+                        console.log(`[Generate API] GCF trigger successful for ${contentId}. Response: ${JSON.stringify(responseData)}`);
+                    } catch (parseError) {
+                        console.log(`[Generate API] GCF trigger successful for ${contentId}, but failed to parse response: ${parseError}`);
+                    }
+                }
+            }).catch(err => {
+                // 네트워크 오류 등 fetch 호출 자체의 오류 로깅
+                console.error(`[Generate API] Failed to trigger GCF processing pipeline for ${contentId}:`, err);
+
+                // 네트워크 오류 시 콘텐츠 상태 업데이트 (선택적)
+                supabase
+                    .from('contents')
+                    .update({ processing_status: 'network_error' })
+                    .eq('id', contentId)
+                    .then(({ error }) => {
+                        if (error) {
+                            console.error(`[Generate API] Failed to update content status to network_error: ${error.message}`);
+                        }
+                    });
             });
 
-            console.log(`[Generate API] Triggered processing pipeline for contentId: ${contentId}`)
+            console.log(`[Generate API] Triggered GCF processing pipeline for contentId: ${contentId}`);
 
         } catch (error) {
             console.error('Content database error:', error)
