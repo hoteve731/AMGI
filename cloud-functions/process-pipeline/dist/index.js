@@ -200,7 +200,7 @@ async function updateFinalContentStatus(supabase, contentId) {
     }
 }
 // === 메인 HTTP 핸들러 - 로직 일부 복원 ===
-functions.http('processPipeline', async (req, res) => {
+functions.http('processTextPipeline', async (req, res) => {
     // CORS, Method Check, Initialization Check (이전과 동일)
     res.set('Access-Control-Allow-Origin', '*');
     res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');

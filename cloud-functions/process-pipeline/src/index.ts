@@ -185,7 +185,7 @@ async function updateFinalContentStatus(supabase: SupabaseClient, contentId: str
 }
 
 // === 메인 HTTP 핸들러 - 로직 일부 복원 ===
-functions.http('processPipeline', async (req, res) => {
+functions.http('processTextPipeline', async (req, res) => {
     // CORS, Method Check, Initialization Check (이전과 동일)
     res.set('Access-Control-Allow-Origin', '*');
     res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -348,7 +348,7 @@ functions.http('processPipeline', async (req, res) => {
                     const chunkCompletion = await openai.chat.completions.create({
                         model: "gpt-4.1-mini-2025-04-14",
                         messages: [{ role: "system", content: chunksPrompt }, { role: "user", content: originalText }],
-                        temperature: 0, 
+                        temperature: 0,
                         max_tokens: 1000,
                     });
 
@@ -436,7 +436,7 @@ async function generateGroupsFromFullText(openai: OpenAI, fullText: string, addi
         const groupCompletion = await openai.chat.completions.create({
             model: "gpt-4o-mini-2024-07-18",  // 기존 모델 유지
             messages: [{ role: "system", content: groupsPrompt }, { role: "user", content: fullText }],
-            temperature: 0, 
+            temperature: 0,
             max_tokens: 3000,  // 더 긴 응답 허용
         });
 
