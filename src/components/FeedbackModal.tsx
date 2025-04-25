@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createPortal } from 'react-dom'
+import { ChatBubbleOvalLeftEllipsisIcon, XMarkIcon } from '@heroicons/react/24/outline';
 
 type FeedbackModalProps = {
   isOpen: boolean
@@ -15,14 +16,14 @@ export default function FeedbackModal({
 }: FeedbackModalProps) {
   // 실제 모달 표시 상태를 관리하는 상태 추가
   const [isVisible, setIsVisible] = useState(isOpen)
-  
+
   // isOpen prop이 변경될 때 isVisible 상태 업데이트
   useEffect(() => {
     if (isOpen) {
       setIsVisible(true)
     }
   }, [isOpen])
-  
+
   // 모달 닫기 함수 - 애니메이션 후 onClose 호출
   const handleClose = () => {
     setIsVisible(false)
@@ -50,13 +51,13 @@ export default function FeedbackModal({
 
   // document 객체를 클라이언트 사이드에서만 사용하기 위한 상태 추가
   const [isMounted, setIsMounted] = useState(false)
-  
+
   // 컴포넌트가 마운트된 후에만 포털 사용
   useEffect(() => {
     setIsMounted(true)
     return () => setIsMounted(false)
   }, [])
-  
+
   // 모달 컨텐츠 정의
   const modalContent = (
     <AnimatePresence mode="wait">
@@ -78,31 +79,27 @@ export default function FeedbackModal({
             className="bg-white rounded-2xl w-full max-w-md max-h-[80vh] flex flex-col overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-  
+
             <div className="flex justify-between items-center p-6 border-b border-gray-100 sticky top-0 bg-white z-10">
               <h3 className="text-lg font-semibold flex items-center gap-1.5">
                 <div className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center">
-                  <svg className="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
+                  <ChatBubbleOvalLeftEllipsisIcon className="w-3.5 h-3.5 text-gray-500" />
                 </div>
                 오류/피드백 보내기
               </h3>
-              <button 
+              <button
                 onClick={handleClose}
                 className="text-gray-500 hover:text-gray-700"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                <XMarkIcon className="w-5 h-5" />
               </button>
             </div>
-            
+
             <div className="p-6 overflow-y-auto">
               <p className="text-gray-600 mb-4">
                 아래의 방법으로 오류 제보나 피드백을 보내주세요. 베타 테스트에 참여해주셔서 감사합니다!
               </p>
-              
+
               <div className="flex gap-3 mb-2">
                 <button
                   onClick={handleSendInquiryEmail}
@@ -129,7 +126,7 @@ export default function FeedbackModal({
       )}
     </AnimatePresence>
   )
-  
+
   // 클라이언트 사이드에서만 createPortal 사용
   return isMounted ? createPortal(modalContent, document.body) : null
 }
