@@ -32,49 +32,10 @@ export default function LoginButton() {
 
     return (
         <div className="space-y-4">
-            {/* 큰 로딩 애니메이션 (로딩 중일 때만 표시) */}
-            {isLoading && (
-                <div className="flex justify-center items-center mb-4">
-                    <div className="relative w-16 h-16">
-                        {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
-                            <motion.div
-                                key={i}
-                                className="absolute w-2.5 h-2.5 bg-[#7969F7] rounded-full"
-                                style={{
-                                    left: '50%',
-                                    top: '50%',
-                                    transform: 'translate(-50%, -50%)',
-                                }}
-                                animate={{
-                                    x: [
-                                        '0px',
-                                        `${Math.cos(i * (2 * Math.PI / 8)) * 24}px`,
-                                        '0px'
-                                    ],
-                                    y: [
-                                        '0px',
-                                        `${Math.sin(i * (2 * Math.PI / 8)) * 24}px`,
-                                        '0px'
-                                    ],
-                                }}
-                                transition={{
-                                    duration: 1.5,
-                                    repeat: Infinity,
-                                    delay: i * 0.1,
-                                    ease: [0.4, 0, 0.2, 1],
-                                    times: [0, 0.5, 1]
-                                }}
-                            />
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            {/* 기존 버튼 (작은 로딩 애니메이션 포함) */}
             <button
                 onClick={handleLogin}
                 disabled={isLoading}
-                className="w-full flex items-center justify-center gap-3 px-6 py-4 text-gray-700 bg-white rounded-xl border border-gray-200 hover:bg-gray-50 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 shadow-sm hover:shadow disabled:opacity-70 disabled:cursor-not-allowed"
+                className="w-full flex items-center justify-center gap-3 px-6 py-4 text-gray-700 bg-white rounded-xl border border-gray-200 hover:bg-gray-50 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#7969F7] transition-all duration-200 shadow-sm hover:shadow disabled:opacity-70 disabled:cursor-not-allowed"
             >
                 {isLoading ? (
                     <div className="relative w-6 h-6">
@@ -133,13 +94,6 @@ export default function LoginButton() {
                     {isLoading ? '로그인 중...' : 'Google로 계속하기'}
                 </span>
             </button>
-
-            {/* 로딩 메시지 (로딩 중일 때만 표시) */}
-            {isLoading && (
-                <p className="text-center text-sm text-gray-600 mt-2 animate-pulse">
-                    Google 로그인 페이지로 이동 중입니다...
-                </p>
-            )}
         </div>
     )
 }

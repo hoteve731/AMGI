@@ -14,24 +14,24 @@ export async function POST() {
     }
 
     // 쿠키 삭제를 위한 응답 설정
-    const response = NextResponse.json({ 
-      message: 'Successfully logged out' 
+    const response = NextResponse.json({
+      message: 'Successfully logged out'
     })
 
     // 모든 Supabase 관련 쿠키 삭제
-    response.cookies.set('supabase-auth-token', '', { 
+    response.cookies.set('supabase-auth-token', '', {
       expires: new Date(0),
-      path: '/' 
+      path: '/'
     })
-    
-    response.cookies.set('sb-refresh-token', '', { 
+
+    response.cookies.set('sb-refresh-token', '', {
       expires: new Date(0),
-      path: '/' 
+      path: '/'
     })
-    
-    response.cookies.set('sb-access-token', '', { 
+
+    response.cookies.set('sb-access-token', '', {
       expires: new Date(0),
-      path: '/' 
+      path: '/'
     })
 
     return response
