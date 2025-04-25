@@ -10,7 +10,7 @@ export default function BetaBanner() {
     <>
       {/* 베타 공지 배너 */}
       <div className="px-4 pt-4 pb-1">
-        <div className="bg-gray-100 rounded-2xl p-4 border-2 border-[#FDFF8C]" style={{ minHeight: '80px' }}>
+        <div className="bg-gray-100 rounded-2xl p-4 border-2" style={{ minHeight: '80px', borderColor: '#5F4BB6' }}>
           <div className="flex flex-col h-full">
             <div className="mb-3">
               <h3 className="font-bold text-xl text-gray-800">⚠️ 베타 테스트 공지</h3>
@@ -23,7 +23,7 @@ export default function BetaBanner() {
                 onClick={() => setShowFeedbackModal(true)}
                 className="text-sm text-[#7969F7] font-semibold flex items-center hover:text-[#5F4BB6] transition-colors"
               >
-                오류/피드백 알려주기 
+                오류/피드백 보내기 
                 <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
