@@ -5,6 +5,7 @@ import ReviewDashboard from '@/components/ReviewDashboard'
 import MenuButton from '@/components/MenuButton'
 import ContentList from '@/components/ContentList'
 import BottomSheet from '@/components/BottomSheet'
+import BetaBanner from '@/components/BetaBanner'
 
 export const dynamic = 'force-dynamic'
 
@@ -31,6 +32,9 @@ export default async function Home() {
       <div className="pt-4 px-4 pb-0">
         <ReviewDashboard userName={user?.user_metadata.full_name || user?.email} />
       </div>
+
+      {/* 베타 공지 배너 */}
+      <BetaBanner />
 
       <div className="flex-1 overflow-hidden">
         <ContentList />

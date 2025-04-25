@@ -27,7 +27,7 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
   const [isNavigating, setIsNavigating] = useState(false);
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
   const [expandedContents, setExpandedContents] = useState<string[]>([]);
-  const [contentGroups, setContentGroups] = useState<{[key: string]: any[]}>({});
+  const [contentGroups, setContentGroups] = useState<{ [key: string]: any[] }>({});
 
   const { data, error, isLoading } = useSWR<{ contents: any[] }>('/api/contents', fetcher, {
     refreshInterval: 0,  // 자동 폴링 없음
@@ -79,6 +79,20 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
     setShowSubscriptionModal(false); // 모달 닫기
   };
 
+  // 1:1 문의 이메일 보내기
+  const handleSendInquiryEmail = () => {
+    const emailAddress = 'fbghtks1000@gmail.com';
+    const subject = 'LOOPA 1:1 문의';
+    const body = '문의 내용을 작성해 주세요. 최대한 빠르게 답변 드리겠습니다.';
+
+    window.location.href = `mailto:${emailAddress}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  };
+
+  // 카카오톡 채팅하기
+  const handleKakaoChat = () => {
+    window.open('https://open.kakao.com/me/Loopa', '_blank');
+  };
+
   // 구독 모달 표시 이벤트 리스너
   useEffect(() => {
     const handleShowSubscriptionModal = () => {
@@ -97,7 +111,7 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
     } else {
       // 펼치기
       setExpandedContents([...expandedContents, contentId]);
-      
+
       // 이미 그룹 데이터가 있는지 확인
       if (!contentGroups[contentId] || contentGroups[contentId].length === 0) {
         try {
@@ -107,15 +121,15 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
             console.error(`Failed to fetch groups for content ${contentId}:`, response.status);
             return;
           }
-          
+
           const data = await response.json();
           console.log(`Groups for content ${contentId}:`, data);
-          
+
           if (data.content && data.content.id === contentId) {
             // 그룹 데이터 저장 - data.content.groups에서 가져옴
             const groups = data.content.groups || [];
             console.log(`Extracted groups for content ${contentId}:`, groups);
-            
+
             setContentGroups(prev => ({
               ...prev,
               [contentId]: groups.map((group: any) => ({
@@ -300,31 +314,66 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
             </nav>
 
             {/* 프로그레스 바 및 구독 버튼 */}
-            <div className="p-4 border-t border-gray-200 bg-white/60 backdrop-blur-sm">
-              <button
-                onClick={handleSubscriptionClick}
-                className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-[#7969F7] to-[#9F94F8] text-white py-2.5 px-4 rounded-lg font-medium shadow-md hover:shadow-lg transition-all duration-200 active:scale-[0.98] mb-3"
-              >
-                <SparklesIcon className="w-5 h-5" />
-                <span>유료 구독하기</span>
-              </button>
-
-              <p className="text-gray-700 text-sm text-center mb-3">
-                더 많은 기능과 무제한 액세스를 누리세요.
-              </p>
-
-              <div className="mb-2">
-                <div className="flex items-center gap-1.5 mb-1.5">
-                  <DocumentTextIcon className="w-4 h-4 text-gray-600" />
-                  <span className="text-sm font-medium text-gray-700">
-                    <span className="font-bold">{contentCount}</span>/{MAX_FREE_CONTENTS}개 콘텐츠 무료
-                  </span>
+            <div className="p-4 border-t border-gray-200 bg-white/60 backdrop-blur-sm space-y-4">
+              {/* 문의 버튼 그룹 - 컸테이너 1 */}
+              <div className="bg-white/80 rounded-xl p-3">
+                <h3 className="text-sm font-medium text-gray-700 mb-2 px-1 flex items-center gap-1.5">
+                  <div className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center">
+                    <svg className="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  문의하기
+                </h3>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleSendInquiryEmail}
+                    className="flex-1 flex items-center justify-center gap-1.5 bg-gray-50 border border-gray-300 text-gray-700 py-2 px-3 rounded-lg font-medium hover:bg-gray-100 transition-all duration-200 active:scale-[0.98]"
+                  >
+                    <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    <span className="text-sm">이메일</span>
+                  </button>
+                  <button
+                    onClick={handleKakaoChat}
+                    className="flex-1 flex items-center justify-center gap-1.5 bg-gray-50 border border-gray-300 text-gray-700 py-2 px-3 rounded-lg font-medium hover:bg-gray-100 transition-all duration-200 active:scale-[0.98]"
+                  >
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 3C6.5 3 2 6.5 2 11c0 2.9 1.9 5.4 4.7 6.9.2.1.3.3.3.5 0 .2-.1.3-.1.5-.1.3-.3 1.1-.4 1.3 0 0 0 .1-.1.1v.1c0 .1 0 .1.1.1h.1c.1 0 1.2-.4 1.9-.7.3-.1.4-.1.6-.2.3.1.7.1 1 .1 5.5 0 10-3.5 10-8 0-4.5-4.5-8-10-8z" />
+                    </svg>
+                    <span className="text-sm">카카오톡</span>
+                  </button>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2.5">
-                  <div
-                    className={`h-2.5 rounded-full ${isLimitReached ? 'bg-red-500' : 'bg-[#7969F7]'}`}
-                    style={{ width: `${Math.min(percentUsed, 100)}%` }}
-                  ></div>
+              </div>
+
+              {/* 구독 및 프로그레스 바 - 컸테이너 2 */}
+              <div className="bg-white/80 rounded-xl p-3">
+                <button
+                  onClick={handleSubscriptionClick}
+                  className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-[#7969F7] to-[#9F94F8] text-white py-2.5 px-4 rounded-lg font-medium shadow-md hover:shadow-lg transition-all duration-200 active:scale-[0.98] mb-3"
+                >
+                  <SparklesIcon className="w-5 h-5" />
+                  <span>유료 구독하기</span>
+                </button>
+
+                <p className="text-gray-700 text-sm text-center mb-3">
+                  더 많은 기능과 <br></br>무제한 액세스를 누리세요.
+                </p>
+
+                <div>
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <DocumentTextIcon className="w-4 h-4 text-gray-600" />
+                    <span className="text-sm font-medium text-gray-700">
+                      <span className="font-bold">{contentCount}</span>/{MAX_FREE_CONTENTS}개 콘텐츠 무료
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2.5">
+                    <div
+                      className={`h-2.5 rounded-full ${isLimitReached ? 'bg-red-500' : 'bg-[#7969F7]'}`}
+                      style={{ width: `${Math.min(percentUsed, 100)}%` }}
+                    ></div>
+                  </div>
                 </div>
               </div>
             </div>
