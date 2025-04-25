@@ -6,7 +6,7 @@ import Image from "next/image";
 import useSWR from 'swr';
 import { useRouter } from 'next/navigation';
 import LoadingOverlay from "./LoadingOverlay";
-import { FolderIcon, ChevronLeftIcon, DocumentTextIcon } from "@heroicons/react/24/outline";
+import { FolderIcon, ChevronLeftIcon, DocumentTextIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 import { SparklesIcon } from "@heroicons/react/24/solid";
 
 // ContentTabs와 동일한 fetcher 함수 사용
@@ -26,6 +26,8 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
   const router = useRouter();
   const [isNavigating, setIsNavigating] = useState(false);
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+  const [expandedContents, setExpandedContents] = useState<string[]>([]);
+  const [contentGroups, setContentGroups] = useState<{[key: string]: any[]}>({});
 
   const { data, error, isLoading } = useSWR<{ contents: any[] }>('/api/contents', fetcher, {
     refreshInterval: 0,  // 자동 폴링 없음
@@ -47,6 +49,13 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
       console.log('SideMenu isLoading:', isLoading);
     }
   }, [open, data, error, isLoading]);
+
+  // 별도의 useEffect로 contents 로깅
+  useEffect(() => {
+    if (open && contents.length > 0) {
+      console.log('Contents with groups:', contents);
+    }
+  }, [open, contents]);
 
   const handleSelectContent = (contentId: string) => {
     setIsNavigating(true);
@@ -81,6 +90,56 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
     return () => window.removeEventListener('showSubscriptionModal', handleShowSubscriptionModal);
   }, []);
 
+  const toggleContentExpand = async (contentId: string) => {
+    if (expandedContents.includes(contentId)) {
+      // 접기
+      setExpandedContents(expandedContents.filter(id => id !== contentId));
+    } else {
+      // 펼치기
+      setExpandedContents([...expandedContents, contentId]);
+      
+      // 이미 그룹 데이터가 있는지 확인
+      if (!contentGroups[contentId] || contentGroups[contentId].length === 0) {
+        try {
+          // 해당 콘텐츠의 그룹 데이터 가져오기
+          const response = await fetch(`/api/contents?id=${contentId}`, { credentials: 'include' });
+          if (!response.ok) {
+            console.error(`Failed to fetch groups for content ${contentId}:`, response.status);
+            return;
+          }
+          
+          const data = await response.json();
+          console.log(`Groups for content ${contentId}:`, data);
+          
+          if (data.content && data.content.id === contentId) {
+            // 그룹 데이터 저장 - data.content.groups에서 가져옴
+            const groups = data.content.groups || [];
+            console.log(`Extracted groups for content ${contentId}:`, groups);
+            
+            setContentGroups(prev => ({
+              ...prev,
+              [contentId]: groups.map((group: any) => ({
+                ...group,
+                active_card_count: group.chunks_count || 0 // API가 반환하는 chunks_count 사용
+              }))
+            }));
+          }
+        } catch (error) {
+          console.error(`Error fetching groups for content ${contentId}:`, error);
+        }
+      }
+    }
+  };
+
+  const handleSelectGroup = (contentId: string, groupId: string, e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    setIsNavigating(true);
+    router.push(`/content/${contentId}/groups/${groupId}`);
+    setTimeout(() => {
+      onClose();
+    }, 300);
+  };
+
   return (
     <>
       {isNavigating && <LoadingOverlay />}
@@ -92,7 +151,7 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
             animate={{ x: 0 }}
             exit={{ x: "-100%" }}
             transition={{ type: "tween", duration: 0.35 }}
-            className="fixed top-0 left-0 h-full z-[9999] w-2/3 max-w-[340px] bg-gradient-to-b from-[#F8F4EF] to-[#E8D9C5] shadow-2xl flex flex-col"
+            className="fixed top-0 left-0 h-full z-[9999] w-3/4 max-w-[340px] bg-gradient-to-b from-[#F8F4EF] to-[#E8D9C5] shadow-2xl flex flex-col"
           >
             {/* Header */}
             <div className="flex items-center justify-between h-16 px-5 bg-[#F8F4EF]">
@@ -159,35 +218,81 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
                         delay: index * 0.05,
                         ease: [0.25, 0.1, 0.25, 1.0]
                       }}
+                      className="overflow-hidden"
                     >
                       <button
-                        className="w-full text-left p-3 rounded-lg hover:bg-white/90 transition-all duration-200 active:scale-[0.98] bg-white/80 shadow-lg/60 backdrop-blur-sm"
-                        onClick={() => handleSelectContent(content.id)}
+                        className="w-full text-left p-3 rounded-lg hover:bg-white/90 transition-all duration-200 active:scale-[0.98] bg-white/80 shadow-lg/60 backdrop-blur-sm flex items-center"
+                        onClick={() => toggleContentExpand(content.id)}
                       >
-                        <div className="line-clamp-2 font-medium text-gray-800 text-sm mb-3">{content.title}</div>
-                        <div className="text-xs text-gray-600 mt-1 flex gap-3">
-                          <span className="inline-flex items-center gap-1">
+                        <motion.div
+                          animate={{ rotate: expandedContents.includes(content.id) ? 90 : 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="mr-2 flex-shrink-0"
+                        >
+                          <ChevronRightIcon className="w-5 h-5 text-gray-600" />
+                        </motion.div>
+                        <div className="flex-1">
+                          <div className="line-clamp-2 font-medium text-gray-800 text-sm mb-2">{content.title}</div>
+                          <div className="text-xs text-gray-600 flex items-center gap-1">
                             <FolderIcon className="w-4 h-4 text-[#7969F7]" />
-                            그룹 {content.groups_count ?? 0}
-                          </span>
-                          <span className="inline-flex items-center gap-1">
-                            <svg
-                              className="w-4 h-4 text-[#F59E42]"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                              />
-                            </svg>
-                            카드 {content.chunks_count ?? 0}
-                          </span>
+                            <span>그룹 {content.groups_count ?? 0}개</span>
+                          </div>
                         </div>
                       </button>
+
+                      {/* 그룹 목록 */}
+                      <AnimatePresence>
+                        {expandedContents.includes(content.id) && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="overflow-hidden"
+                          >
+                            <div className="pl-8 mt-3 space-y-3">
+                              {contentGroups[content.id] && contentGroups[content.id].length > 0 ? (
+                                contentGroups[content.id].map((group: any) => (
+                                  <button
+                                    key={group.id}
+                                    className="w-full text-left p-3 rounded-lg bg-white/70 hover:bg-white/80 transition-all duration-200"
+                                    onClick={(e) => handleSelectGroup(content.id, group.id, e)}
+                                  >
+                                    <div className="mb-1.5">
+                                      <div className="line-clamp-1 text-sm font-medium text-gray-700">{group.title}</div>
+                                    </div>
+                                    <div className="text-xs text-gray-500 flex items-center gap-1">
+                                      <svg
+                                        className="w-3 h-3 text-[#F59E42]"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                      >
+                                        <path
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                          strokeWidth={1.5}
+                                          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                        />
+                                      </svg>
+                                      <span>카드 {group.active_card_count ?? 0}</span>
+                                    </div>
+                                  </button>
+                                ))
+                              ) : (
+                                <div className="text-xs text-gray-500 p-3 text-center">
+                                  {contentGroups[content.id] === undefined ? (
+                                    <div className="flex justify-center items-center py-2">
+                                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#9F94F8]"></div>
+                                      <span className="ml-2">그룹 로딩 중...</span>
+                                    </div>
+                                  ) : '그룹이 없습니다.'}
+                                </div>
+                              )}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </motion.li>
                   ))}
                 </ul>
