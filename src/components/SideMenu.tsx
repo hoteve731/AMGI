@@ -313,11 +313,11 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
             </nav>
 
             {/* 프로그레스 바 및 구독 버튼 */}
-            <div className="p-4 border-t border-gray-200 bg-white/60 backdrop-blur-sm space-y-4">
+            <div className="p-4 bg-white/0 backdrop-blur-sm space-y-4">
 
 
               {/* 구독 및 프로그레스 바 */}
-              <div className="bg-white/80 rounded-xl p-3">
+              <div className="bg-white/80 backdrop-blur-sm rounded-xl p-3">
                 <button
                   onClick={handleSubscriptionClick}
                   className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-[#7969F7] to-[#9F94F8] text-white py-2.5 px-4 rounded-lg font-medium shadow-md hover:shadow-lg transition-all duration-200 active:scale-[0.98] mb-3"

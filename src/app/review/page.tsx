@@ -171,6 +171,7 @@ export default function ReviewPage() {
         setActiveButton(result)
         setShowCheckAnimation(true)
         setIsSubmitting(true)
+        setSlideDirection('right-to-left') // Set slide direction for next card animation
 
         // Hide check animation after 500ms
         setTimeout(() => {
@@ -330,8 +331,8 @@ export default function ReviewPage() {
                     {currentCard?.content_groups?.title || '복습'}
                 </h1>
 
-                 {/* 상단 여백 추가 */}
-                 <div className="h-6"></div>
+                {/* 상단 여백 추가 */}
+                <div className="h-6"></div>
 
                 {/* 카드 진행 상태 태그 - 그룹 타이틀 아래 중앙에 배치 */}
                 <div className="flex justify-center mb-1">
@@ -342,7 +343,7 @@ export default function ReviewPage() {
                     </div>
                 </div>
 
-                
+
                 <div className="h-4"></div>
 
                 {/* 카드 표시 영역 */}
@@ -475,7 +476,7 @@ export default function ReviewPage() {
                                     <div className="text-xl mb-1">❌</div>
                                     <span className="text-black/70 text-sm font-semibold">Forgotten</span>
                                     <span className="text-black/70 text-xs font-normal">
-                                        {getNextIntervalPreview(currentCard, 'again')}
+                                        {getNextIntervalPreview(currentCard, 'again')} 후 복습
                                     </span>
                                 </button>
                                 <button
@@ -501,7 +502,7 @@ export default function ReviewPage() {
                                     <div className="text-xl mb-1">😐</div>
                                     <span className="text-black/70 text-sm font-semibold">Recalled partially</span>
                                     <span className="text-black/70 text-xs font-normal">
-                                        {getNextIntervalPreview(currentCard, 'hard')}
+                                        {getNextIntervalPreview(currentCard, 'hard')} 후 복습
                                     </span>
                                 </button>
                                 <button
@@ -527,7 +528,7 @@ export default function ReviewPage() {
                                     <div className="text-xl mb-1">😄</div>
                                     <span className="text-black/70 text-sm font-semibold">Recalled with effort</span>
                                     <span className="text-black/70 text-xs font-normal">
-                                        {getNextIntervalPreview(currentCard, 'good')}
+                                        {getNextIntervalPreview(currentCard, 'good')} 후 복습
                                     </span>
                                 </button>
                                 <button
@@ -553,7 +554,7 @@ export default function ReviewPage() {
                                     <div className="text-xl mb-1">👑</div>
                                     <span className="text-black/70 text-sm font-semibold">Immediately</span>
                                     <span className="text-black/70 text-xs font-normal">
-                                        {getNextIntervalPreview(currentCard, 'easy')}
+                                        {getNextIntervalPreview(currentCard, 'easy')} 후 복습
                                     </span>
                                 </button>
                             </div>
