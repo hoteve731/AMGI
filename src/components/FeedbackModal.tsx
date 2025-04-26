@@ -82,10 +82,7 @@ export default function FeedbackModal({
 
             <div className="flex justify-between items-center p-6 border-b border-gray-100 sticky top-0 bg-white z-10">
               <h3 className="text-lg font-semibold flex items-center gap-1.5">
-                <div className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center">
-                  <ChatBubbleOvalLeftEllipsisIcon className="w-3.5 h-3.5 text-gray-500" />
-                </div>
-                오류/피드백 보내기
+                🚀 피드백 보내기
               </h3>
               <button
                 onClick={handleClose}

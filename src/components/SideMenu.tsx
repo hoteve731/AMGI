@@ -296,9 +296,8 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
                               ) : (
                                 <div className="text-xs text-gray-500 p-3 text-center">
                                   {contentGroups[content.id] === undefined ? (
-                                    <div className="flex justify-center items-center py-2">
-                                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#9F94F8]"></div>
-                                      <span className="ml-2">그룹 로딩 중...</span>
+                                    <div className="py-2">
+                                      <span className="animate-pulse inline-block text-[#9F94F8]">그룹 로딩 중...</span>
                                     </div>
                                   ) : '그룹이 없습니다.'}
                                 </div>
@@ -315,7 +314,7 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
 
             {/* 프로그레스 바 및 구독 버튼 */}
             <div className="p-4 border-t border-gray-200 bg-white/60 backdrop-blur-sm space-y-4">
-              
+
 
               {/* 구독 및 프로그레스 바 */}
               <div className="bg-white/80 rounded-xl p-3">
@@ -335,7 +334,7 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
                   <div className="flex items-center gap-1.5 mb-1.5">
                     <DocumentTextIcon className="w-4 h-4 text-gray-600" />
                     <span className="text-sm font-medium text-gray-700">
-                      <span className="font-bold">{contentCount}</span>/{MAX_FREE_CONTENTS}개 콘텐츠 무료
+                      <span className="font-bold">{contentCount}</span>/{MAX_FREE_CONTENTS}개 노트 무료
                     </span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2.5">
@@ -408,8 +407,8 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
                     </svg>
                   </div>
                   <div>
-                    <p className="font-medium text-gray-800">콘텐츠 무제한 생성</p>
-                    <p className="text-sm text-gray-600">5개 제한 없이 무한히 콘텐츠를 만들 수 있어요</p>
+                    <p className="font-medium text-gray-800">노트 무한 생성</p>
+                    <p className="text-sm text-gray-600">5개 제한 없이 노트를 만들 수 있어요</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
@@ -419,8 +418,8 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
                     </svg>
                   </div>
                   <div>
-                    <p className="font-medium text-gray-800">글자수 무제한</p>
-                    <p className="text-sm text-gray-600">더 자세한 학습을 위해 텍스트 길이 제한이 없어요</p>
+                    <p className="font-medium text-gray-800">입력 가능 글자수 무제한</p>
+                    <p className="text-sm text-gray-600">더 자세한 학습을 위해 입력 길이 제한이 없어져요</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
@@ -430,8 +429,8 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
                     </svg>
                   </div>
                   <div>
-                    <p className="font-medium text-gray-800">PDF 업로드 지원</p>
-                    <p className="text-sm text-gray-600">PDF 문서를 업로드하여 바로 학습 카드로 변환할 수 있어요</p>
+                    <p className="font-medium text-gray-800">이미지/PDF 업로드 지원</p>
+                    <p className="text-sm text-gray-600">텍스트 뿐 아니라 이미지, PDF 문서를 업로드하여 기억 카드로 변환할 수 있어요</p>
                   </div>
                 </div>
               </div>
@@ -440,7 +439,7 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
                 className="w-full py-3 bg-gradient-to-r from-[#7969F7] to-[#9F94F8] text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-200 active:scale-[0.98]"
                 onClick={handleSubscriptionEmail}
               >
-                프리미엄으로 업그레이드
+                프리미엄 업그레이드 요청하기
               </button>
             </motion.div>
           </>

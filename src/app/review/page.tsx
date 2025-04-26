@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { motion, AnimatePresence } from 'framer-motion'
 import LoadingOverlay from '@/components/LoadingOverlay'
+import { CheckIcon } from '@heroicons/react/24/outline'
 
 type ReviewCard = {
     id: string
@@ -38,6 +39,7 @@ export default function ReviewPage() {
     const [slideDirection, setSlideDirection] = useState<'right-to-left' | 'flip'>('flip')
     const [isNavigatingBack, setIsNavigatingBack] = useState(false)
     const [isInitialized, setIsInitialized] = useState(false)
+    const [showCheckAnimation, setShowCheckAnimation] = useState(false)
 
     const currentCard = cards[currentCardIndex]
 
@@ -164,12 +166,18 @@ export default function ReviewPage() {
     }
 
     const handleCardAction = async (result: 'again' | 'hard' | 'good' | 'easy') => {
-        if (!currentCard || isSubmitting) return
+        if (isSubmitting || !currentCard) return
+
+        setActiveButton(result)
+        setShowCheckAnimation(true)
+        setIsSubmitting(true)
+
+        // Hide check animation after 500ms
+        setTimeout(() => {
+            setShowCheckAnimation(false)
+        }, 500)
 
         try {
-            setIsSubmitting(true)
-            setActiveButton(result)
-            setSlideDirection('right-to-left')
             console.log(`Submitting card action: ${result} for card ID: ${currentCard.id}`)
 
             const response = await fetch('/api/review', {
@@ -322,8 +330,11 @@ export default function ReviewPage() {
                     {currentCard?.content_groups?.title || '복습'}
                 </h1>
 
+                 {/* 상단 여백 추가 */}
+                 <div className="h-6"></div>
+
                 {/* 카드 진행 상태 태그 - 그룹 타이틀 아래 중앙에 배치 */}
-                <div className="flex justify-center mb-2">
+                <div className="flex justify-center mb-1">
                     <div className="inline-flex items-center justify-center bg-white/80 backdrop-blur-sm rounded-full px-3 py-1 shadow-sm">
                         <span className="text-sm text-gray-800 font-bold">
                             {currentCardIndex + 1}/{cards.length}
@@ -331,79 +342,80 @@ export default function ReviewPage() {
                     </div>
                 </div>
 
+                
+                <div className="h-4"></div>
+
                 {/* 카드 표시 영역 */}
-                <div className="relative flex-1 overflow-hidden">
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <AnimatePresence mode="wait" key={`${currentCard?.id}-${isFlipped ? 'flipped' : 'front'}`}>
-                            {currentCard && (
-                                <motion.div
-                                    key={`card-${currentCard.id}`}
-                                    initial={slideDirection === 'flip'
-                                        ? { opacity: 0, rotateY: isFlipped ? -90 : 90 }
-                                        : { opacity: 0, x: 300 }
+                <div className="overflow-hidden">
+                    <AnimatePresence mode="wait" key={`${currentCard?.id}-${isFlipped ? 'flipped' : 'front'}`}>
+                        {currentCard && (
+                            <motion.div
+                                key={`card-${currentCard.id}`}
+                                initial={slideDirection === 'flip'
+                                    ? { opacity: 0, rotateY: isFlipped ? -90 : 90 }
+                                    : { opacity: 0, x: 300 }
+                                }
+                                animate={slideDirection === 'flip'
+                                    ? { opacity: 1, rotateY: 0 }
+                                    : { opacity: 1, x: 0 }
+                                }
+                                exit={slideDirection === 'flip'
+                                    ? { opacity: 0, rotateY: isFlipped ? 90 : -90 }
+                                    : { opacity: 0, x: -300 }
+                                }
+                                transition={slideDirection === 'flip'
+                                    ? {
+                                        type: "spring",
+                                        stiffness: 300,
+                                        damping: 30
                                     }
-                                    animate={slideDirection === 'flip'
-                                        ? { opacity: 1, rotateY: 0 }
-                                        : { opacity: 1, x: 0 }
+                                    : {
+                                        type: "spring",
+                                        stiffness: 300,
+                                        damping: 30,
+                                        duration: 0.3
                                     }
-                                    exit={slideDirection === 'flip'
-                                        ? { opacity: 0, rotateY: isFlipped ? 90 : -90 }
-                                        : { opacity: 0, x: -300 }
-                                    }
-                                    transition={slideDirection === 'flip'
-                                        ? {
-                                            type: "spring",
-                                            stiffness: 300,
-                                            damping: 30
-                                        }
-                                        : {
-                                            type: "spring",
-                                            stiffness: 300,
-                                            damping: 30,
-                                            duration: 0.3
-                                        }
-                                    }
-                                    className="w-full max-w-md perspective-1000"
-                                >
-                                    <div className="w-full min-h-[200px] bg-white/90 backdrop-blur-md rounded-xl shadow-lg p-6">
-                                        {/* 카드 상태 및 반복 수 태그 - 좌상단에 통합 표시 */}
-                                        <div className="flex justify-start mb-2">
-                                            <div className="inline-flex items-center justify-center bg-white rounded-full px-3 py-1 border border-gray-200">
-                                                <div className="flex items-center">
-                                                    <div className={`w-2 h-2 rounded-full mr-2 ${currentCard?.card_state === 'new' ? 'bg-[#FDFF8C]' :
-                                                        currentCard?.card_state === 'learning' || currentCard?.card_state === 'relearning' ? 'bg-[#B4B6E4]' :
-                                                            currentCard?.card_state === 'review' || currentCard?.card_state === 'graduated' ? 'bg-[#5F4BB6]' :
-                                                                'bg-gray-400'
-                                                        }`}></div>
-                                                    <div className="text-sm font-medium text-gray-800">
-                                                        {currentCard?.card_state === 'new' ? '새 카드' :
-                                                            currentCard?.card_state === 'learning' ? '학습 중' :
-                                                                currentCard?.card_state === 'graduated' || currentCard?.card_state === 'review' ? '복습' :
-                                                                    '재학습'}
-                                                        {currentCard?.repetition_count !== undefined && (
-                                                            <span className="ml-1 text-gray-600">
-                                                                (반복 {currentCard.repetition_count}회)
-                                                            </span>
-                                                        )}
-                                                    </div>
+                                }
+                                className="w-full max-w-md perspective-1000 mx-auto"
+                            >
+                                <div className="w-full min-h-[200px] bg-white/90 backdrop-blur-md rounded-xl shadow-lg p-6">
+                                    {/* 카드 상태 및 반복 수 태그 - 좌상단에 통합 표시 */}
+                                    <div className="flex justify-start mb-2">
+                                        <div className="inline-flex items-center justify-center bg-white rounded-full px-3 py-1 border border-gray-200">
+                                            <div className="flex items-center">
+                                                <div className={`w-2 h-2 rounded-full mr-2 ${currentCard?.card_state === 'new' ? 'bg-[#FDFF8C]' :
+                                                    currentCard?.card_state === 'learning' || currentCard?.card_state === 'relearning' ? 'bg-[#B4B6E4]' :
+                                                        currentCard?.card_state === 'review' || currentCard?.card_state === 'graduated' ? 'bg-[#5F4BB6]' :
+                                                            'bg-gray-400'
+                                                    }`}></div>
+                                                <div className="text-sm font-medium text-gray-800">
+                                                    {currentCard?.card_state === 'new' ? '새 카드' :
+                                                        currentCard?.card_state === 'learning' ? '학습 중' :
+                                                            currentCard?.card_state === 'graduated' || currentCard?.card_state === 'review' ? '복습' :
+                                                                '재학습'}
+                                                    {currentCard?.repetition_count !== undefined && (
+                                                        <span className="ml-1 text-gray-600">
+                                                            (반복 {currentCard.repetition_count}회)
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
-                                        <div
-                                            className="text-gray-800 text-lg"
-                                            dangerouslySetInnerHTML={{
-                                                __html: processMaskedText(isFlipped ? currentCard.masked_text : currentCard.summary)
-                                            }}
-                                        />
                                     </div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-                    </div>
+                                    <div
+                                        className="text-gray-800 text-lg"
+                                        dangerouslySetInnerHTML={{
+                                            __html: processMaskedText(isFlipped ? currentCard.masked_text : currentCard.summary)
+                                        }}
+                                    />
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </div>
 
-                {/* 카드 관리 버튼 */}
-                <div className="flex justify-center mt-2 mb-1">
+                {/* 카드 비활성화 버튼 - 카드 바로 아래 배치 */}
+                <div className="flex justify-center mt-6">
                     <button
                         onClick={() => handleCardStatus('inactive')}
                         className="text-gray-500 hover:text-red-500 transition-colors mx-2 flex items-center"
@@ -417,14 +429,14 @@ export default function ReviewPage() {
                     </button>
                 </div>
 
+                {/* 하단 여백 */}
+                <div className="flex-grow"></div>
+
                 {/* 하단 버튼 영역 */}
-                <div className="mt-auto pt-2">
+                <div className="pt-4">
                     {!isFlipped ? (
                         // 앞면: 정답 보기 버튼
                         <div>
-                            <p className="text-center text-gray-600 text-sm mb-2">
-                                정답을 확인하려면 클릭하세요
-                            </p>
                             <div className="grid grid-cols-1 gap-2 mb-4">
                                 <button
                                     onClick={handleFlip}
@@ -438,63 +450,109 @@ export default function ReviewPage() {
                     ) : (
                         // 뒷면: 난이도 버튼들
                         <div>
-                            <p className="text-center text-gray-600 text-sm mb-2">
-                                난이도에 따른 복습 간격을 선택하세요
-                            </p>
-                            <div className="grid grid-cols-4 gap-2 mb-4">
+
+                            <div className="grid grid-cols-2 gap-4 w-full max-w-xl mx-auto">
                                 <button
                                     onClick={() => handleCardAction('again')}
-                                    className={`flex flex-col items-center justify-center p-4 rounded-xl ${isInitialized ? 'bg-red-100 hover:bg-red-200' : 'bg-red-100'} transition-colors relative`}
+                                    className={`flex flex-col items-center justify-center p-3 rounded-xl bg-white border border-gray-100 shadow-sm hover:shadow-md transition-all relative`}
                                     disabled={isSubmitting}
                                 >
                                     {activeButton === 'again' && (
-                                        <div className="absolute inset-0 flex items-center justify-center bg-red-100/90 backdrop-blur-sm rounded-xl">
+                                        <div className="absolute inset-0 flex items-center justify-center bg-white/90 backdrop-blur-sm rounded-xl">
+                                            {showCheckAnimation && (
+                                                <motion.div
+                                                    initial={{ scale: 0.5, opacity: 0 }}
+                                                    animate={{ scale: 1, opacity: 1 }}
+                                                    exit={{ scale: 1.5, opacity: 0 }}
+                                                    transition={{ duration: 0.3 }}
+                                                    className="text-red-500"
+                                                >
+                                                    <CheckIcon className="h-6 w-6" />
+                                                </motion.div>
+                                            )}
                                         </div>
                                     )}
-                                    <span className="text-black/70 font-semibold">Again</span>
-                                    <span className="text-black/70 text-sm font-normal">
+                                    <div className="text-xl mb-1">❌</div>
+                                    <span className="text-black/70 text-sm font-semibold">Forgotten</span>
+                                    <span className="text-black/70 text-xs font-normal">
                                         {getNextIntervalPreview(currentCard, 'again')}
                                     </span>
                                 </button>
                                 <button
                                     onClick={() => handleCardAction('hard')}
-                                    className={`flex flex-col items-center justify-center p-4 rounded-xl ${isInitialized ? 'bg-yellow-100 hover:bg-yellow-200' : 'bg-yellow-100'} transition-colors relative`}
+                                    className={`flex flex-col items-center justify-center p-3 rounded-xl bg-white border border-gray-100 shadow-sm hover:shadow-md transition-all relative`}
                                     disabled={isSubmitting}
                                 >
                                     {activeButton === 'hard' && (
-                                        <div className="absolute inset-0 flex items-center justify-center bg-yellow-100/90 backdrop-blur-sm rounded-xl">
+                                        <div className="absolute inset-0 flex items-center justify-center bg-white/90 backdrop-blur-sm rounded-xl">
+                                            {showCheckAnimation && (
+                                                <motion.div
+                                                    initial={{ scale: 0.5, opacity: 0 }}
+                                                    animate={{ scale: 1, opacity: 1 }}
+                                                    exit={{ scale: 1.5, opacity: 0 }}
+                                                    transition={{ duration: 0.3 }}
+                                                    className="text-yellow-500"
+                                                >
+                                                    <CheckIcon className="h-6 w-6" />
+                                                </motion.div>
+                                            )}
                                         </div>
                                     )}
-                                    <span className="text-black/70 font-semibold">Hard</span>
-                                    <span className="text-black/70 text-sm font-normal">
+                                    <div className="text-xl mb-1">😐</div>
+                                    <span className="text-black/70 text-sm font-semibold">Recalled partially</span>
+                                    <span className="text-black/70 text-xs font-normal">
                                         {getNextIntervalPreview(currentCard, 'hard')}
                                     </span>
                                 </button>
                                 <button
                                     onClick={() => handleCardAction('good')}
-                                    className={`flex flex-col items-center justify-center p-4 rounded-xl ${isInitialized ? 'bg-green-100 hover:bg-green-200' : 'bg-green-100'} transition-colors relative`}
+                                    className={`flex flex-col items-center justify-center p-3 rounded-xl bg-white border border-gray-100 shadow-sm hover:shadow-md transition-all relative`}
                                     disabled={isSubmitting}
                                 >
                                     {activeButton === 'good' && (
-                                        <div className="absolute inset-0 flex items-center justify-center bg-green-100/90 backdrop-blur-sm rounded-xl">
+                                        <div className="absolute inset-0 flex items-center justify-center bg-white/90 backdrop-blur-sm rounded-xl">
+                                            {showCheckAnimation && (
+                                                <motion.div
+                                                    initial={{ scale: 0.5, opacity: 0 }}
+                                                    animate={{ scale: 1, opacity: 1 }}
+                                                    exit={{ scale: 1.5, opacity: 0 }}
+                                                    transition={{ duration: 0.3 }}
+                                                    className="text-green-500"
+                                                >
+                                                    <CheckIcon className="h-6 w-6" />
+                                                </motion.div>
+                                            )}
                                         </div>
                                     )}
-                                    <span className="text-black/70 font-semibold">Good</span>
-                                    <span className="text-black/70 text-sm font-normal">
+                                    <div className="text-xl mb-1">😄</div>
+                                    <span className="text-black/70 text-sm font-semibold">Recalled with effort</span>
+                                    <span className="text-black/70 text-xs font-normal">
                                         {getNextIntervalPreview(currentCard, 'good')}
                                     </span>
                                 </button>
                                 <button
                                     onClick={() => handleCardAction('easy')}
-                                    className={`flex flex-col items-center justify-center p-4 rounded-xl ${isInitialized ? 'bg-blue-100 hover:bg-blue-200' : 'bg-blue-100'} transition-colors relative`}
+                                    className={`flex flex-col items-center justify-center p-3 rounded-xl bg-white border border-gray-100 shadow-sm hover:shadow-md transition-all relative`}
                                     disabled={isSubmitting}
                                 >
                                     {activeButton === 'easy' && (
-                                        <div className="absolute inset-0 flex items-center justify-center bg-blue-100/90 backdrop-blur-sm rounded-xl">
+                                        <div className="absolute inset-0 flex items-center justify-center bg-white/90 backdrop-blur-sm rounded-xl">
+                                            {showCheckAnimation && (
+                                                <motion.div
+                                                    initial={{ scale: 0.5, opacity: 0 }}
+                                                    animate={{ scale: 1, opacity: 1 }}
+                                                    exit={{ scale: 1.5, opacity: 0 }}
+                                                    transition={{ duration: 0.3 }}
+                                                    className="text-blue-500"
+                                                >
+                                                    <CheckIcon className="h-6 w-6" />
+                                                </motion.div>
+                                            )}
                                         </div>
                                     )}
-                                    <span className="text-black/70 font-semibold">Easy</span>
-                                    <span className="text-black/70 text-sm font-normal">
+                                    <div className="text-xl mb-1">👑</div>
+                                    <span className="text-black/70 text-sm font-semibold">Immediately</span>
+                                    <span className="text-black/70 text-xs font-normal">
                                         {getNextIntervalPreview(currentCard, 'easy')}
                                     </span>
                                 </button>

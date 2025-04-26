@@ -28,13 +28,13 @@ export default async function Home() {
         <LogoutButton />
       </header>
 
+      {/* 베타 공지 배너 */}
+      <BetaBanner />
+
       {/* 리뷰 대시보드 추가 - 헤더 아래, 콘텐츠 위에 */}
       <div className="pt-4 px-4 pb-0">
         <ReviewDashboard userName={user?.user_metadata.full_name || user?.email} />
       </div>
-
-      {/* 베타 공지 배너 */}
-      <BetaBanner />
 
       <div className="flex-1 overflow-hidden">
         <ContentList />
