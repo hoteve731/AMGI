@@ -80,9 +80,9 @@ async function processSingleSegment(supabase, openai, segment) {
         const groupsPrompt = (0, prompt_generator_1.generateGroupsPrompt)(additionalMemory);
         console.log(`[Segment ${segmentPosition}][${segmentId}] Generating groups...`);
         const groupCompletion = await openai.chat.completions.create({
-            model: "gpt-4o-mini-2024-07-18",
+            model: "gpt-4.1-mini-2025-04-14",
             messages: [{ role: "system", content: groupsPrompt }, { role: "user", content: segmentText }],
-            temperature: 0, max_tokens: 1500,
+            temperature: 0, max_tokens: 3000,
         });
         const groupResultText = ((_c = (_b = (_a = groupCompletion.choices[0]) === null || _a === void 0 ? void 0 : _a.message) === null || _b === void 0 ? void 0 : _b.content) === null || _c === void 0 ? void 0 : _c.trim()) || '';
         const parsedGroups = parseGroupResult(groupResultText, contentId, segmentId);
@@ -129,7 +129,7 @@ async function processSingleSegment(supabase, openai, segment) {
             const chunkCompletion = await openai.chat.completions.create({
                 model: "gpt-4.1-mini-2025-04-14",
                 messages: [{ role: "system", content: chunksPrompt }, { role: "user", content: currentParsedGroup.originalSource }],
-                temperature: 0, max_tokens: 1000,
+                temperature: 0, max_tokens: 3000,
             });
             const chunkResultText = ((_f = (_e = (_d = chunkCompletion.choices[0]) === null || _d === void 0 ? void 0 : _d.message) === null || _e === void 0 ? void 0 : _e.content) === null || _f === void 0 ? void 0 : _f.trim()) || '';
             if (!chunkResultText)
@@ -345,7 +345,7 @@ functions.http('processTextPipeline', async (req, res) => {
                         model: "gpt-4.1-mini-2025-04-14",
                         messages: [{ role: "system", content: chunksPrompt }, { role: "user", content: originalText }],
                         temperature: 0,
-                        max_tokens: 1000,
+                        max_tokens: 3000,
                     });
                     const chunkResultText = ((_c = (_b = (_a = chunkCompletion.choices[0]) === null || _a === void 0 ? void 0 : _a.message) === null || _b === void 0 ? void 0 : _b.content) === null || _c === void 0 ? void 0 : _c.trim()) || '';
                     if (!chunkResultText) {
@@ -420,10 +420,10 @@ async function generateGroupsFromFullText(openai, fullText, additionalMemory) {
         const groupsPrompt = (0, prompt_generator_1.generateGroupsPrompt)(additionalMemory);
         // OpenAI API 호출하여 그룹 생성 (기존 모델 유지)
         const groupCompletion = await openai.chat.completions.create({
-            model: "gpt-4o-mini-2024-07-18", // 기존 모델 유지
+            model: "gpt-4.1-mini-2025-04-14", // 기존 모델 유지
             messages: [{ role: "system", content: groupsPrompt }, { role: "user", content: fullText }],
             temperature: 0,
-            max_tokens: 3000, // 더 긴 응답 허용
+            max_tokens: 3500, // 더 긴 응답 허용
         });
         const groupResultText = ((_c = (_b = (_a = groupCompletion.choices[0]) === null || _a === void 0 ? void 0 : _a.message) === null || _b === void 0 ? void 0 : _b.content) === null || _c === void 0 ? void 0 : _c.trim()) || '';
         if (!groupResultText) {

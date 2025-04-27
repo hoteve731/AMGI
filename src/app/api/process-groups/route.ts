@@ -76,7 +76,7 @@ export async function POST(req: Request) {
                 const systemPrompt = generateGroupsPrompt(additionalMemory);
 
                 const groupsCompletion = await withTimeout(openai.chat.completions.create({
-                    model: "gpt-4o-mini-2024-07-18",
+                    model: "gpt-4.1-mini-2025-04-14",
                     messages: [
                         {
                             role: "system",
@@ -84,8 +84,8 @@ export async function POST(req: Request) {
                         },
                         { role: "user", content: text }
                     ],
-                    temperature: 0.1,
-                    max_tokens: 1000
+                    temperature: 0,
+                    max_tokens: 3000
                 }), TIMEOUT);
 
                 const groupsText = groupsCompletion.choices[0].message.content || ''

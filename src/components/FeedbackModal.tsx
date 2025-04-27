@@ -94,7 +94,7 @@ export default function FeedbackModal({
 
             <div className="p-6 overflow-y-auto">
               <p className="text-gray-600 mb-4">
-                아래의 방법으로 오류 제보나 피드백을 보내주세요. 베타 테스트에 참여해주셔서 감사합니다!
+                발생한 오류나 피드백을 보내주세요. 베타 테스트에 참여해주셔서 감사합니다!
               </p>
 
               <div className="flex gap-3 mb-2">

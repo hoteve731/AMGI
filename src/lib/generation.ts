@@ -64,12 +64,12 @@ export async function processSingleSegment(
 
         await asyncRetry(async (bail) => {
             const completion = await openai.chat.completions.create({
-                model: "gpt-4o-mini-2024-07-18",
+                model: "gpt-4.1-mini-2025-04-14",
                 messages: [
                     { role: "system", content: groupSystemPrompt },
                     { role: "user", content: segment_text } // 입력으로 세그먼트 텍스트 사용
                 ],
-                temperature: 0.1, max_tokens: 1000, // 기존 설정 참고
+                temperature: 0, max_tokens: 3000, // 기존 설정 참고
             });
             groupResponseText = completion.choices[0].message.content;
             if (!groupResponseText) throw new Error('LLM returned empty content for groups');
@@ -127,7 +127,7 @@ export async function processSingleSegment(
                                 { role: "system", content: unifiedSystemPrompt },
                                 { role: "user", content: group.original_text } // 그룹 원본 텍스트 사용
                             ],
-                            temperature: 0.1, max_tokens: 2000, // 토큰 수 증가 고려
+                            temperature: 0, max_tokens: 3500, // 토큰 수 증가 고려
                         });
                         unifiedChunkResponse = completion.choices[0].message.content;
                         if (!unifiedChunkResponse) throw new Error('LLM returned empty content for unified chunks');

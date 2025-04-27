@@ -60,9 +60,9 @@ async function processSingleSegment(supabase: SupabaseClient, openai: OpenAI, se
         const groupsPrompt = generateGroupsPrompt(additionalMemory);
         console.log(`[Segment ${segmentPosition}][${segmentId}] Generating groups...`);
         const groupCompletion = await openai.chat.completions.create({
-            model: "gpt-4o-mini-2024-07-18",
+            model: "gpt-4.1-mini-2025-04-14",
             messages: [{ role: "system", content: groupsPrompt }, { role: "user", content: segmentText }],
-            temperature: 0, max_tokens: 1500,
+            temperature: 0, max_tokens: 3000,
         });
         const groupResultText = groupCompletion.choices[0]?.message?.content?.trim() || '';
         const parsedGroups = parseGroupResult(groupResultText, contentId, segmentId);
@@ -112,7 +112,7 @@ async function processSingleSegment(supabase: SupabaseClient, openai: OpenAI, se
             const chunkCompletion = await openai.chat.completions.create({
                 model: "gpt-4.1-mini-2025-04-14",
                 messages: [{ role: "system", content: chunksPrompt }, { role: "user", content: currentParsedGroup.originalSource }],
-                temperature: 0, max_tokens: 1000,
+                temperature: 0, max_tokens: 3000,
             });
             const chunkResultText = chunkCompletion.choices[0]?.message?.content?.trim() || '';
             if (!chunkResultText) continue;
@@ -349,7 +349,7 @@ functions.http('processTextPipeline', async (req, res) => {
                         model: "gpt-4.1-mini-2025-04-14",
                         messages: [{ role: "system", content: chunksPrompt }, { role: "user", content: originalText }],
                         temperature: 0,
-                        max_tokens: 1000,
+                        max_tokens: 3000,
                     });
 
                     const chunkResultText = chunkCompletion.choices[0]?.message?.content?.trim() || '';
@@ -434,10 +434,10 @@ async function generateGroupsFromFullText(openai: OpenAI, fullText: string, addi
 
         // OpenAI API 호출하여 그룹 생성 (기존 모델 유지)
         const groupCompletion = await openai.chat.completions.create({
-            model: "gpt-4o-mini-2024-07-18",  // 기존 모델 유지
+            model: "gpt-4.1-mini-2025-04-14",  // 기존 모델 유지
             messages: [{ role: "system", content: groupsPrompt }, { role: "user", content: fullText }],
             temperature: 0,
-            max_tokens: 3000,  // 더 긴 응답 허용
+            max_tokens: 3500,  // 더 긴 응답 허용
         });
 
         const groupResultText = groupCompletion.choices[0]?.message?.content?.trim() || '';

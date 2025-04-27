@@ -15,7 +15,7 @@ export default function BetaBanner() {
             <div className="mb-3">
               <h3 className="font-bold text-xl text-gray-800">🚀 함께 만들어가는 Loopa</h3>
               <p className="text-base text-gray-600 mt-2">
-              Loopa는 베타 테스트 중입니다! 오류나 불편한 점이 있으시면 언제든 자유롭게 알려주세요.
+              Loopa는 베타 테스트 중입니다! 오류나 불편한 점이 있으시면 자유롭게 알려주세요.
               </p>
             </div>
             <div className="mt-auto">
