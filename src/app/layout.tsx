@@ -53,13 +53,35 @@ export const viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "LOOPA",
-  description: "아이디어를 기록하고 효과적으로 학습하세요",
+  title: "LOOPA - 진짜 기억을 위한 반복 도우미",
+  description: "기억할 가치가 있는 아이디어, 이제 진정으로 내 머리 속에.",
   manifest: "/manifest.json",
+  openGraph: {
+    type: "website",
+    locale: "ko_KR",
+    url: "https://loopa.app",
+    title: "LOOPA - 진짜 기억을 위한 반복 도우미",
+    description: "기억할 가치가 있는 아이디어, 이제 진정으로 내 머리 속에.",
+    siteName: "LOOPA",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "LOOPA - 진짜 기억을 위한 반복 도우미"
+      }
+    ]
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "LOOPA - 진짜 기억을 위한 반복 도우미",
+    description: "기억할 가치가 있는 아이디어, 이제 진정으로 내 머리 속에.",
+    images: ["/og-image.png"]
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: "LOOPA",
+    title: "LOOPA - 진짜 기억을 위한 반복 도우미",
     startupImage: [
       {
         url: '/splash/apple-splash-2048-2732.png',
