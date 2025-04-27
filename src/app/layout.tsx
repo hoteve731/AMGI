@@ -59,7 +59,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "ko_KR",
-    url: "https://loopa.app",
+    url: "https://loopa.my",
     title: "LOOPA - 진짜 기억을 위한 반복 도우미",
     description: "기억할 가치가 있는 아이디어, 이제 진정으로 내 머리 속에.",
     siteName: "LOOPA",
