@@ -62,21 +62,12 @@ export const metadata: Metadata = {
     url: "https://loopa.my",
     title: "LOOPA - 진짜 기억을 위한 반복 도우미",
     description: "기억할 가치가 있는 아이디어, 이제 진정으로 내 머리 속에.",
-    siteName: "LOOPA",
-    images: [
-      {
-        url: "/og-image.png",
-        width: 1200,
-        height: 630,
-        alt: "LOOPA - 진짜 기억을 위한 반복 도우미"
-      }
-    ]
+    siteName: "LOOPA"
   },
   twitter: {
     card: "summary_large_image",
     title: "LOOPA - 진짜 기억을 위한 반복 도우미",
-    description: "기억할 가치가 있는 아이디어, 이제 진정으로 내 머리 속에.",
-    images: ["/og-image.png"]
+    description: "기억할 가치가 있는 아이디어, 이제 진정으로 내 머리 속에."
   },
   appleWebApp: {
     capable: true,
