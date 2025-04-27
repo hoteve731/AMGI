@@ -221,8 +221,8 @@ export default function BottomSheet() {
 
         // 사용자에게 알림 (자동으로 사라지지 않음)
         const toastId = toast({
-            title: "백그라운드에서 처리 중",
-            description: "기억 카드가 백그라운드에서 계속 생성되고 있습니다. 완료되면 자동으로 이동합니다.",
+            title: "백그라운드에서 생성 중",
+            description: "기억 카드가 백그라운드에서 생성되고 있습니다. 완료되는 즉시 자동으로 이동합니다.",
             type: "bg-processing",
             duration: 0, // 자동으로 사라지지 않음
             data: {
