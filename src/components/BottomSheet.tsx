@@ -488,13 +488,19 @@ export default function BottomSheet() {
     const pollReadyStatus = async (contentId: string) => {
         console.log('콘텐츠 준비 상태 체크 시작:', contentId);
 
-        // 폴링 상태 업데이트 (초기 상태 유지)
-        setLoadingStatusMessage('그룹 생성 중...');
-        setLoadingUIType('group');
+        // 폴링 상태 초기화
+        setPollingContentId(contentId);
+        setLoadingStatusMessage('제목 생성 중...');
+        setLoadingUIType('title');
+        setLoadingProgress(10);
 
         let retryCount = 0;
-        const maxRetries = 10; // 최대 시도 횟수 증가 (10번 = 약 20초)
-        const pollInterval = 2000; // 2초마다 체크 (1.5초에서 2초로 증가)
+        const maxRetries = 30; // 최대 시도 횟수 증가 (30번 = 약 60초)
+        const pollInterval = 2000; // 2초마다 체크
+
+        // 데이터 완전성 확인 카운터
+        let dataConsistencyCounter = 0;
+        const requiredConsistentChecks = 2; // 연속 2번 동일한 완료 상태 확인 필요
 
         const checkReadyStatus = async () => {
             try {
@@ -502,113 +508,175 @@ export default function BottomSheet() {
                 console.log(`[데이터 확인] ${retryCount}번째 시도...`);
 
                 const checkResponse = await fetch(`/api/check-content?id=${contentId}`);
-                const checkData = await checkResponse.json();
+                if (!checkResponse.ok) {
+                    throw new Error(`API 응답 오류: ${checkResponse.status}`);
+                }
 
+                const checkData = await checkResponse.json();
                 console.log('[데이터 확인 결과]:', checkData);
 
-                // 1. 그룹 생성 확인 (그룹이 하나라도 있으면 다음 단계로 진행)
-                if (checkData.groupsCount > 0 && loadingUIType === 'group') {
-                    console.log('[진행 업데이트] 그룹 생성 완료, 청크 생성 단계로 진행');
-                    setLoadingUIType('chunk');
-                    setLoadingProgress(50);
-                    setLoadingStatusMessage('기억 카드 생성 중...');
-                }
-
-                // 2. 청크 생성 확인 및 진행률 업데이트
-                if (checkData.totalChunksCount > 0) {
-                    const progress = Math.min(90, 50 + Math.min(checkData.totalChunksCount * 5, 40));
-                    setLoadingProgress(progress);
-                }
-
-                // 3. 처리 상태에 따른 UI 업데이트
+                // 백엔드 상태에 따른 UI 업데이트
                 if (checkData.processingStatus) {
                     setProcessingStatus(checkData.processingStatus);
 
-                    // 처리 상태에 따른 메시지 업데이트
-                    if (checkData.processingStatus === 'completed') {
-                        if (loadingUIType !== 'complete') {
-                            setLoadingUIType('complete');
-                            setLoadingProgress(100);
-                            setLoadingStatusMessage('처리 완료! 결과 페이지로 이동합니다...');
-                        }
+                    switch (checkData.processingStatus) {
+                        case 'pending':
+                        case 'received':
+                        case 'title_generated':
+                            if (loadingUIType !== 'title') {
+                                setLoadingUIType('title');
+                                setLoadingProgress(30);
+                                setLoadingStatusMessage('제목 생성 중...');
+                            }
+                            // 제목이 있으면 표시
+                            if (checkData.title) {
+                                setGeneratedTitle(checkData.title);
+                            }
+                            break;
 
-                        // 완료 상태이지만 청크가 없는 경우 추가 폴링 (최대 5번 더 시도)
-                        if (!checkData.chunksExist && retryCount < maxRetries + 5) {
-                            console.log('[완료 상태지만 청크 없음] 추가 폴링 진행...');
-                            setTimeout(checkReadyStatus, pollInterval);
+                        case 'groups_generating':
+                        case 'groups_generated':
+                            if (loadingUIType !== 'group') {
+                                setLoadingUIType('group');
+                                setLoadingProgress(50);
+                                setLoadingStatusMessage('그룹 생성 중...');
+                            }
+                            // 제목이 있으면 표시
+                            if (checkData.title) {
+                                setGeneratedTitle(checkData.title);
+                            }
+                            break;
+
+                        case 'chunks_generating':
+                            if (loadingUIType !== 'chunk') {
+                                setLoadingUIType('chunk');
+                                setLoadingProgress(70);
+                                setLoadingStatusMessage('기억 카드 생성 중...');
+                            }
+                            // 청크 수에 따른 진행률 업데이트
+                            if (checkData.totalChunksCount > 0) {
+                                const progress = Math.min(90, 70 + Math.min(checkData.totalChunksCount * 2, 20));
+                                setLoadingProgress(progress);
+                            }
+                            break;
+
+                        case 'completed':
+                            // 완료 상태 확인 로직 (아래에서 처리)
+                            break;
+
+                        case 'failed':
+                            setLoadingStatusMessage('처리 중 오류가 발생했습니다. 홈으로 이동합니다...');
+                            setTimeout(() => {
+                                window.location.href = '/';
+                            }, 3000);
                             return;
-                        }
-                    } else if (checkData.processingStatus === 'processing') {
-                        // 청크 생성 중인 경우
-                        if (checkData.groupsCount > 0) {
-                            setLoadingUIType('chunk');
-                            setLoadingStatusMessage('기억 카드 생성 중...');
-                        }
-                    } else if (checkData.processingStatus === 'failed') {
-                        // 처리 실패
-                        setLoadingStatusMessage('처리 중 오류가 발생했습니다. 홈으로 이동합니다...');
-
-                        // 홈으로 리다이렉트
-                        setTimeout(() => {
-                            window.location.href = '/';
-                        }, 3000);
-
-                        return;
                     }
                 }
 
-                // 4. 완전히 준비되었을 때만 리다이렉트
-                if (checkData.isReady && checkData.chunksExist) {
-                    console.log('[데이터 준비 완료] 리다이렉트 준비');
+                // 그룹 정보 가져오기 (그룹이 있는 경우)
+                if (checkData.groupsCount > 0) {
+                    try {
+                        // 그룹 정보 가져오기
+                        const groupsResponse = await fetch(`/api/content-groups?contentId=${contentId}`);
+                        if (groupsResponse.ok) {
+                            const groupsData = await groupsResponse.json();
+                            if (groupsData.groups && groupsData.groups.length > 0) {
+                                setProcessedGroups(groupsData.groups);
+                            }
+                        } else if (groupsResponse.status === 404) {
+                            // 404 오류는 조용히 무시 (API가 아직 배포 중일 수 있음)
+                            console.log('[그룹 정보] API가 아직 준비되지 않았습니다. 다음 폴링에서 다시 시도합니다.');
+                        } else {
+                            console.warn(`[그룹 정보] 응답 오류: ${groupsResponse.status}`);
+                        }
+                    } catch (groupError) {
+                        // 네트워크 오류 등은 로깅만 하고 폴링은 계속 진행
+                        console.warn('그룹 정보 가져오기 오류 (폴링은 계속 진행):', groupError);
+                    }
+                }
 
-                    // 아직 완료 UI로 전환되지 않았다면 전환
-                    if (loadingUIType !== 'complete') {
-                        console.log('[UI 업데이트] 완료 상태로 전환');
+                // 완료 상태 확인
+                if (checkData.processingStatus === 'completed' && checkData.groupsCount > 0 && checkData.chunksExist) {
+                    // 데이터 일관성 확인 카운터 증가
+                    dataConsistencyCounter++;
+                    console.log(`[완료 확인] 데이터 일관성 체크: ${dataConsistencyCounter}/${requiredConsistentChecks}`);
+
+                    // 연속으로 일정 횟수 이상 완료 상태 확인 시 진짜 완료로 간주
+                    if (dataConsistencyCounter >= requiredConsistentChecks) {
+                        console.log('[데이터 준비 완료] 리다이렉트 준비');
+
+                        // 완료 UI로 전환
                         setLoadingUIType('complete');
                         setLoadingProgress(100);
                         setLoadingStatusMessage('처리 완료! 결과 페이지로 이동합니다...');
 
-                        // UI 업데이트가 반영된 후 리다이렉트 타이머 설정 (상태 업데이트 후 실행되도록 setTimeout 사용)
-                        setTimeout(() => {
-                            console.log('[타이머 설정] 리다이렉트 타이머 설정 (3초 후)');
-                            // 리다이렉트 전에 추가 지연 시간 부여 (3초로 조정)
+                        // 추가 데이터 검증
+                        try {
+                            // 모든 그룹에 청크가 있는지 확인
+                            const allGroupsResult = await fetch(`/api/content-groups?contentId=${contentId}&includeChunks=true`);
+                            if (!allGroupsResult.ok) {
+                                throw new Error(`그룹 데이터 확인 오류: ${allGroupsResult.status}`);
+                            }
+
+                            const allGroupsData = await allGroupsResult.json();
+
+                            let allGroupsComplete = true;
+                            if (allGroupsData.groups) {
+                                for (const group of allGroupsData.groups) {
+                                    if (!group.chunks || group.chunks.length === 0) {
+                                        allGroupsComplete = false;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            if (allGroupsComplete) {
+                                // 데이터가 완전히 준비된 경우에만 리다이렉트
+                                setTimeout(() => {
+                                    const targetUrl = `/content/${contentId}/groups`;
+                                    console.log('[리다이렉트] 결과 페이지로 이동:', targetUrl);
+                                    window.location.href = targetUrl;
+                                }, 1500); // 1.5초 후 리다이렉트
+                                return;
+                            } else {
+                                // 일부 그룹에 청크가 없는 경우 계속 폴링
+                                console.log('[데이터 불완전] 일부 그룹에 청크가 없음, 계속 폴링');
+                                dataConsistencyCounter = 0; // 카운터 리셋
+                            }
+                        } catch (error) {
+                            console.error('데이터 검증 오류:', error);
+                            // 오류 발생 시 기본 로직으로 진행
                             setTimeout(() => {
                                 const targetUrl = `/content/${contentId}/groups`;
-                                console.log('[리다이렉트] 결과 페이지로 이동:', targetUrl);
                                 window.location.href = targetUrl;
-                            }, 3000);
-                        }, 100);
-                    } else {
-                        // 이미 완료 UI로 전환된 경우에는 추가 작업 없음 (리다이렉트 타이머가 이미 설정되어 있음)
-                        console.log('[이미 완료 상태] 추가 작업 없음');
+                            }, 2000);
+                            return;
+                        }
                     }
-
-                    return;
+                } else {
+                    // 완료 상태가 아닌 경우 카운터 리셋
+                    dataConsistencyCounter = 0;
                 }
 
-                // 5. 최대 시도 횟수에 도달했는지 확인
+                // 최대 시도 횟수 도달 확인
                 if (retryCount >= maxRetries) {
                     console.log('[최대 시도 횟수 도달] 로딩 상태 업데이트 중지, 결과 페이지로 이동');
 
-                    // 결과 페이지로 이동한다는 메시지 표시
                     setLoadingUIType('chunk');
                     setLoadingProgress(95);
                     setLoadingStatusMessage('데이터 처리 시간이 예상보다 길어지고 있습니다. 결과 페이지로 이동합니다.');
 
-                    // 토스트 메시지 표시 및 결과 페이지로 이동
                     toast({
                         title: "처리 시간 지연",
                         description: "백그라운드에서 계속 처리됩니다. 결과 페이지에서 잠시 후 확인해주세요.",
                         type: "info",
                         duration: 3000,
                         onClose: () => {
-                            // 홈 대신 결과 페이지로 이동
                             const targetUrl = `/content/${contentId}/groups`;
                             console.log('타임아웃 리다이렉트 경로:', targetUrl);
                             window.location.href = targetUrl;
                         }
                     });
-
                     return;
                 }
 
@@ -621,25 +689,21 @@ export default function BottomSheet() {
                 if (retryCount >= 5) {
                     console.log('[오류 발생] 결과 페이지로 이동');
 
-                    // 결과 페이지로 이동한다는 메시지 표시
                     setLoadingUIType('chunk');
                     setLoadingProgress(90);
                     setLoadingStatusMessage('상태 확인 중 오류 발생. 결과 페이지로 이동하여 확인해주세요.');
 
-                    // 토스트 메시지 표시 및 결과 페이지로 이동
                     toast({
                         title: "상태 확인 오류",
                         description: "결과 페이지로 이동하여 처리 상태를 확인해주세요.",
                         type: "warning",
                         duration: 3000,
                         onClose: () => {
-                            // 홈 대신 결과 페이지로 이동
                             const targetUrl = `/content/${contentId}/groups`;
                             console.log('오류 발생 리다이렉트 경로:', targetUrl);
                             window.location.href = targetUrl;
                         }
                     });
-
                     return;
                 }
 

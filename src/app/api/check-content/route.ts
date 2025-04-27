@@ -1,6 +1,27 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 
+// 현재 처리 단계 결정 함수
+function determineCurrentStage(content: any, groups: any[], chunksExist: boolean) {
+    if (!content) return 'pending';
+
+    switch (content.processing_status) {
+        case 'title_generated':
+            return 'title_generation';
+        case 'groups_generating':
+        case 'groups_generated':
+            return 'group_creation';
+        case 'chunks_generating':
+            return 'chunk_generation';
+        case 'completed':
+            return groups.length > 0 && chunksExist ? 'completed' : 'chunk_generation';
+        case 'failed':
+            return 'failed';
+        default:
+            return 'pending';
+    }
+}
+
 export async function GET(request: Request) {
     try {
         const { searchParams } = new URL(request.url);
@@ -54,6 +75,8 @@ export async function GET(request: Request) {
                 groupsCount: 0,
                 totalChunksCount: 0,
                 processingStatus,
+                currentStage: determineCurrentStage(content, [], false),
+                title: content?.title || null,
                 isProcessingComplete,
                 reason: 'Groups not created yet'
             });
@@ -75,13 +98,32 @@ export async function GET(request: Request) {
         // 준비 상태: 콘텐츠가 있고, 그룹이 있으며, 청크가 존재하고, 처리가 완료되었는지
         const isReady = !!content && groups.length > 0 && chunksExist && isProcessingComplete;
 
+        // 모든 그룹의 청크 수 계산 (선택적)
+        let totalChunksCount = 0;
+        if (chunksExist) {
+            const { count: totalCount, error: totalCountError } = await supabase
+                .from('content_chunks')
+                .select('id', { count: 'exact', head: true })
+                .in('group_id', groups.map(g => g.id));
+
+            if (!totalCountError) {
+                totalChunksCount = totalCount || 0;
+            }
+        }
+
+        // 현재 처리 단계 결정
+        const currentStage = determineCurrentStage(content, groups, !!chunksExist);
+
         return NextResponse.json({
             isReady,
             contentExists: !!content,
             groupsCount: groups.length,
-            totalChunksCount: count || 0,
+            totalChunksCount,
             processingStatus,
+            currentStage,
+            title: content?.title || null,
             isProcessingComplete,
+            chunksExist,
             contentCreatedAt: content?.created_at,
             reason: !isReady ? (
                 !content ? 'Content missing' :
@@ -99,4 +141,4 @@ export async function GET(request: Request) {
             details: error instanceof Error ? error.message : String(error)
         }, { status: 500 });
     }
-} 
+}

@@ -183,16 +183,7 @@ export default function LoadingScreen({ progress, status, previewTitle, processe
     const steps = getSteps()
     const currentStepIndex = getCurrentStepIndex()
 
-    // 현재 단계에 따라 다른 로딩 메시지 표시
-    const getLoadingMessage = () => {
-        switch (status) {
-            case 'title': return '제목을 생성하는 중입니다...';
-            case 'group': return `주제별 그룹을 생성하는 중입니다... ${processedGroups.length > 0 ? `(${processedGroups.length}개 생성됨)` : ''}`;
-            case 'chunk': return `기억 카드를 생성하는 중입니다... (${processedGroups.flatMap(g => g.chunks || []).length}개)`;
-            case 'complete': return '모든 처리가 완료되었습니다.';
-            default: return '처리 중입니다...';
-        }
-    };
+    
 
     return (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-md z-50 flex items-center justify-center">
@@ -411,11 +402,6 @@ export default function LoadingScreen({ progress, status, previewTitle, processe
                             </motion.div>
                         )}
                     </AnimatePresence>
-
-                    {/* 상태 메시지 */}
-                    <div className="mt-4 text-center">
-                        <p className="text-sm text-gray-600">{getLoadingMessage()}</p>
-                    </div>
                 </div>
             </motion.div>
         </div>
