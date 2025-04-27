@@ -66,7 +66,7 @@ export const metadata: Metadata = {
     siteName: "LOOPA",
     images: [
       {
-        url: '/opengraph-image.png',
+        url: 'https://loopa.my/opengraph-image.png',
         width: 1200,
         height: 630,
         alt: "LOOPA - 진짜 기억을 위한 반복 도우미"
@@ -79,7 +79,7 @@ export const metadata: Metadata = {
     description: "기억할 가치가 있는 아이디어, 이제 진정으로 내 머리 속에.",
     images: [
       {
-        url: '/twitter-image.png',
+        url: 'https://loopa.my/twitter-image.png',
         width: 1200,
         height: 630,
         alt: "LOOPA - 진짜 기억을 위한 반복 도우미"
