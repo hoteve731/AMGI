@@ -117,12 +117,12 @@ export default function LoadingScreen({ progress, status, previewTitle, processe
                 id: 1,
                 label: '텍스트 분석 및 제목 생성',
                 status: 'completed',
-                description: '텍스트의 적절한 제목을 생성합니다.'
+                description: '텍스트를 분석하고 제목을 생성합니다.'
             },
             {
                 id: 2,
                 label: '그룹 생성',
-                description: '텍스트를 주제별 그룹으로 나눕니다.',
+                description: '텍스트를 아이디어별 그룹으로 나눕니다.',
                 status: status === 'title' ? 'progress' :
                     (status === 'content' || status === 'group') ? 'progress' :
                         status === 'chunk' || status === 'complete' ? 'completed' : 'pending'
@@ -130,14 +130,14 @@ export default function LoadingScreen({ progress, status, previewTitle, processe
             {
                 id: 3,
                 label: '기억 카드 생성',
-                description: '각 그룹별 기억 카드를 생성합니다.',
+                description: '그룹별 기억 카드를 생성합니다.',
                 status: status === 'chunk' ? 'progress' :
                     status === 'complete' ? 'completed' : 'pending'
             },
             {
                 id: 4,
                 label: '완료',
-                description: '완료되었습니다. 결과 페이지로 이동합니다.',
+                description: '완료되었습니다. 잠시 후 해당 노트로 이동합니다.',
                 status: status === 'complete' ? 'completed' : 'pending'
             }
         ]
@@ -214,7 +214,7 @@ export default function LoadingScreen({ progress, status, previewTitle, processe
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    <p>생성이 완료되면 해당 페이지로 이동됩니다.</p>
+                    <p>생성이 완료되면 자동으로 이동합니다. (20초 내외 소요)</p>
                 </div>
 
                 <div className="p-5">

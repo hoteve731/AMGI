@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation'
 import { ContentLimitManager } from '../App'
 
 // 토스트 타입 정의
-type ToastType = 'info' | 'success' | 'error' | 'warning';
+type ToastType = 'info' | 'success' | 'error' | 'warning' | 'bg-processing';
 
 // 토스트 메시지 인터페이스
 interface ToastMessage {
@@ -17,6 +17,7 @@ interface ToastMessage {
     type: ToastType;
     duration?: number;
     onClose?: () => void;
+    data?: any; // 추가 데이터를 위한 필드
 }
 
 // 토스트 훅
@@ -56,7 +57,8 @@ function useToast() {
                         className={`p-4 rounded-lg shadow-lg max-w-sm ${toast.type === 'success' ? 'bg-green-100 text-green-800' :
                             toast.type === 'error' ? 'bg-red-100 text-red-800' :
                                 toast.type === 'warning' ? 'bg-yellow-100 text-yellow-800' :
-                                    'bg-blue-100 text-blue-800'
+                                    toast.type === 'bg-processing' ? 'bg-white text-gray-800 border border-gray-200' :
+                                        'bg-blue-100 text-blue-800'
                             }`}
                     >
                         <div className="flex justify-between items-start">
@@ -64,6 +66,21 @@ function useToast() {
                                 <h4 className="font-semibold text-sm">{toast.title}</h4>
                                 {toast.description && (
                                     <p className="text-xs mt-1">{toast.description}</p>
+                                )}
+                                {toast.type === 'bg-processing' && toast.data?.isCompleted && (
+                                    <button
+                                        onClick={() => {
+                                            if (toast.data?.contentId) {
+                                                window.location.href = `/content/${toast.data.contentId}/groups`;
+                                            }
+                                        }}
+                                        className="mt-2 text-xs text-[#7969F7] font-medium flex items-center"
+                                    >
+                                        생성이 완료되었습니다. 바로가기
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                        </svg>
+                                    </button>
                                 )}
                             </div>
                             <button
@@ -84,7 +101,7 @@ function useToast() {
         </div>
     );
 
-    return { toast: addToast, ToastContainer };
+    return { toast: addToast, removeToast, ToastContainer };
 }
 
 const MIN_LENGTH = 50;
@@ -99,12 +116,13 @@ export default function BottomSheet() {
     const [processingStatus, setProcessingStatus] = useState<string | null>(null)
     const [processingError, setProcessingError] = useState<string | null>(null)
     const [processedGroups, setProcessedGroups] = useState<any[]>([])
-    const [processedChunks, setProcessedChunks] = useState<Record<string, any[]>>({})
-    const [loadingStatusMessage, setLoadingStatusMessage] = useState('제목 생성 중...')
     const [loadingProgress, setLoadingProgress] = useState(0)
-    const [generatedTitle, setGeneratedTitle] = useState('')
-    const [isExpanded, setIsExpanded] = useState(false)
-    const [showAdditionalMemoryInput, setShowAdditionalMemoryInput] = useState(false)
+    const [loadingStatusMessage, setLoadingStatusMessage] = useState('')
+    const [showLoadingScreen, setShowLoadingScreen] = useState(false)
+    const [isBgProcessing, setIsBgProcessing] = useState(false)
+    const [pollingContentId, setPollingContentId] = useState<string | null>(null)
+    const [generatedTitle, setGeneratedTitle] = useState<string | null>(null)
+    const [bgProcessingToastId, setBgProcessingToastId] = useState<string | null>(null)
     const textareaRef = useRef<HTMLTextAreaElement>(null)
     const additionalMemoryRef = useRef<HTMLTextAreaElement>(null)
 
@@ -114,12 +132,11 @@ export default function BottomSheet() {
     const isLengthOverMax = textLength > MAX_LENGTH;
 
     // 토스트 기능 추가
-    const { toast, ToastContainer } = useToast();
+    const { toast, removeToast, ToastContainer } = useToast();
 
     // 전역 상태로 사용할 컨텍스트나 상태 관리 라이브러리로 이동하는 것이 좋을 수 있음
-    const [pollingContentId, setPollingContentId] = useState<string | null>(null)
-    const [showLoadingScreen, setShowLoadingScreen] = useState(false)
-    const [isBgProcessing, setIsBgProcessing] = useState(false)
+    const [showAdditionalMemoryInput, setShowAdditionalMemoryInput] = useState(false)
+    const [isExpanded, setIsExpanded] = useState(false)
 
     // 그룹 생성과 카드 생성 단계 추적을 위한 상태 추가
     const [groupProcessingStarted, setGroupProcessingStarted] = useState(false);
@@ -175,7 +192,6 @@ export default function BottomSheet() {
         setProcessingStatus(null)
         setProcessingError(null)
         setProcessedGroups([])
-        setProcessedChunks({})
         setIsBgProcessing(false)
     }
 
@@ -203,21 +219,20 @@ export default function BottomSheet() {
         setIsLoading(false);
         setIsBgProcessing(true);
 
-        // 사용자에게 알림
-        toast({
+        // 사용자에게 알림 (자동으로 사라지지 않음)
+        const toastId = toast({
             title: "백그라운드에서 처리 중",
-            description: "기억 카드가 백그라운드에서 계속 생성됩니다. 완료 후 확인하실 수 있습니다.",
-            type: "info",
-            duration: 5000,
-            onClose: () => {
-                // 콘텐츠 ID가 없으면 리다이렉션 하지 않음
-                if (!pollingContentId) return;
-
-                // 완료 후 상태 초기화 및 리다이렉션
-                resetLoadingStates();
-                handlePollingComplete(pollingContentId);
+            description: "기억 카드가 백그라운드에서 계속 생성되고 있습니다. 완료되면 자동으로 이동합니다.",
+            type: "bg-processing",
+            duration: 0, // 자동으로 사라지지 않음
+            data: {
+                contentId: pollingContentId,
+                isCompleted: false
             }
         });
+
+        // 토스트 ID 저장
+        setBgProcessingToastId(toastId);
     };
 
     const pollStatus = useCallback(async () => {
@@ -375,7 +390,6 @@ export default function BottomSheet() {
         setProcessingStatus('pending');
         setProcessingError(null);
         setProcessedGroups([]);
-        setProcessedChunks({});
         setGeneratedTitle('');
 
         // 입력 길이 검증
@@ -502,6 +516,10 @@ export default function BottomSheet() {
         let dataConsistencyCounter = 0;
         const requiredConsistentChecks = 2; // 연속 2번 동일한 완료 상태 확인 필요
 
+        // API 오류 카운터
+        let consecutiveErrorCount = 0;
+        const maxConsecutiveErrors = 5; // 최대 연속 오류 허용 횟수
+
         const checkReadyStatus = async () => {
             try {
                 retryCount++;
@@ -509,8 +527,22 @@ export default function BottomSheet() {
 
                 const checkResponse = await fetch(`/api/check-content?id=${contentId}`);
                 if (!checkResponse.ok) {
-                    throw new Error(`API 응답 오류: ${checkResponse.status}`);
+                    // API 응답 오류 카운터 증가
+                    consecutiveErrorCount++;
+                    console.warn(`[API 오류] ${consecutiveErrorCount}번째 연속 오류: ${checkResponse.status}`);
+
+                    // 최대 연속 오류 횟수를 초과한 경우에만 심각한 오류로 처리
+                    if (consecutiveErrorCount >= maxConsecutiveErrors) {
+                        throw new Error(`서버 응답 오류: ${checkResponse.status} ${checkResponse.statusText}`);
+                    }
+
+                    // 아직 허용 범위 내의 오류는 다음 폴링 시도
+                    setTimeout(checkReadyStatus, pollInterval);
+                    return;
                 }
+
+                // 성공적인 응답을 받으면 오류 카운터 리셋
+                consecutiveErrorCount = 0;
 
                 const checkData = await checkResponse.json();
                 console.log('[데이터 확인 결과]:', checkData);
@@ -615,6 +647,15 @@ export default function BottomSheet() {
                             // 모든 그룹에 청크가 있는지 확인
                             const allGroupsResult = await fetch(`/api/content-groups?contentId=${contentId}&includeChunks=true`);
                             if (!allGroupsResult.ok) {
+                                if (allGroupsResult.status === 404) {
+                                    // 404 오류는 조용히 처리하고 기본 리다이렉트 로직 사용
+                                    console.log('[그룹 데이터 확인] API가 아직 준비되지 않았습니다. 기본 리다이렉트 로직을 사용합니다.');
+                                    setTimeout(() => {
+                                        const targetUrl = `/content/${contentId}/groups`;
+                                        window.location.href = targetUrl;
+                                    }, 1500);
+                                    return;
+                                }
                                 throw new Error(`그룹 데이터 확인 오류: ${allGroupsResult.status}`);
                             }
 
@@ -759,7 +800,7 @@ export default function BottomSheet() {
         return <LoadingScreen
             status={loadingUIType}
             progress={loadingProgress}
-            previewTitle={generatedTitle}
+            previewTitle={generatedTitle || ''}
             processedGroups={processedGroups}
             onClose={handleCloseLoadingScreen}
         />
@@ -846,7 +887,7 @@ export default function BottomSheet() {
                                         <LoadingScreen
                                             status={loadingUIType}
                                             progress={loadingProgress}
-                                            previewTitle={generatedTitle}
+                                            previewTitle={generatedTitle || ''}
                                             processedGroups={processedGroups}
                                         />
                                         <p className="mt-4 text-sm text-gray-500">{loadingStatusMessage}</p>

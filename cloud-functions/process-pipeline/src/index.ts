@@ -110,7 +110,7 @@ async function processSingleSegment(supabase: SupabaseClient, openai: OpenAI, se
             if (!currentParsedGroup.originalSource || currentParsedGroup.originalSource.trim().length < 10) continue;
 
             const chunkCompletion = await openai.chat.completions.create({
-                model: "gpt-4.1-mini-2025-04-14",
+                model: "gpt-4.1-2025-04-14",
                 messages: [{ role: "system", content: chunksPrompt }, { role: "user", content: currentParsedGroup.originalSource }],
                 temperature: 0, max_tokens: 3000,
             });
@@ -423,7 +423,7 @@ functions.http('processTextPipeline', async (req, res) => {
 
                     // 청크 생성 API 호출
                     const chunkCompletion = await openai.chat.completions.create({
-                        model: "gpt-4.1-mini-2025-04-14",
+                        model: "gpt-4.1-2025-04-14",
                         messages: [
                             { role: "system", content: chunksPrompt },
                             { role: "user", content: groupInfo.originalSource }
