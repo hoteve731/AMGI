@@ -206,7 +206,6 @@ export default function BottomSheet() {
     // 에러 처리 함수 수정
     const handleError = (error: string) => {
         console.error('오류 발생:', error);
-        alert(`오류가 발생했습니다: ${error}. 홈페이지로 이동합니다.`);
         setIsLoading(false);
         setLoadingStatusMessage('');
         setLoadingProgress(0);
@@ -248,7 +247,13 @@ export default function BottomSheet() {
                 // HTTP 상태 코드 확인
                 if (!res.ok) {
                     console.error(`[Polling] HTTP 오류: ${res.status} ${res.statusText}`);
-                    // 3번 이상 연속 실패하면 오류 처리
+                    // 404 오류는 무시하고 계속 진행 (API가 아직 준비되지 않았을 수 있음)
+                    if (res.status === 404) {
+                        console.log('[Polling] API가 아직 준비되지 않았습니다. 다음 폴링에서 다시 시도합니다.');
+                        return;
+                    }
+
+                    // 3번 이상 연속 실패하면 오류 처리 (404 아닌 경우에만)
                     if (pollCount.current > 3) {
                         handleError(`서버 응답 오류: ${res.status} ${res.statusText}`);
                         return;
@@ -343,11 +348,14 @@ export default function BottomSheet() {
             } catch (error) {
                 console.error('[Polling] 에러:', error);
                 if (pollCount.current > 3) {
-                    handleError('폴링 중 알 수 없는 오류 발생');
+                    setIsLoading(false);
+                    setLoadingStatusMessage('');
+                    setLoadingProgress(0);
+                    router.push('/');
                 }
             }
         }
-    }, [isLoading, pollingContentId, generatedTitle, handlePollingComplete, handleError]);
+    }, [isLoading, pollingContentId, generatedTitle, handlePollingComplete]);
 
     // 폴링 시작
     useEffect(() => {
@@ -469,7 +477,10 @@ export default function BottomSheet() {
             } catch (textError) {
                 console.error('응답 읽기 오류:', textError);
                 // 에러 처리 - contentId는 아직 없음
-                handleError('서버 응답 읽기 오류');
+                setIsLoading(false);
+                setLoadingStatusMessage('');
+                setLoadingProgress(0);
+                router.push('/');
                 return;
             }
 
@@ -494,7 +505,10 @@ export default function BottomSheet() {
         } catch (error) {
             console.error('Error during submission:', error);
             // 콘텐츠 ID가 없으므로 삭제 요청 없이 에러 처리
-            handleError(error instanceof Error ? error.message : '콘텐츠 생성 시작 중 오류 발생');
+            setIsLoading(false);
+            setLoadingStatusMessage('');
+            setLoadingProgress(0);
+            router.push('/');
         }
     };
 
