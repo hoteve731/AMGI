@@ -932,7 +932,7 @@ export default function GroupDetail({
                                                     <textarea
                                                         value={editSummary}
                                                         onChange={(e) => setEditSummary(e.target.value)}
-                                                        className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                                        className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900"
                                                         rows={3}
                                                     />
                                                 </div>
@@ -941,7 +941,7 @@ export default function GroupDetail({
                                                     <textarea
                                                         value={editMaskedText}
                                                         onChange={(e) => setEditMaskedText(e.target.value)}
-                                                        className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                                        className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900"
                                                         rows={5}
                                                     />
                                                 </div>

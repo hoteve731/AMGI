@@ -850,7 +850,7 @@ export default function BottomSheet() {
                                                         value={additionalMemory}
                                                         onChange={(e) => setAdditionalMemory(e.target.value)}
                                                         placeholder="(선택) 특별히 기억하고 싶은 부분을 알려주세요."
-                                                        className="w-full h-20 resize-none rounded-lg p-2 focus:outline-none text-base border border-gray-200 focus:border-[#A99BFF] focus:border-2 mb-2"
+                                                        className="w-full h-20 resize-none rounded-lg p-2 focus:outline-none text-base border border-gray-200 focus:border-[#A99BFF] focus:border-2 mb-2 text-gray-900"
                                                         disabled={isLoading}
                                                     />
                                                     <div
@@ -871,7 +871,7 @@ export default function BottomSheet() {
                                                         value={text}
                                                         onChange={(e) => setText(e.target.value)}
                                                         placeholder="여기에 타이핑하거나 붙여넣으세요..."
-                                                        className={`flex-grow w-full p-3 border ${isLengthOverMax ? 'border-red-300' : 'border-gray-200'} rounded-lg resize-none focus:outline-none focus:ring-2 ${isLengthOverMax ? 'focus:ring-red-500/50' : 'focus:ring-[#9488f7]/50'} focus:border-transparent transition-shadow duration-150 text-base leading-relaxed`}
+                                                        className={`flex-grow w-full p-3 border ${isLengthOverMax ? 'border-red-300' : 'border-gray-200'} rounded-lg resize-none focus:outline-none focus:ring-2 ${isLengthOverMax ? 'focus:ring-red-500/50' : 'focus:ring-[#9488f7]/50'} focus:border-transparent transition-shadow duration-150 text-base leading-relaxed text-gray-900`}
                                                         disabled={isLoading}
                                                     />
                                                     <div className={`text-right text-xs mt-1.5 ${getCounterColor()}`}>
