@@ -37,7 +37,7 @@ export default function LogoutButton() {
         <button
             onClick={handleLogout}
             disabled={isLoading}
-            className="px-4 py-2 text-sm bg-white rounded-lg hover:bg-gray-50 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+            className="px-4 py-2 text-sm bg-white rounded-lg hover:bg-gray-50 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed text-gray-900"
         >
             {isLoading ? (
                 <>
@@ -73,10 +73,10 @@ export default function LogoutButton() {
                             />
                         ))}
                     </div>
-                    <span>로그아웃 중...</span>
+                    <span className="text-gray-900">로그아웃 중...</span>
                 </>
             ) : (
-                <span>로그아웃</span>
+                <span className="text-gray-900">로그아웃</span>
             )}
         </button>
     )

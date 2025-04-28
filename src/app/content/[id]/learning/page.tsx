@@ -221,13 +221,13 @@ export default function LearningPage() {
                         // 앞면: 정답 보기 버튼
                         <button
                             onClick={handleFlip}
-                            className="w-full bg-white rounded-xl border border-[#D4C4B7] py-4 text-gray-800 font-medium hover:bg-gray-50 transition-colors shadow-lg mb-8"
+                            className="w-full max-w-[700px] mx-auto bg-white rounded-xl border border-[#D4C4B7] py-4 text-gray-800 font-medium hover:bg-gray-50 transition-colors shadow-lg mb-8"
                         >
                             정답 보기
                         </button>
                     ) : (
                         // 뒷면: 난이도 버튼들
-                        <div>
+                        <div className="max-w-[700px] mx-auto">
                             <p className="text-center text-gray-600 text-sm mb-4">
                                 {currentIndex === currentGroup.chunks.length - 1 ? (
                                     "마지막 카드입니다."
@@ -244,29 +244,29 @@ export default function LearningPage() {
                                     onClick={() => handleDifficulty('again')}
                                     className="flex flex-col items-center justify-center p-4 rounded-xl bg-red-50 hover:bg-red-100 transition-colors"
                                 >
-                                    <span className="text-red-500 font-medium">Again</span>
-                                    <span className="text-red-400 text-sm">1m</span>
+                                    <span className="text-gray-900 font-medium">Forgotten</span>
+                                    <span className="text-gray-900 text-sm">1m 후 복습</span>
                                 </button>
                                 <button
                                     onClick={() => handleDifficulty('hard')}
                                     className="flex flex-col items-center justify-center p-4 rounded-xl bg-orange-50 hover:bg-orange-100 transition-colors"
                                 >
-                                    <span className="text-orange-500 font-medium">Hard</span>
-                                    <span className="text-orange-400 text-sm">8m</span>
+                                    <span className="text-gray-900 font-medium">Hard</span>
+                                    <span className="text-gray-900 text-sm">8m 후 복습</span>
                                 </button>
                                 <button
                                     onClick={() => handleDifficulty('good')}
                                     className="flex flex-col items-center justify-center p-4 rounded-xl bg-green-50 hover:bg-green-100 transition-colors"
                                 >
-                                    <span className="text-green-500 font-medium">Good</span>
-                                    <span className="text-green-400 text-sm">15m</span>
+                                    <span className="text-gray-900 font-medium">Good</span>
+                                    <span className="text-gray-900 text-sm">15m 후 복습</span>
                                 </button>
                                 <button
                                     onClick={() => handleDifficulty('easy')}
                                     className="flex flex-col items-center justify-center p-4 rounded-xl bg-blue-50 hover:bg-blue-100 transition-colors"
                                 >
-                                    <span className="text-blue-500 font-medium">Easy</span>
-                                    <span className="text-blue-400 text-sm">4d</span>
+                                    <span className="text-gray-900 font-medium">Easy</span>
+                                    <span className="text-gray-900 text-sm">4d 후 복습</span>
                                 </button>
                             </div>
                         </div>

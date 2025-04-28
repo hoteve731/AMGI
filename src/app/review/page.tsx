@@ -435,11 +435,11 @@ export default function ReviewPage() {
                 {/* 하단 버튼 영역 - 고정 플로팅 처리 */}
                 <div className="fixed bottom-0 left-0 right-0 z-10 w-full">
                     <div className="p-4 pb-8">
-                        <div className="w-full max-w-xl mx-auto">
+                        <div className="w-full max-w-[500px] mx-auto">
                             {!isFlipped ? (
                                 // 앞면: 정답 보기 버튼
                                 <div>
-                                    <div className="grid grid-cols-1 gap-2">
+                                    <div className="grid grid-cols-1 gap-2 max-w-[500px] mx-auto">
                                         <button
                                             onClick={handleFlip}
                                             className="flex flex-col items-center justify-center p-4 rounded-xl bg-white hover:bg-gray-50 transition-colors shadow-lg"
@@ -452,7 +452,7 @@ export default function ReviewPage() {
                             ) : (
                                 // 뒷면: 난이도 버튼들
                                 <div>
-                                    <div className="grid grid-cols-2 gap-4 w-full max-w-xl mx-auto">
+                                    <div className="grid grid-cols-2 gap-4 w-full max-w-[500px] mx-auto">
                                         <button
                                             onClick={() => handleCardAction('again')}
                                             className={`flex flex-col items-center justify-center p-3 rounded-xl bg-white border border-gray-100 shadow-sm hover:shadow-md transition-all relative`}
@@ -474,8 +474,8 @@ export default function ReviewPage() {
                                                 </div>
                                             )}
                                             <div className="text-xl mb-1">❌</div>
-                                            <span className="text-black/70 text-sm font-semibold">Forgotten</span>
-                                            <span className="text-black/70 text-xs font-normal">
+                                            <span className="text-black text-sm font-semibold">Forgotten</span>
+                                            <span className="text-black text-xs font-normal">
                                                 {getNextIntervalPreview(currentCard, 'again')} 후 복습
                                             </span>
                                         </button>
@@ -500,8 +500,8 @@ export default function ReviewPage() {
                                                 </div>
                                             )}
                                             <div className="text-xl mb-1">😐</div>
-                                            <span className="text-black/70 text-sm font-semibold">Recalled partially</span>
-                                            <span className="text-black/70 text-xs font-normal">
+                                            <span className="text-black text-sm font-semibold">Recalled partially</span>
+                                            <span className="text-black text-xs font-normal">
                                                 {getNextIntervalPreview(currentCard, 'hard')} 후 복습
                                             </span>
                                         </button>
@@ -526,8 +526,8 @@ export default function ReviewPage() {
                                                 </div>
                                             )}
                                             <div className="text-xl mb-1">😄</div>
-                                            <span className="text-black/70 text-sm font-semibold">Recalled with effort</span>
-                                            <span className="text-black/70 text-xs font-normal">
+                                            <span className="text-black text-sm font-semibold">Recalled with effort</span>
+                                            <span className="text-black text-xs font-normal">
                                                 {getNextIntervalPreview(currentCard, 'good')} 후 복습
                                             </span>
                                         </button>
@@ -552,8 +552,8 @@ export default function ReviewPage() {
                                                 </div>
                                             )}
                                             <div className="text-xl mb-1">👑</div>
-                                            <span className="text-black/70 text-sm font-semibold">Immediately</span>
-                                            <span className="text-black/70 text-xs font-normal">
+                                            <span className="text-black text-sm font-semibold">Immediately</span>
+                                            <span className="text-black text-xs font-normal">
                                                 {getNextIntervalPreview(currentCard, 'easy')} 후 복습
                                             </span>
                                         </button>
