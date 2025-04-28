@@ -125,6 +125,8 @@ export default function BottomSheet() {
     const [bgProcessingToastId, setBgProcessingToastId] = useState<string | null>(null)
     const textareaRef = useRef<HTMLTextAreaElement>(null)
     const additionalMemoryRef = useRef<HTMLTextAreaElement>(null)
+    const [isRedirecting, setIsRedirecting] = useState(false)
+    const redirectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
     const textLength = text.length; // 글자 수 계산
     const isLengthValid = textLength >= MIN_LENGTH && textLength <= MAX_LENGTH;
@@ -141,7 +143,6 @@ export default function BottomSheet() {
     // 그룹 생성과 카드 생성 단계 추적을 위한 상태 추가
     const [groupProcessingStarted, setGroupProcessingStarted] = useState(false);
     const [firstGroupDetected, setFirstGroupDetected] = useState(false);
-    const [isRedirecting, setIsRedirecting] = useState(false);
 
     // 폴링 카운터 추가
     const pollCount = useRef(0);
@@ -160,26 +161,41 @@ export default function BottomSheet() {
         return `${textLength}/${MAX_LENGTH}`;
     }
 
-    const handlePollingComplete = (data: any) => {
-        console.log('폴링 완료 처리 - 콘텐츠 ID:', data.content_id);
+    // 리다이렉션 처리 함수
+    const handleRedirect = useCallback((contentId: string) => {
+        if (isRedirecting) return;
 
-        if (!isRedirecting) {
-            setIsRedirecting(true);
-        }
-
-        // 리다이렉트 경로 생성 및 로그 추가
-        const targetUrl = `/content/${data.content_id}/groups`;
-        console.log('리다이렉트 경로:', targetUrl);
-
-        // 로딩 메시지 최종 업데이트 
+        setIsRedirecting(true);
         setLoadingUIType('complete');
         setLoadingProgress(100);
         setLoadingStatusMessage('처리가 완료되었습니다. 결과 페이지로 이동합니다...');
 
+        // 이전 타임아웃 정리
+        if (redirectTimeoutRef.current) {
+            clearTimeout(redirectTimeoutRef.current);
+        }
+
         // 리다이렉트 실행
-        setTimeout(() => {
+        redirectTimeoutRef.current = setTimeout(() => {
+            const targetUrl = `/content/${contentId}/groups`;
+            console.log('리다이렉트 경로:', targetUrl);
             window.location.href = targetUrl;
-        }, 1000);
+        }, 1500);
+    }, [isRedirecting]);
+
+    // 컴포넌트 언마운트 시 타임아웃 정리
+    useEffect(() => {
+        return () => {
+            if (redirectTimeoutRef.current) {
+                clearTimeout(redirectTimeoutRef.current);
+            }
+        };
+    }, []);
+
+    // handlePollingComplete 함수 수정
+    const handlePollingComplete = (data: any) => {
+        console.log('폴링 완료 처리 - 콘텐츠 ID:', data.content_id);
+        handleRedirect(data.content_id);
     };
 
     const resetLoadingStates = () => {
@@ -650,63 +666,8 @@ export default function BottomSheet() {
                     // 연속으로 일정 횟수 이상 완료 상태 확인 시 진짜 완료로 간주
                     if (dataConsistencyCounter >= requiredConsistentChecks) {
                         console.log('[데이터 준비 완료] 리다이렉트 준비');
-
-                        // 완료 UI로 전환
-                        setLoadingUIType('complete');
-                        setLoadingProgress(100);
-                        setLoadingStatusMessage('처리 완료! 결과 페이지로 이동합니다...');
-
-                        // 추가 데이터 검증
-                        try {
-                            // 모든 그룹에 청크가 있는지 확인
-                            const allGroupsResult = await fetch(`/api/content-groups?contentId=${contentId}&includeChunks=true`);
-                            if (!allGroupsResult.ok) {
-                                if (allGroupsResult.status === 404) {
-                                    // 404 오류는 조용히 처리하고 기본 리다이렉트 로직 사용
-                                    console.log('[그룹 데이터 확인] API가 아직 준비되지 않았습니다. 기본 리다이렉트 로직을 사용합니다.');
-                                    setTimeout(() => {
-                                        const targetUrl = `/content/${contentId}/groups`;
-                                        window.location.href = targetUrl;
-                                    }, 1500);
-                                    return;
-                                }
-                                throw new Error(`그룹 데이터 확인 오류: ${allGroupsResult.status}`);
-                            }
-
-                            const allGroupsData = await allGroupsResult.json();
-
-                            let allGroupsComplete = true;
-                            if (allGroupsData.groups) {
-                                for (const group of allGroupsData.groups) {
-                                    if (!group.chunks || group.chunks.length === 0) {
-                                        allGroupsComplete = false;
-                                        break;
-                                    }
-                                }
-                            }
-
-                            if (allGroupsComplete) {
-                                // 데이터가 완전히 준비된 경우에만 리다이렉트
-                                setTimeout(() => {
-                                    const targetUrl = `/content/${contentId}/groups`;
-                                    console.log('[리다이렉트] 결과 페이지로 이동:', targetUrl);
-                                    window.location.href = targetUrl;
-                                }, 1500); // 1.5초 후 리다이렉트
-                                return;
-                            } else {
-                                // 일부 그룹에 청크가 없는 경우 계속 폴링
-                                console.log('[데이터 불완전] 일부 그룹에 청크가 없음, 계속 폴링');
-                                dataConsistencyCounter = 0; // 카운터 리셋
-                            }
-                        } catch (error) {
-                            console.error('데이터 검증 오류:', error);
-                            // 오류 발생 시 기본 로직으로 진행
-                            setTimeout(() => {
-                                const targetUrl = `/content/${contentId}/groups`;
-                                window.location.href = targetUrl;
-                            }, 2000);
-                            return;
-                        }
+                        handleRedirect(contentId);
+                        return;
                     }
                 } else {
                     // 완료 상태가 아닌 경우 카운터 리셋
@@ -715,23 +676,8 @@ export default function BottomSheet() {
 
                 // 최대 시도 횟수 도달 확인
                 if (retryCount >= maxRetries) {
-                    console.log('[최대 시도 횟수 도달] 로딩 상태 업데이트 중지, 결과 페이지로 이동');
-
-                    setLoadingUIType('chunk');
-                    setLoadingProgress(95);
-                    setLoadingStatusMessage('데이터 처리 시간이 예상보다 길어지고 있습니다. 결과 페이지로 이동합니다.');
-
-                    toast({
-                        title: "처리 시간 지연",
-                        description: "백그라운드에서 계속 처리됩니다. 결과 페이지에서 잠시 후 확인해주세요.",
-                        type: "info",
-                        duration: 3000,
-                        onClose: () => {
-                            const targetUrl = `/content/${contentId}/groups`;
-                            console.log('타임아웃 리다이렉트 경로:', targetUrl);
-                            window.location.href = targetUrl;
-                        }
-                    });
+                    console.log('[최대 시도 횟수 도달] 결과 페이지로 이동');
+                    handleRedirect(contentId);
                     return;
                 }
 
@@ -743,22 +689,7 @@ export default function BottomSheet() {
                 // 오류 발생 시에도 최대 5번 시도
                 if (retryCount >= 5) {
                     console.log('[오류 발생] 결과 페이지로 이동');
-
-                    setLoadingUIType('chunk');
-                    setLoadingProgress(90);
-                    setLoadingStatusMessage('상태 확인 중 오류 발생. 결과 페이지로 이동하여 확인해주세요.');
-
-                    toast({
-                        title: "상태 확인 오류",
-                        description: "결과 페이지로 이동하여 처리 상태를 확인해주세요.",
-                        type: "warning",
-                        duration: 3000,
-                        onClose: () => {
-                            const targetUrl = `/content/${contentId}/groups`;
-                            console.log('오류 발생 리다이렉트 경로:', targetUrl);
-                            window.location.href = targetUrl;
-                        }
-                    });
+                    handleRedirect(contentId);
                     return;
                 }
 

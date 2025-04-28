@@ -89,6 +89,7 @@ export default function LoadingScreen({ progress, status, previewTitle, processe
     const [timeDisplay, setTimeDisplay] = useState('00:00:00')
     const [prevStatus, setPrevStatus] = useState(status)
     const [animateStep, setAnimateStep] = useState<number | null>(null)
+    const [isRedirecting, setIsRedirecting] = useState(false)
 
     // 상태가 변경될 때마다 애니메이션 트리거
     useEffect(() => {
@@ -109,6 +110,13 @@ export default function LoadingScreen({ progress, status, previewTitle, processe
             return () => clearTimeout(timer);
         }
     }, [status, prevStatus]);
+
+    // 완료 상태 감지 및 리다이렉션 상태 설정
+    useEffect(() => {
+        if (status === 'complete' && !isRedirecting) {
+            setIsRedirecting(true);
+        }
+    }, [status, isRedirecting]);
 
     // 상태에 따른 단계 결정 (4단계로 축소)
     const getSteps = (): ProcessStep[] => {
@@ -183,7 +191,7 @@ export default function LoadingScreen({ progress, status, previewTitle, processe
     const steps = getSteps()
     const currentStepIndex = getCurrentStepIndex()
 
-    
+
 
     return (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-md z-50 flex items-center justify-center">
@@ -196,8 +204,10 @@ export default function LoadingScreen({ progress, status, previewTitle, processe
             >
                 {/* 헤더 영역 */}
                 <div className="w-full p-4 flex justify-between items-center border-b border-gray-100">
-                    <h1 className="text-xl font-bold text-gray-800">기억 카드 생성 중</h1>
-                    {onClose && (
+                    <h1 className="text-xl font-bold text-gray-800">
+                        {isRedirecting ? '이동 준비 중' : '기억 카드 생성 중'}
+                    </h1>
+                    {onClose && !isRedirecting && (
                         <button
                             onClick={onClose}
                             className="p-1.5 rounded-full hover:bg-gray-100 transition-colors"
@@ -214,7 +224,11 @@ export default function LoadingScreen({ progress, status, previewTitle, processe
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    <p>생성이 완료되면 자동으로 이동합니다. (30초 내외 소요)</p>
+                    <p>
+                        {isRedirecting
+                            ? '잠시 후 결과 페이지로 이동합니다...'
+                            : '생성이 완료되면 자동으로 이동합니다. (30초 내외 소요)'}
+                    </p>
                 </div>
 
                 <div className="p-5">
