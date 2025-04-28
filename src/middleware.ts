@@ -16,8 +16,10 @@ export const config = {
      * - icons (public static asset route)
      * - images (public static asset route)
      * - manifest.json (public static asset route)
+     * - opengraph-image.png (Open Graph image)
+     * - twitter-image.png (Twitter card image)
      * Feel free to modify this pattern to include more paths.
      */
-    '/((?!_next/static|_next/image|favicon.ico|firebase-messaging-sw.js|icons|images|manifest.json).*)',
+    '/((?!_next/static|_next/image|favicon.ico|firebase-messaging-sw.js|icons|images|manifest.json|opengraph-image.png|twitter-image.png).*)',
   ],
 }
