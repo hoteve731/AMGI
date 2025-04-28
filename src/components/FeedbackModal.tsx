@@ -35,7 +35,7 @@ export default function FeedbackModal({
 
   // 이메일 문의 처리
   const handleSendInquiryEmail = () => {
-    const emailAddress = 'fbghtks1000@gmail.com';
+    const emailAddress = 'loopa.service@gmail.com';
     const subject = '[LOOPA] 문의사항';
     const body = '안녕하세요, LOOPA 팀에게 문의드립니다.\n\n문의 내용:\n\n';
 

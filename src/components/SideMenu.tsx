@@ -71,7 +71,7 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
 
   // 이메일로 구독 신청 기능 추가
   const handleSubscriptionEmail = () => {
-    const emailAddress = 'fbghtks1000@gmail.com';
+    const emailAddress = 'loopa.service@gmail.com';
     const subject = 'LOOPA 프리미엄 엑세스 신청';
     const body = '사유를 간단하게 작성하여 보내주세요! 24시간 내로 답장을 드립니다.';
 
@@ -81,7 +81,7 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
 
   // 1:1 문의 이메일 보내기
   const handleSendInquiryEmail = () => {
-    const emailAddress = 'fbghtks1000@gmail.com';
+    const emailAddress = 'loopa.service@gmail.com';
     const subject = 'LOOPA 1:1 문의';
     const body = '문의 내용을 작성해 주세요. 최대한 빠르게 답변 드리겠습니다.';
 
