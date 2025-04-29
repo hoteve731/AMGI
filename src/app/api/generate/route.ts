@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import { createClient } from '@/utils/supabase/server'
 
+import { notifyNewContent } from '@/utils/slack';
+
+
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
     baseURL: "https://api.openai.com/v1"
@@ -183,6 +186,9 @@ export async function POST(req: Request) {
                 { status: 500 }
             )
         }
+
+        // Slack 알림 전송
+        await notifyNewContent(session.user.id, contentId as string, title, session.user.email);
 
         // 즉시 응답 반환
         return NextResponse.json({

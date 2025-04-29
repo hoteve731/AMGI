@@ -69,6 +69,9 @@ export default function ReviewPage() {
             if (result.cards && Array.isArray(result.cards)) {
                 console.log(`Received ${result.cards.length} cards for review`)
                 setCards(result.cards)
+
+                // 서버 측에서 알림을 처리하므로 클라이언트 측 알림 코드 제거
+                console.log(`리뷰 페이지 접속: ${result.cards.length}개의 카드 로드됨`)
             } else {
                 console.warn('No cards received from API or cards is not an array:', result.cards)
                 setCards([])

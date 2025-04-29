@@ -11,6 +11,9 @@ const REVIEW_SETTINGS = {
     interval_modifier: 0.9
 }
 
+// 중복 알림 방지를 위한 메모리 캐시 (서버 재시작 시 초기화됨)
+const notificationCache = new Map<string, number>();
+
 // Helper function to calculate the next due date based on card state and user response
 function calculateNextDueDate(
     currentState: string,
@@ -125,6 +128,8 @@ interface StatsChunk {
     }[];
 }
 
+import { notifyReviewPageAccess } from '@/utils/slack'
+
 // GET handler for fetching review cards and statistics
 export async function GET(request: NextRequest) {
     try {
@@ -237,6 +242,58 @@ export async function GET(request: NextRequest) {
         });
 
         console.log(`Filtered to ${filteredCards.length} cards for user ${userId || 'unknown'}`);
+
+        // 리뷰 페이지 접속 알림 전송 (서버 측에서 처리)
+        if (userId && filteredCards && filteredCards.length > 0) {
+            try {
+                // 요청 헤더에서 Referer 확인
+                const referer = request.headers.get('referer') || '';
+                const isReviewPage = referer.includes('/review');
+
+                console.log('API 요청 Referer:', referer, '리뷰 페이지 여부:', isReviewPage);
+
+                // 리뷰 페이지에서 온 요청인 경우에만 알림 전송
+                if (isReviewPage) {
+                    // 사용자 이메일 가져오기 - 세션에서 직접 가져옴
+                    const userEmail = user?.email;
+
+                    console.log('사용자 이메일 조회 결과:', {
+                        userId,
+                        userEmail,
+                        user: JSON.stringify(user)
+                    });
+
+                    // 중복 알림 방지를 위한 메모리 캐시 확인
+                    const cacheKey = `review_notification_${userId}`;
+                    const now = Date.now();
+                    const lastNotificationTime = notificationCache.get(cacheKey);
+
+                    // 마지막 알림 시간이 없거나 1분 이상 지났으면 알림 전송
+                    if (!lastNotificationTime || (now - lastNotificationTime > 60 * 1000)) {
+                        // 알림 전송
+                        await notifyReviewPageAccess(userId, filteredCards.length, userEmail);
+                        console.log('리뷰 페이지 접속 알림 전송 성공 (서버 측):', {
+                            userId,
+                            cardCount: filteredCards.length,
+                            userEmail
+                        });
+
+                        // 메모리 캐시에 알림 기록 저장
+                        notificationCache.set(cacheKey, now);
+                    } else {
+                        console.log('이미 최근에 리뷰 페이지 접속 알림이 전송되었습니다.', {
+                            lastNotificationTime: new Date(lastNotificationTime).toISOString(),
+                            secondsAgo: Math.floor((now - lastNotificationTime) / 1000)
+                        });
+                    }
+                } else {
+                    console.log('리뷰 페이지가 아닌 곳에서의 API 요청이므로 알림을 보내지 않습니다.');
+                }
+            } catch (notifyError) {
+                console.error('리뷰 페이지 접속 알림 전송 실패 (서버 측):', notifyError);
+                // 알림 실패는 API 응답에 영향을 주지 않음
+            }
+        }
 
         // Fetch statistics for all cards
         const { data: statsData, error: statsError } = await supabase
