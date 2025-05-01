@@ -287,7 +287,7 @@ export default function ReviewPage() {
 
     if (isLoading) {
         return (
-            <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-t from-[#D4C4B7] via-[#E8D9C5] to-[#F8F4EF]">
+            <div className="flex min-h-screen flex-col items-center justify-center bg-[#F8F4EF]">
                 <LoadingOverlay />
             </div>
         )
@@ -295,7 +295,7 @@ export default function ReviewPage() {
 
     if (!cards || cards.length === 0) {
         return (
-            <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-t from-[#D4C4B7] via-[#E8D9C5] to-[#F8F4EF] p-4">
+            <div className="flex min-h-screen flex-col items-center justify-center bg-[#F8F4EF] p-4">
                 <div className="bg-white/90 backdrop-blur-md rounded-xl shadow-lg p-6 max-w-md w-full">
                     <h1 className="text-2xl font-bold text-center mb-4">복습 완료!</h1>
                     <p className="text-gray-600 text-center mb-6">
@@ -313,7 +313,7 @@ export default function ReviewPage() {
     }
 
     return (
-        <main className="flex h-screen overflow-hidden flex-col bg-gradient-to-t from-[#D4C4B7] via-[#E8D9C5] to-[#F8F4EF] touch-none">
+        <main className="flex h-screen overflow-hidden flex-col bg-[#F8F4EF] touch-none">
             {isNavigatingBack && <LoadingOverlay />}
             {/* 헤더 */}
             <div className="sticky top-0 bg-[#F8F4EF] border-b border-[#D4C4B7] h-12 z-50">
@@ -330,7 +330,7 @@ export default function ReviewPage() {
 
             <div className="flex-1 max-w-2xl mx-auto w-full p-4 flex flex-col overflow-hidden">
                 {/* 그룹 제목 */}
-                <h1 className="text-xl font-bold text-gray-800 mb-2 mt-4 text-center">
+                <h1 className="text-sm font-medium text-gray-600 mb-1 mt-2 text-center">
                     {currentCard?.content_groups?.title || '복습'}
                 </h1>
 

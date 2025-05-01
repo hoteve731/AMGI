@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSWRConfig } from 'swr'
 import LoadingOverlay from './LoadingOverlay'
+import LoadingScreen from './LoadingScreen'
 import { motion, AnimatePresence } from 'framer-motion'
 import GroupDetail from './GroupDetail'
 import DOMPurify from 'isomorphic-dompurify';
@@ -59,6 +60,9 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
     const [isMounted, setIsMounted] = useState(false);
     const [isGeneratingCards, setIsGeneratingCards] = useState(false);
     const [generationError, setGenerationError] = useState<string | null>(null);
+    const [generationStatus, setGenerationStatus] = useState<'title' | 'content' | 'group' | 'chunk' | 'complete'>('title');
+    const [generationProgress, setGenerationProgress] = useState<number>(0);
+    const [processedGroups, setProcessedGroups] = useState<any[]>([]);
 
     console.log('ContentGroups rendering with content:', content);
     useEffect(() => {
@@ -439,9 +443,14 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
 
         setIsGeneratingCards(true);
         setGenerationError(null);
+        setGenerationStatus('title'); // 초기 상태: 제목 생성 (이미 완료됨)
+        setGenerationProgress(10);
 
         try {
             // 1. 그룹 생성 API 호출
+            setGenerationStatus('group'); // 그룹 생성 단계로 변경
+            setGenerationProgress(30);
+
             const groupsResponse = await fetch('/api/process-groups', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -457,9 +466,24 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
 
             const groupsData = await groupsResponse.json();
             console.log('Groups generated:', groupsData);
+            
+            // 그룹 정보 가져오기
+            const groupsInfoResponse = await fetch(`/api/content-groups?contentId=${content.id}`);
+            if (!groupsInfoResponse.ok) {
+                throw new Error('그룹 정보를 가져오는 중 오류가 발생했습니다.');
+            }
+            
+            const groupsInfo = await groupsInfoResponse.json();
+            setProcessedGroups(groupsInfo.groups || []);
 
             // 2. 각 그룹에 대해 청크 생성 API 호출
-            const chunkPromises = groupsData.group_ids.map(async (groupId: string) => {
+            setGenerationStatus('chunk'); // 청크(기억카드) 생성 단계로 변경
+            setGenerationProgress(60);
+
+            const totalGroups = groupsData.group_ids.length;
+            let completedGroups = 0;
+
+            const chunkPromises = groupsData.group_ids.map(async (groupId: string, index: number) => {
                 const chunksResponse = await fetch('/api/process-cloze-chunks', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -474,26 +498,58 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                     throw new Error(`그룹 ${groupId}의 청크 생성 중 오류가 발생했습니다.`);
                 }
 
+                completedGroups++;
+                setGenerationProgress(60 + Math.floor((completedGroups / totalGroups) * 30));
+
                 return chunksResponse.json();
             });
 
             // 모든 청크 생성 완료 대기
             await Promise.all(chunkPromises);
 
-            // 3. 페이지 새로고침하여 생성된 카드 표시
-            window.location.reload();
+            setGenerationStatus('complete'); // 완료 단계로 변경
+            setGenerationProgress(100);
+
+            // 3. 기억카드 탭으로 전환 후 페이지 새로고침
+            localStorage.setItem(`content-${content.id}-activeTab`, 'cards');
+
+            // 약간의 지연 후 새로고침 (사용자가 완료 메시지를 볼 수 있도록)
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000); // 완료 메시지를 더 오래 보여주기 위해 지연 시간 증가
 
         } catch (error) {
             console.error('Memory card generation error:', error);
             setGenerationError(error instanceof Error ? error.message : '기억카드 생성 중 오류가 발생했습니다.');
         } finally {
-            setIsGeneratingCards(false);
+            // 오류 발생 시에만 로딩 상태 해제 (성공 시에는 페이지 새로고침으로 처리)
+            if (generationError) {
+                setIsGeneratingCards(false);
+                setGenerationProgress(0);
+                setGenerationStatus('title');
+            }
         }
     };
 
     return (
         <main className="flex min-h-screen flex-col bg-[#F8F4EF] pb-12 p-4">
+            {/* 일반 로딩 오버레이 */}
             {(isLoading || isDeleting || isDeletingContent || isNavigating) && <LoadingOverlay />}
+            
+            {/* 기억카드 생성 로딩 화면 */}
+            {isGeneratingCards && (
+                <LoadingScreen 
+                    progress={generationProgress}
+                    status={generationStatus}
+                    previewTitle={content.title}
+                    processedGroups={processedGroups}
+                    onClose={() => {
+                        setIsGeneratingCards(false);
+                        setGenerationProgress(0);
+                        setGenerationStatus('title');
+                    }}
+                />
+            )}
             <div className="sticky top-0 bg-[#F8F4EF] border-b border-[#D4C4B7] h-12 z-50">
                 <button
                     onClick={handleGoBack}
@@ -546,7 +602,10 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                                             />
                                         )}
                                         <button
-                                            onClick={() => setActiveTab(tab.id as 'notes' | 'cards' | 'groups' | 'text')}
+                                            onClick={() => {
+                                                setActiveTab(tab.id as 'notes' | 'cards' | 'groups' | 'text');
+                                                localStorage.setItem(`content-${content.id}-activeTab`, tab.id);
+                                            }}
                                             className={`
                                                 relative z-20
                                                 w-full py-2 px-1
