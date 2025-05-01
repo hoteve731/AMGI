@@ -26,8 +26,18 @@ export SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
 export SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY
 export OPENAI_API_KEY=$OPENAI_API_KEY
 
-# Kill any process using port 8081 (alternative port)
-lsof -ti:8081 | xargs kill -9 2>/dev/null
+# Print environment variables for debugging (without showing the full values)
+echo "Environment variables set:"
+echo "SUPABASE_URL: ${SUPABASE_URL:0:10}..."
+echo "SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:0:10}..."
+echo "OPENAI_API_KEY: ${OPENAI_API_KEY:0:10}..."
 
-# Run the function on port 8081 instead of the default 8080
-npm run build && npx functions-framework --target=processTextPipeline --port=8081
+# Kill any process using port 8080 (default port)
+lsof -ti:8080 | xargs kill -9 2>/dev/null
+
+# Build and run the function with environment variables
+npm run build && \
+SUPABASE_URL=$SUPABASE_URL \
+SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY \
+OPENAI_API_KEY=$OPENAI_API_KEY \
+npx functions-framework --target=processTextPipeline --port=8080

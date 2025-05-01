@@ -19,7 +19,7 @@ export default async function Home() {
   const user = session?.user
 
   return (
-    <main className="flex min-h-screen flex-col bg-gradient-to-b from-[#F8F4EF] to-[#E8D9C5]">
+    <main className="flex min-h-screen flex-col bg-[#F8F4EF]">
       <header className="flex justify-between items-center py-3 px-4 border-b border-[#D4C4B7] bg-[#F8F4EF]">
         <div className="flex items-center gap-3">
           <MenuButton />

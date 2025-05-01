@@ -2,11 +2,13 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useSWRConfig } from 'swr'
 import LoadingOverlay from './LoadingOverlay'
 import { motion, AnimatePresence } from 'framer-motion'
 import GroupDetail from './GroupDetail'
+import { marked } from 'marked';
+import DOMPurify from 'isomorphic-dompurify';
 
 type Content = {
     id: string
@@ -259,55 +261,21 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
 
     // Helper function to render markdown text as HTML
     function renderMarkdown(markdown: string): string {
-        // This is a simple implementation - in a real app, you'd use a library like marked or remark
         if (!markdown) return '';
 
-        // Convert headers
-        let html = markdown
-            .replace(/^### (.*$)/gim, '<h3>$1</h3>')
-            .replace(/^## (.*$)/gim, '<h2>$1</h2>')
-            .replace(/^# (.*$)/gim, '<h1>$1</h1>');
+        // Configure marked with options
+        marked.use({
+            gfm: true, // GitHub Flavored Markdown
+            breaks: true, // Convert \n to <br>
+        });
 
-        // Convert bold and italic
-        html = html
-            .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
-            .replace(/\*(.*?)\*/gim, '<em>$1</em>');
-
-        // Convert lists
-        html = html
-            .replace(/^\s*\n\* (.*)/gim, '<ul>\n<li>$1</li>')
-            .replace(/^\* (.*)/gim, '<li>$1</li>')
-            .replace(/^\s*\n- (.*)/gim, '<ul>\n<li>$1</li>')
-            .replace(/^- (.*)/gim, '<li>$1</li>')
-            .replace(/^\s*\n\d+\. (.*)/gim, '<ol>\n<li>$1</li>')
-            .replace(/^\d+\. (.*)/gim, '<li>$1</li>');
-
-        // Close lists
-        html = html
-            .replace(/<\/ul>\s*\n<ul>/gim, '')
-            .replace(/<\/ol>\s*\n<ol>/gim, '')
-            .replace(/<\/li>\s*\n<\/ul>/gim, '</li></ul>')
-            .replace(/<\/li>\s*\n<\/ol>/gim, '</li></ol>');
-
-        // Convert paragraphs
-        html = html
-            .replace(/^\s*\n\s*\n/gim, '</p><p>')
-            .replace(/^\s*\n/gim, '<br>');
-
-        // Wrap in paragraph tags if not already wrapped
-        if (!html.startsWith('<h') && !html.startsWith('<ul') && !html.startsWith('<ol') && !html.startsWith('<p')) {
-            html = '<p>' + html;
-        }
-        if (!html.endsWith('</h1>') && !html.endsWith('</h2>') && !html.endsWith('</h3>') &&
-            !html.endsWith('</ul>') && !html.endsWith('</ol>') && !html.endsWith('</p>')) {
-            html = html + '</p>';
-        }
-
-        return html;
+        // Sanitize the HTML output to prevent XSS attacks
+        const html = marked.parse(markdown);
+        return DOMPurify.sanitize(html);
     }
 
     return (
-        <main className="flex min-h-screen flex-col bg-gradient-to-b from-[#F8F4EF] to-[#E8D9C5] pb-12">
+        <main className="flex min-h-screen flex-col bg-[#F8F4EF] pb-12">
             {(isLoading || isDeleting || isDeletingContent || isNavigating) && <LoadingOverlay />}
             <div className="sticky top-0 bg-[#F8F4EF] border-b border-[#D4C4B7] h-12 z-50">
                 <button
@@ -393,7 +361,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                             transition={{ duration: 0.2, ease: "easeInOut" }}
                         >
                             <div className="p-6 bg-white/80 backdrop-blur-md rounded-xl border border-white/20">
-                                <div className="prose max-w-none">
+                                <div className="w-full">
                                     {content.markdown_text ? (
                                         <div className="markdown-content" dangerouslySetInnerHTML={{ __html: renderMarkdown(content.markdown_text) }} />
                                     ) : (
@@ -613,7 +581,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                             transition={{ duration: 0.2, ease: "easeInOut" }}
                         >
                             <div className="p-6 bg-white/80 backdrop-blur-md rounded-xl border border-white/20">
-                                <div className="prose max-w-none">
+                                <div className="w-full">
                                     <p className="whitespace-pre-wrap text-gray-700">{content.original_text}</p>
                                 </div>
                             </div>

@@ -682,7 +682,7 @@ export default function GroupDetail({
     const [activeTab, setActiveTab] = useState<'memory' | 'group' | 'text'>('memory')
     if (!currentGroup) {
         return (
-            <main className="flex min-h-screen flex-col bg-gradient-to-b from-[#F8F4EF] to-[#E8D9C5]">
+            <main className="flex min-h-screen flex-col bg-[#F8F4EF]">
                 {isNavigating && <LoadingOverlay />}
                 <div className="sticky top-0 bg-[#F8F4EF] border-b border-[#D4C4B7] h-12 z-50">
                     <button
@@ -712,7 +712,7 @@ export default function GroupDetail({
     }
 
     return (
-        <main className={`flex flex-col ${!hideHeader ? 'min-h-screen bg-gradient-to-b from-[#F8F4EF] to-[#E8D9C5]' : ''}`}>
+        <main className={`flex flex-col ${!hideHeader ? 'min-h-screen bg-[#F8F4EF]' : 'bg-[#F8F4EF]'}`}>
             {isNavigating && <LoadingOverlay />}
             {!hideHeader && (
                 <div className="sticky top-0 bg-[#F8F4EF] border-b border-[#D4C4B7] h-12 z-50">

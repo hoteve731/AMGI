@@ -11,12 +11,32 @@ import { SparklesIcon } from "@heroicons/react/24/solid";
 
 // ContentTabs와 동일한 fetcher 함수 사용
 const fetcher = async (url: string) => {
-  const response = await fetch(url, { credentials: 'include' });
-  if (!response.ok) {
-    console.error('Failed to fetch contents:', response.status);
+  try {
+    const response = await fetch(url, { credentials: 'include' });
+
+    if (response.status === 401) {
+      console.error('Authentication error: User not authenticated');
+      // 로그인 페이지로 리다이렉트하는 대신 빈 데이터 반환
+      return { contents: [] };
+    }
+
+    if (!response.ok) {
+      console.error('Failed to fetch contents:', response.status);
+      return { contents: [] };
+    }
+
+    // 응답이 JSON인지 확인
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      console.error('Invalid response format, expected JSON but got:', contentType);
+      return { contents: [] };
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching contents:', error);
     return { contents: [] };
   }
-  return response.json();
 };
 
 // 최대 콘텐츠 수 상수 정의
