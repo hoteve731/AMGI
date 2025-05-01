@@ -2,43 +2,53 @@
 'use server'
 
 import { PostgrestError } from '@supabase/supabase-js'
-import ContentDetail from '@/components/ContentDetail'
+import GroupDetail from '@/components/GroupDetail'
 import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/utils/supabase/server'
 
-type Chunk = {
-  summary: string
-}
-
-type MaskedChunk = {
-  masked_text: string
-}
-
+// Define types for database content
 type Content = {
   id: string
   title: string
+  user_id: string
   original_text: string
   markdown_text?: string
-  chunks: Chunk[]
-  masked_chunks: MaskedChunk[]
+  chunks: any[]
+  masked_chunks: any[]
   created_at: string
 }
 
-type ContentGroup = {
+// Define the type for the database query result
+type DbContentGroup = {
   id: string
   content_id: string
   title: string
   original_text: string
-  chunks: Array<{ id: string, summary: string, masked_text: string }>
+  position: number
+  content_chunks: Array<{
+    id: string
+    summary: string
+    masked_text: string
+    position?: number
+  }>
 }
 
-// Define the type for the nested query result
-type ContentGroupWithChunks = {
+// Define types that match what GroupDetail component expects
+type GroupDetailChunk = {
   id: string
-  content_id: string
+  group_id: string
+  summary: string
+  masked_text: string
+  position: number
+  status?: 'active' | 'inactive'
+}
+
+type GroupDetailGroup = {
+  id: string
   title: string
   original_text: string
-  content_chunks: Array<{ id: string, summary: string, masked_text: string }>
+  chunks?: GroupDetailChunk[]
+  position: number
 }
 
 // ✅ 핵심: Vercel 타입 충돌 피하기 위해 any 사용
@@ -90,7 +100,7 @@ export default async function Page(props: any) {
   }
 
   // Fetch the first group associated with this content
-  let group: ContentGroup | null = null
+  let group: GroupDetailGroup | null = null
   try {
     // Use the any type for the raw response and then transform it properly
     const { data: rawData, error } = await supabase
@@ -103,8 +113,10 @@ export default async function Page(props: any) {
         content_chunks (
           id,
           summary, 
-          masked_text
-        )
+          masked_text,
+          position
+        ),
+        position
       `)
       .eq('content_id', id)
       .single()
@@ -120,28 +132,38 @@ export default async function Page(props: any) {
     }
 
     // Type assertion to help TypeScript understand the structure
-    const data = rawData as ContentGroupWithChunks;
+    const data = rawData as DbContentGroup;
 
     // Transform the data to match the expected format
     if (data && Array.isArray(data.content_chunks)) {
+      // Transform chunks to match the GroupDetail component's expected structure
+      const transformedChunks: GroupDetailChunk[] = data.content_chunks.map((chunk, index) => ({
+        id: chunk.id,
+        group_id: data.id, // Set group_id to the parent group's id
+        summary: chunk.summary,
+        masked_text: chunk.masked_text,
+        position: typeof chunk.position === 'number' ? chunk.position : index,
+        status: 'active' // Default status
+      }));
+
+      // Create a group object that matches GroupDetail's expectations
       group = {
         id: data.id,
-        content_id: data.content_id,
         title: data.title,
         original_text: data.original_text,
-        chunks: data.content_chunks
+        chunks: transformedChunks,
+        position: data.position || 0
       };
     } else {
       console.warn('No content chunks found for group');
       group = {
         id: data.id,
-        content_id: data.content_id,
         title: data.title,
         original_text: data.original_text,
-        chunks: []
+        chunks: [],
+        position: data.position || 0
       };
     }
-
   } catch (error: unknown) {
     console.error('Unexpected group fetch error:', error)
     if (error instanceof Error) {
@@ -161,5 +183,5 @@ export default async function Page(props: any) {
     redirect(`/content/${id}/groups`);
   }
 
-  return <ContentDetail group={group} content={content} />
+  return <GroupDetail group={group} content={content} />
 }
