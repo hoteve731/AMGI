@@ -432,7 +432,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
     }
 
     return (
-        <main className="flex min-h-screen flex-col bg-[#F8F4EF] pb-12">
+        <main className="flex min-h-screen flex-col bg-[#F8F4EF] pb-12 p-4">
             {(isLoading || isDeleting || isDeletingContent || isNavigating) && <LoadingOverlay />}
             <div className="sticky top-0 bg-[#F8F4EF] border-b border-[#D4C4B7] h-12 z-50">
                 <button
@@ -454,19 +454,17 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                 </button>
             </div>
 
-            <div className="flex-1 max-w-2xl mx-auto w-full p-4">
-                <div className="space-y-2 mb-8 mt-2 text-center">
-                    <h1 className="text-3xl font-bold text-gray-800">{content.title}</h1>
-                    <div className="flex justify-center">
-                        <div className="bg-white/80 backdrop-blur-md px-3 py-1 rounded-full text-sm text-gray-700 inline-block">
-                            {new Date(content.created_at).toLocaleDateString('ko-KR')}
-                        </div>
+            <div className="flex-1 max-w-2xl mx-auto w-full">
+                <div className="space-y-2 mb-6 mt-6">
+                    <h1 className="text-3xl font-bold text-gray-800 text-left">{content.title}</h1>
+                    <div className="text-gray-400 font-medium text-left">
+                        {new Date(content.created_at).toLocaleDateString('ko-KR')}
                     </div>
                 </div>
 
-                <div className="sticky top-12 z-40 px-4 pt-2 pb-4">
-                    <div className="relative flex justify-center max-w-md mx-auto">
-                        <div className="relative flex w-full justify-between bg-white/70 backdrop-blur-xl rounded-full p-1 [box-shadow:0_2px_8px_rgba(0,0,0,0.1)] ring-1 ring-gray-200/70 ring-inset">
+                <div className="sticky top-12 z-40 pt-2 pb-4">
+                    <div className="relative flex w-full">
+                        <div className="relative flex w-full justify-between bg-white/70 backdrop-blur-xl rounded-full p-1 [box-shadow:0_1px_4px_rgba(0,0,0,0.05)] ring-1 ring-gray-200/70 ring-inset">
                             {[
                                 { id: 'notes', label: '노트' },
                                 { id: 'cards', label: '기억카드' },
