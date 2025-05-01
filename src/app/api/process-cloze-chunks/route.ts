@@ -93,7 +93,7 @@ export async function POST(req: Request) {
                     { role: "user", content: groupData.original_text }
                 ],
                 temperature: 0.1,
-                max_tokens: 3000
+                max_tokens: 10000
             }), TIMEOUT);
 
             const chunksText = chunksCompletion.choices[0].message.content || ''

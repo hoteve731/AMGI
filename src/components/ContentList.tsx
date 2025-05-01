@@ -109,23 +109,27 @@ export default function ContentList({ contents: externalContents, showTabs = fal
             for (const content of contentsCopy) {
                 const index = contentsCopy.findIndex(c => c.id === content.id);
                 if (index !== -1) {
-                    // 처리 중인 콘텐츠 식별
-                    if (
+                    // 처리 중인 콘텐츠 식별 - processing_status만으로 판단
+                    const isProcessing =
                         content.processing_status === 'pending' ||
                         content.processing_status === 'title_generated' ||
                         content.processing_status === 'groups_generating' ||
                         content.processing_status === 'groups_generated' ||
-                        content.processing_status === 'chunks_generating' ||
-                        content.isProcessing
-                    ) {
+                        content.processing_status === 'chunks_generating';
+
+                    // 명시적으로 isProcessing 상태 설정
+                    if (isProcessing) {
                         newProcessingIds.push(content.id);
+                        contentsCopy[index].isProcessing = true;
+                    } else {
+                        contentsCopy[index].isProcessing = false;
                     }
 
                     // 콘텐츠 상태 로깅
                     console.log(`[ContentList] Content ${content.id}:`, {
                         title: content.title,
                         processing_status: content.processing_status || 'undefined',
-                        isProcessing: content.isProcessing
+                        isProcessing: contentsCopy[index].isProcessing
                     });
                 }
             }

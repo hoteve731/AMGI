@@ -62,7 +62,7 @@ async function processSingleSegment(supabase: SupabaseClient, openai: OpenAI, se
         const groupCompletion = await openai.chat.completions.create({
             model: "gpt-4.1-mini-2025-04-14",
             messages: [{ role: "system", content: groupsPrompt }, { role: "user", content: segmentText }],
-            temperature: 0, max_tokens: 3000,
+            temperature: 0, max_tokens: 10000,
         });
         const groupResultText = groupCompletion.choices[0]?.message?.content?.trim() || '';
         const parsedGroups = parseGroupResult(groupResultText, contentId, segmentId);
@@ -114,7 +114,7 @@ async function processSingleSegment(supabase: SupabaseClient, openai: OpenAI, se
                 const chunkCompletion = await openai.chat.completions.create({
                     model: "gpt-4.1-mini-2025-04-14",
                     messages: [{ role: "system", content: chunksPrompt }, { role: "user", content: groupInfo.originalSource }],
-                    temperature: 0, max_tokens: 3000,
+                    temperature: 0, max_tokens: 10000,
                 });
                 const chunkResultText = chunkCompletion.choices[0]?.message?.content?.trim() || '';
                 const parsedChunks = parseChunkResult(chunkResultText, contentId, segmentId, index);
@@ -251,7 +251,7 @@ async function convertTextToMarkdown(supabase: SupabaseClient, openai: OpenAI, c
                 { role: "user", content: text }
             ],
             temperature: 0,
-            max_tokens: 4000,
+            max_tokens: 15000,
         });
 
         const markdownText = markdownCompletion.choices[0]?.message?.content?.trim() || '';
@@ -408,7 +408,7 @@ functions.http('processTextPipeline', async (req, res) => {
                             { role: "user", content: groupInfo.originalSource }
                         ],
                         temperature: 0,
-                        max_tokens: 3000,
+                        max_tokens: 10000,
                     });
 
                     const chunkResultText = chunkCompletion.choices[0]?.message?.content?.trim() || '';
@@ -506,7 +506,7 @@ async function generateGroupsFromFullText(openai: OpenAI, fullText: string, addi
                 { role: "user", content: fullText }
             ],
             temperature: 0,
-            max_tokens: 3500,
+            max_tokens: 10000,
         });
 
         const groupResultText = groupCompletion.choices[0]?.message?.content?.trim() || '';

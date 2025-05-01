@@ -85,7 +85,7 @@ export async function POST(req: Request) {
                         { role: "user", content: text }
                     ],
                     temperature: 0,
-                    max_tokens: 3000
+                    max_tokens: 10000
                 }), TIMEOUT);
 
                 const groupsText = groupsCompletion.choices[0].message.content || ''
