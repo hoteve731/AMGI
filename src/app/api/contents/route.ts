@@ -24,7 +24,7 @@ export async function GET(request: Request) {
         // 1. 콘텐츠 기본 정보 가져오기
         const { data: contentData, error: contentError } = await supabase
           .from('contents')
-          .select('id, title')
+          .select('id, title, processing_status')
           .eq('id', contentId)
           .eq('user_id', user.id) // Use user.id from getUser()
           .single();
@@ -73,7 +73,7 @@ export async function GET(request: Request) {
         // 1. 콘텐츠 기본 정보 가져오기
         const { data: contentData, error: contentError } = await supabase
           .from('contents')
-          .select('id, title, created_at')
+          .select('id, title, created_at, processing_status')
           .eq('id', contentId)
           .eq('user_id', user.id) // Use user.id from getUser()
           .single();
@@ -124,7 +124,7 @@ export async function GET(request: Request) {
     // 모든 콘텐츠 목록 요청인 경우
     const { data, error } = await supabase
       .from('contents')
-      .select('id, title, created_at')
+      .select('id, title, created_at, processing_status')
       .eq('user_id', user.id) // Use user.id from getUser()
       .order('created_at', { ascending: false });
 

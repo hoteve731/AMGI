@@ -42,7 +42,7 @@ export async function POST(req: Request) {
             )
         }
 
-        const { text, additionalMemory } = await req.json()
+        const { text, additionalMemory, processType = 'markdown' } = await req.json()
 
         if (!text || typeof text !== 'string') {
             return NextResponse.json(
@@ -91,7 +91,8 @@ export async function POST(req: Request) {
                     additional_memory: additionalMemory || '',
                     chunks: [],
                     masked_chunks: [],
-                    processing_status: 'pending' // 상태 초기값 설정
+                    processing_status: 'pending', // 상태 초기값 설정
+                    markdown_text: '' // 새로운 필드 추가
                 }])
                 .select('id')
 
@@ -99,28 +100,27 @@ export async function POST(req: Request) {
             contentId = contentData[0].id
 
             // --- 백그라운드 파이프라인 트리거 (Fire-and-forget) ---
-            // 기존 로컬 API 호출은 주석 처리 또는 삭제
-            /*
-            fetch(new URL('/api/process/pipeline', req.url).toString(), {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    // 필요 시 인증 정보 전달
-                },
-                body: JSON.stringify({ contentId, text, additionalMemory }),
-            }).catch(err => {
-                console.error('[Generate API] Failed to trigger local processing pipeline:', err);
-            });
-            */
+            // GCF URL 설정
+            const gcfUrl = process.env.GCF_PROCESS_PIPELINE_URL;
+            if (!gcfUrl) {
+                console.error(`[Generate API] GCF URL is not configured`);
+                throw new Error('Server configuration error: GCF URL is not set');
+            }
 
-            // 새로 배포한 Google Cloud Function 호출
-            const gcfUrl = 'https://asia-northeast3-amgi-454605.cloudfunctions.net/processPipeline';
-            console.log(`[Generate API] Calling GCF for contentId: ${contentId} with userId: ${session.user.id}`);
+            // GCF에 전달할 데이터 구성
+            const requestData = {
+                contentId,
+                text,
+                userId: session.user.id,
+                additionalMemory: additionalMemory || '',
+                title,
+                processType // 기본값이 'markdown'으로 변경됨
+            };
 
-            // 요청 데이터 준비 및 로깅
-            const requestData = { contentId, text, additionalMemory, userId: session.user.id, title };
-            console.log(`[Generate API] Request data summary: contentId=${contentId}, textLength=${text.length}, userId=${session.user.id}, title=${title}`);
+            console.log(`[Generate API] Preparing to trigger GCF for contentId: ${contentId}, processType: ${processType}`);
+            console.log(`[Generate API] Request data: contentId=${contentId}, textLength=${text.length}, userId=${session.user.id}`);
 
+            // GCF 호출 (fire-and-forget 방식)
             fetch(gcfUrl, {
                 method: 'POST',
                 headers: {
@@ -176,7 +176,7 @@ export async function POST(req: Request) {
                     });
             });
 
-            console.log(`[Generate API] Triggered GCF processing pipeline for contentId: ${contentId}`);
+            console.log(`[Generate API] Triggered GCF processing pipeline for contentId: ${contentId}, processType: ${processType}`);
 
         } catch (error) {
             console.error('Content database error:', error)
@@ -194,6 +194,7 @@ export async function POST(req: Request) {
         return NextResponse.json({
             content_id: contentId,
             title,
+            process_type: processType
         })
 
     } catch (error) {

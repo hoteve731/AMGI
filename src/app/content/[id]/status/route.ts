@@ -15,10 +15,10 @@ export async function GET(request: Request) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
-        // 콘텐츠 기본 정보 가져오기
+        // 콘텐츠 기본 정보 가져오기 (processing_status 필드 추가)
         const { data: contentData, error: contentError } = await supabase
             .from('contents')
-            .select('id, title')
+            .select('id, title, processing_status')
             .eq('id', contentId)
             .eq('user_id', session.user.id)
             .single();
@@ -69,6 +69,12 @@ export async function GET(request: Request) {
             groupsGenerated,
             chunksGenerated
         };
+
+        console.log(`[Status API] Content ${contentId} status:`, {
+            processing_status: contentData.processing_status,
+            groupsGenerated,
+            chunksGenerated
+        });
 
         return NextResponse.json(responseData);
     } catch (error) {

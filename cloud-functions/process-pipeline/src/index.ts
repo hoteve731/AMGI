@@ -3,7 +3,7 @@ import * as functions from '@google-cloud/functions-framework';
 import OpenAI from 'openai';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
-import { generateGroupsPrompt, generateUnifiedChunksPrompt } from './prompt_generator';
+import { generateGroupsPrompt, generateUnifiedChunksPrompt, generateMarkdownConversionPrompt } from './prompt_generator';
 
 console.log("GCF Script - Top Level: Starting execution..."); // 최상단 로그
 
@@ -82,88 +82,104 @@ async function processSingleSegment(supabase: SupabaseClient, openai: OpenAI, se
             segment_position: segmentPosition,
             position: index
         }));
-        const { data: insertedGroupsData, error: groupInsertError } = await supabase
+
+        // 그룹 삽입 실행
+        const { data: insertedGroups, error: groupInsertError } = await supabase
             .from('content_groups')
             .insert(groupsToInsert)
             .select('id, title');
-        if (groupInsertError) throw new Error(`Failed to insert groups: ${groupInsertError.message}`);
-        const insertedGroups = insertedGroupsData as InsertedGroup[] | null;
-        if (!insertedGroups || insertedGroups.length !== parsedGroups.length) throw new Error(`Failed to retrieve IDs for all inserted groups.`);
-        console.log(`[Segment ${segmentPosition}][${segmentId}] Inserted ${insertedGroups.length} groups.`);
+
+        if (groupInsertError) {
+            console.error(`[Segment ${segmentPosition}][${segmentId}] Failed to insert groups:`, groupInsertError);
+            await updateSegmentStatus(supabase, segmentId, 'failed');
+            return { success: false, segmentId, error: `Failed to insert groups: ${groupInsertError.message}` };
+        }
+
+        console.log(`[Segment ${segmentPosition}][${segmentId}] Successfully inserted ${insertedGroups.length} groups.`);
 
         // 4. 세그먼트 상태 업데이트: processing_chunks
         await updateSegmentStatus(supabase, segmentId, 'processing_chunks');
 
-        // 5. 청크 생성 및 저장 준비
-        const allChunksToInsert: any[] = [];
-        const chunksPrompt = generateUnifiedChunksPrompt(additionalMemory);
+        // 5. 각 그룹에 대해 청크 생성 (병렬 처리)
         console.log(`[Segment ${segmentPosition}][${segmentId}] Generating chunks for ${insertedGroups.length} groups...`);
+        const chunkPromises = insertedGroups.map(async (group, index) => {
+            try {
+                const groupInfo = parsedGroups[index];
+                if (!groupInfo) {
+                    throw new Error(`Group info not found for index ${index}`);
+                }
 
-        for (let i = 0; i < parsedGroups.length; i++) {
-            const currentParsedGroup = parsedGroups[i];
-            const currentInsertedGroup = insertedGroups.find(g => g.title === currentParsedGroup.title);
-            if (!currentInsertedGroup) {
-                console.warn(`[Segment ${segmentPosition}][${segmentId}] Cannot find DB ID for parsed group: "${currentParsedGroup.title}". Skipping chunks.`);
-                continue;
-            }
-            const currentGroupId = currentInsertedGroup.id;
-            if (!currentParsedGroup.originalSource || currentParsedGroup.originalSource.trim().length < 10) continue;
+                // 청크 생성
+                const chunksPrompt = generateUnifiedChunksPrompt(additionalMemory);
+                const chunkCompletion = await openai.chat.completions.create({
+                    model: "gpt-4.1-mini-2025-04-14",
+                    messages: [{ role: "system", content: chunksPrompt }, { role: "user", content: groupInfo.originalSource }],
+                    temperature: 0, max_tokens: 3000,
+                });
+                const chunkResultText = chunkCompletion.choices[0]?.message?.content?.trim() || '';
+                const parsedChunks = parseChunkResult(chunkResultText, contentId, segmentId, index);
 
-            const chunkCompletion = await openai.chat.completions.create({
-                model: "gpt-4.1-mini-2025-04-14",
-                messages: [{ role: "system", content: chunksPrompt }, { role: "user", content: currentParsedGroup.originalSource }],
-                temperature: 0, max_tokens: 3000,
-            });
-            const chunkResultText = chunkCompletion.choices[0]?.message?.content?.trim() || '';
-            if (!chunkResultText) continue;
+                if (parsedChunks.length === 0) {
+                    console.warn(`[Segment ${segmentPosition}][${segmentId}][Group ${index}] No chunks generated.`);
+                    return { groupId: group.id, success: false, error: 'No chunks generated' };
+                }
 
-            const parsedChunks = parseChunkResult(chunkResultText, contentId, segmentId, i + 1);
-            if (parsedChunks.length > 0) {
-                const chunksForThisGroup = parsedChunks.map((chunk, index) => ({
-                    group_id: currentGroupId,
+                // 청크 삽입
+                const chunksToInsert = parsedChunks.map((chunk, chunkIndex) => ({
+                    group_id: group.id,
                     summary: chunk.front,
                     masked_text: chunk.back,
-                    position: index
+                    position: chunkIndex
                 }));
-                allChunksToInsert.push(...chunksForThisGroup);
+
+                const { error: chunkInsertError } = await supabase
+                    .from('content_chunks')
+                    .insert(chunksToInsert);
+
+                if (chunkInsertError) {
+                    return { groupId: group.id, success: false, error: chunkInsertError.message };
+                }
+
+                console.log(`[Segment ${segmentPosition}][${segmentId}][Group ${index}] Successfully inserted ${chunksToInsert.length} chunks.`);
+                return { groupId: group.id, success: true, chunksCount: chunksToInsert.length };
+            } catch (error) {
+                console.error(`[Segment ${segmentPosition}][${segmentId}][Group ${index}] Error processing chunks:`, error);
+                return { groupId: group.id, success: false, error: error instanceof Error ? error.message : 'Unknown error' };
             }
-            await new Promise(resolve => setTimeout(resolve, 100));
-        }
+        });
 
-        // 6. 청크 저장 (DB Insert)
-        if (allChunksToInsert.length > 0) {
-            console.log(`[Segment ${segmentPosition}][${segmentId}] Inserting ${allChunksToInsert.length} chunks into content_chunks table...`);
-            const { error: chunkInsertError } = await supabase.from('content_chunks').insert(allChunksToInsert);
-            if (chunkInsertError) throw new Error(`Failed to insert chunks: ${chunkInsertError.message}`);
-            console.log(`[Segment ${segmentId}] Inserted ${allChunksToInsert.length} chunks.`);
-        }
+        // 모든 청크 생성 작업 완료 대기
+        const chunkResults = await Promise.all(chunkPromises);
 
-        // 7. 세그먼트 상태 업데이트: completed
+        // 청크 생성 결과 확인
+        const successfulChunks = chunkResults.filter(result => result.success);
+        console.log(`[Segment ${segmentPosition}][${segmentId}] Chunk generation complete: ${successfulChunks.length}/${chunkResults.length} groups successful.`);
+
+        // 6. 세그먼트 상태 업데이트: completed
         await updateSegmentStatus(supabase, segmentId, 'completed');
-        console.log(`[Segment ${segmentPosition}][${segmentId}] Processing completed successfully.`);
-        return { success: true, segmentId };
 
+        return { success: true, segmentId };
     } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        console.error(`[Segment ${segmentPosition}][${segmentId}] Processing failed:`, error);
+        console.error(`[Segment ${segmentPosition}][${segmentId}] Error processing segment:`, error);
         try {
             await updateSegmentStatus(supabase, segmentId, 'failed');
         } catch (statusError) {
-            console.error(`[Segment ${segmentPosition}][${segmentId}] CRITICAL: Failed to update segment status to 'failed':`, statusError);
+            console.error(`[Segment ${segmentPosition}][${segmentId}] Failed to update status to 'failed':`, statusError);
         }
-        return { success: false, segmentId, error: errorMessage };
+        return { success: false, segmentId, error: error instanceof Error ? error.message : 'Unknown error' };
     }
 }
 
 // === 최종 콘텐츠 상태 업데이트 함수 ===
 async function updateFinalContentStatus(supabase: SupabaseClient, contentId: string) {
-    try {
-        // 최종 상태 업데이트
-        await updateContentStatus(supabase, contentId, 'completed');
-        console.log(`[Main][${contentId}] Processing completed successfully.`);
-    } catch (error) {
-        console.error(`[Main][${contentId}] Failed to update final content status:`, error);
-        throw error;
+    console.log(`[DB][${contentId}] Updating final content status to 'completed'`);
+    const { error } = await supabase
+        .from('contents')
+        .update({ processing_status: 'completed' })
+        .eq('id', contentId);
+    if (error) {
+        console.error(`[DB][${contentId}] Failed to update final content status:`, error);
+        throw new Error(`Failed to update final content status: ${error.message}`);
     }
 }
 
@@ -171,50 +187,104 @@ async function updateFinalContentStatus(supabase: SupabaseClient, contentId: str
 
 // content_segments 테이블 상태 업데이트 함수
 async function updateSegmentStatus(supabase: SupabaseClient, segmentId: string, status: 'processing_groups' | 'processing_chunks' | 'completed' | 'failed' | 'pending') {
-    console.log(`[DB][Seg ${segmentId}] Updating content_segments.status to: ${status}`);
-    const updateData: { status: string; updated_at?: string } = { status: status };
-    updateData.updated_at = new Date().toISOString();
-
+    console.log(`[DB][Segment ${segmentId}] Updating segment status to: ${status}`);
     const { error } = await supabase
         .from('content_segments')
-        .update(updateData)
+        .update({ status })
         .eq('id', segmentId);
     if (error) {
-        console.error(`[DB][Seg ${segmentId}] Failed update segment status to ${status}:`, error.message);
-        throw new Error(`DB segment status update failed: ${error.message}`);
+        console.error(`[DB][Segment ${segmentId}] Failed to update segment status to ${status}:`, error);
+        throw new Error(`Failed to update segment status: ${error.message}`);
     }
 }
 
 // 그룹 파싱 함수
 function parseGroupResult(resultText: string, contentId: string, segmentId: string): ParsedGroup[] {
-    console.log(`[Parse][${contentId}][Seg ${segmentId}] Parsing group result (Length: ${resultText.length}).`);
+    console.log(`[Parse][${contentId}][${segmentId}] Parsing group result...`);
     const groups: ParsedGroup[] = [];
-    const groupRegex = /<그룹\s*(\d+)>[\s\n]*제목:\s*(.*?)\s*[\s\n]*오리지널\s*소스:\s*([\s\S]*?)(?=<그룹\s*\d+>|$)/gi;
-    let match;
-    while ((match = groupRegex.exec(resultText)) !== null) {
-        const title = match[2].trim(); const originalSource = match[3].trim();
-        if (title && originalSource) groups.push({ title, originalSource });
-        else console.warn(`[Parse][${contentId}][Seg ${segmentId}] Parsed group ${match[1]} but empty.`);
+    const groupMatches = resultText.matchAll(/###\s*(.*?)\s*\n([\s\S]*?)(?=###|$)/g);
+
+    for (const match of groupMatches) {
+        const title = match[1]?.trim() || '';
+        const originalSource = match[2]?.trim() || '';
+        if (title && originalSource) {
+            groups.push({ title, originalSource });
+        }
     }
-    if (groups.length === 0 && resultText) console.warn(`[Parse][${contentId}][Seg ${segmentId}] No groups parsed via regex.`);
-    console.log(`[Parse][${contentId}][Seg ${segmentId}] Parsed ${groups.length} groups.`);
+
+    console.log(`[Parse][${contentId}][${segmentId}] Parsed ${groups.length} groups.`);
     return groups;
 }
 
-// 청크 파싱 함수 
+// 청크 파싱 함수
 function parseChunkResult(resultText: string, contentId: string, segmentId: string, groupIndex: number): ParsedChunk[] {
-    console.log(`[Parse][${contentId}][Seg ${segmentId}][Grp ${groupIndex}] Parsing chunk result (Length: ${resultText.length}).`);
+    console.log(`[Parse][${contentId}][${segmentId}][Grp ${groupIndex}] Parsing chunk result...`);
     const chunks: ParsedChunk[] = [];
-    const chunkRegex = /카드\s*(\d+):\s*(.*?)\s*\/\s*(.*?)(?=\n*카드\s*\d+:|\s*$)/gi;
-    let match;
-    while ((match = chunkRegex.exec(resultText)) !== null) {
-        const front = match[2].trim(); const back = match[3].trim();
-        if (front && back) chunks.push({ front, back });
-        else console.warn(`[Parse][${contentId}][Seg ${segmentId}][Grp ${groupIndex}] Parsed chunk ${match[1]} but empty.`);
+    const chunkMatches = resultText.matchAll(/\*\*Q:\s*(.*?)\s*\*\*\s*\n\s*\*\*A:\s*([\s\S]*?)(?=\*\*Q:|\*\*A:|\s*$)/g);
+
+    for (const match of chunkMatches) {
+        const front = match[1]?.trim() || '';
+        const back = match[2]?.trim() || '';
+        if (front && back) {
+            chunks.push({ front, back });
+        }
     }
-    if (chunks.length === 0 && resultText) console.warn(`[Parse][${contentId}][Seg ${segmentId}][Grp ${groupIndex}] No chunks parsed via regex.`);
-    console.log(`[Parse][${contentId}][Seg ${segmentId}][Grp ${groupIndex}] Parsed ${chunks.length} chunks.`);
+
+    console.log(`[Parse][${contentId}][${segmentId}][Grp ${groupIndex}] Parsed ${chunks.length} chunks.`);
     return chunks;
+}
+
+// === 텍스트를 마크다운으로 변환하는 함수 ===
+async function convertTextToMarkdown(supabase: SupabaseClient, openai: OpenAI, contentId: string, text: string, additionalMemory?: string): Promise<{ success: boolean, error?: string }> {
+    console.log(`[Markdown][${contentId}] Starting markdown conversion...`);
+
+    try {
+        // 1. 마크다운 변환 프롬프트 생성
+        const markdownPrompt = generateMarkdownConversionPrompt(additionalMemory);
+        console.log(`[Markdown][${contentId}] Generated markdown conversion prompt`);
+
+        // 2. OpenAI API 호출
+        const markdownCompletion = await openai.chat.completions.create({
+            model: "gpt-4.1-mini-2025-04-14",
+            messages: [
+                { role: "system", content: markdownPrompt },
+                { role: "user", content: text }
+            ],
+            temperature: 0,
+            max_tokens: 4000,
+        });
+
+        const markdownText = markdownCompletion.choices[0]?.message?.content?.trim() || '';
+        if (!markdownText) {
+            console.error(`[Markdown][${contentId}] No markdown text generated`);
+            return { success: false, error: 'No markdown text generated' };
+        }
+
+        console.log(`[Markdown][${contentId}] Successfully generated markdown text`);
+
+        // 3. 마크다운 텍스트를 DB에 저장
+        const { error: updateError } = await supabase
+            .from('contents')
+            .update({
+                markdown_text: markdownText,
+                processing_status: 'completed'
+            })
+            .eq('id', contentId);
+
+        if (updateError) {
+            console.error(`[Markdown][${contentId}] Failed to update markdown text:`, updateError);
+            return { success: false, error: `Failed to update markdown text: ${updateError.message}` };
+        }
+
+        console.log(`[Markdown][${contentId}] Successfully saved markdown text to database`);
+        return { success: true };
+    } catch (error) {
+        console.error(`[Markdown][${contentId}] Error in markdown conversion:`, error);
+        return {
+            success: false,
+            error: `Error in markdown conversion: ${error instanceof Error ? error.message : 'Unknown error'}`
+        };
+    }
 }
 
 // === 메인 HTTP 핸들러 - 로직 일부 복원 ===
@@ -222,11 +292,15 @@ functions.http('processTextPipeline', async (req, res) => {
     // CORS, Method Check, Initialization Check (이전과 동일)
     res.set('Access-Control-Allow-Origin', '*');
     res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.set('Access-Control-Allow-Headers', 'Content-Type');
 
     if (req.method === 'OPTIONS') {
         res.status(204).send('');
         return;
+    }
+
+    if (req.method !== 'POST') {
+        return res.status(405).send('Method Not Allowed');
     }
 
     if (!isInitialized) {
@@ -239,189 +313,94 @@ functions.http('processTextPipeline', async (req, res) => {
     try {
         console.log("Request body:", JSON.stringify(req.body));
 
-        const { contentId: reqContentId, text, userId, additionalMemory, title: reqTitle } = req.body;
+        const { contentId: reqContentId, text, userId, additionalMemory, title: reqTitle, processType = 'markdown' } = req.body;
         contentId = reqContentId as string;
 
         // 필수 파라미터 검증
-        if (!contentId) {
-            console.error('[Main] Missing required parameter: contentId');
-            return res.status(400).send('Bad Request: contentId is required');
-        }
-        if (!text) {
-            console.error(`[Main][${contentId}] Missing required parameter: text`);
-            return res.status(400).send('Bad Request: text is required');
-        }
-        if (!userId) {
-            console.error(`[Main][${contentId}] Missing required parameter: userId`);
-            return res.status(400).send('Bad Request: userId is required');
+        if (!contentId || !text || !userId) {
+            console.error(`[Main] Missing required parameters: contentId=${contentId}, text=${!!text}, userId=${userId}`);
+            return res.status(400).send('Missing required parameters: contentId, text, or userId');
         }
 
-        // 제목 설정 (요청에서 받거나 기본값 사용)
+        // 제목 설정
         const title = reqTitle || 'Untitled Content';
 
-        // p-limit 패키지 가져오기 (동시성 제어용)
-        let limit;
-        try {
-            const pLimit = await import('p-limit');
-            limit = pLimit.default(3); // 최대 3개 동시 처리
-        } catch (importError) {
-            console.error(`[Main][${contentId}] Failed to import p-limit:`, importError);
-            throw new Error(`Failed to import p-limit: ${importError instanceof Error ? importError.message : 'Unknown error'}`);
-        }
+        // 콘텐츠 상태 업데이트
+        await updateContentStatus(supabase, contentId, 'received');
 
-        // +++ contents 테이블에 레코드 삽입 로직 추가 +++
-        console.log(`[Main][${contentId}] Inserting initial record into contents table...`);
-        console.log(`[Main][${contentId}] Insert data: { id: ${contentId}, title: ${title}, original_text: ${text}, processing_status: 'received', user_id: ${userId}, additional_memory: ${additionalMemory} }`);
+        // processType에 따라 다른 처리 로직 수행
+        if (processType === 'markdown') {
+            // 마크다운 변환 처리
+            console.log(`[Main][${contentId}] Processing type: markdown conversion`);
 
-        try {
-            const { error: initialInsertError } = await supabase
-                .from('contents')
-                .insert({
-                    id: contentId,
-                    title: title,
-                    original_text: text,
-                    processing_status: 'received',
-                    user_id: userId,
-                    chunks: [],
-                    masked_chunks: [],
-                    additional_memory: additionalMemory || ''
-                });
+            // 콘텐츠 상태 업데이트
+            await updateContentStatus(supabase, contentId, 'title_generated');
 
-            if (initialInsertError) {
-                console.error(`[Main][${contentId}] Failed to insert initial record:`, initialInsertError);
-                console.error(`[Main][${contentId}] Error details: ${JSON.stringify(initialInsertError)}`);
+            // 마크다운 변환 실행
+            const markdownResult = await convertTextToMarkdown(supabase, openai, contentId, text, additionalMemory);
 
-                // 이미 존재하는 레코드일 경우 업데이트 시도
-                if (initialInsertError.code === '23505') { // 고유 제약 조건 위반 코드
-                    console.log(`[Main][${contentId}] Record already exists, attempting update instead...`);
-                    const { error: updateError } = await supabase
-                        .from('contents')
-                        .update({
-                            title: title,
-                            original_text: text,
-                            processing_status: 'received',
-                            chunks: [],
-                            masked_chunks: [],
-                            additional_memory: additionalMemory || ''
-                        })
-                        .eq('id', contentId);
-
-                    if (updateError) {
-                        console.error(`[Main][${contentId}] Failed to update existing record:`, updateError);
-                        throw new Error(`Failed to update existing content record: ${updateError.message}`);
-                    } else {
-                        console.log(`[Main][${contentId}] Existing record updated successfully.`);
-                    }
-                } else {
-                    throw new Error(`Failed to insert initial content record: ${initialInsertError.message}`);
-                }
-            } else {
-                console.log(`[Main][${contentId}] Initial record inserted successfully.`);
-            }
-        } catch (dbError) {
-            console.error(`[Main][${contentId}] Database operation failed:`, dbError);
-            throw new Error(`Database operation failed: ${dbError instanceof Error ? dbError.message : 'Unknown error'}`);
-        }
-
-        // 제목 생성 완료 상태 업데이트
-        await updateContentStatus(supabase, contentId, 'title_generated');
-
-        // === 그룹 생성 ===
-        console.log(`[Main][${contentId}] Starting group generation...`);
-        await updateContentStatus(supabase, contentId, 'groups_generating');
-
-        // 그룹 생성 로직
-        const groupsPrompt = generateGroupsPrompt(additionalMemory);
-        const groupCompletion = await openai.chat.completions.create({
-            model: "gpt-4.1-mini-2025-04-14",
-            messages: [
-                { role: "system", content: groupsPrompt },
-                { role: "user", content: text }
-            ],
-            temperature: 0,
-            max_tokens: 3000,
-        });
-
-        const groupResultText = groupCompletion.choices[0]?.message?.content?.trim() || '';
-        const parsedGroups = parseGroupResult(groupResultText, contentId, 'direct');
-
-        if (parsedGroups.length === 0) {
-            console.error(`[Main][${contentId}] No groups generated or parsed.`);
-            await updateContentStatus(supabase, contentId, 'failed');
-            return res.status(500).send('Failed to generate groups');
-        }
-
-        console.log(`[Main][${contentId}] Generated ${parsedGroups.length} groups.`);
-
-        // 그룹 저장
-        const groupsToInsert = parsedGroups.map((group, index) => ({
-            content_id: contentId!,
-            title: group.title,
-            original_text: group.originalSource,
-            position: index
-        }));
-
-        console.log(`[Main][${contentId}] Inserting ${groupsToInsert.length} groups...`);
-
-        // 그룹 삽입 함수 (재시도 로직 포함)
-        const insertGroups = async () => {
-            let retryCount = 0;
-            const maxRetries = 3;
-            let lastError = null;
-
-            while (retryCount < maxRetries) {
-                try {
-                    const { data: insertedGroups, error: groupInsertError } = await supabase
-                        .from('content_groups')
-                        .insert(groupsToInsert)
-                        .select('id, title');
-
-                    if (groupInsertError) {
-                        throw groupInsertError;
-                    }
-
-                    console.log(`[Main][${contentId}] Successfully inserted ${insertedGroups.length} groups.`);
-                    return insertedGroups;
-                } catch (error) {
-                    lastError = error;
-                    retryCount++;
-                    console.error(`[Main][${contentId}] Group insertion attempt ${retryCount} failed:`, error);
-
-                    // 지수 백오프
-                    const delay = Math.pow(2, retryCount) * 500; // 500ms, 1s, 2s
-                    await new Promise(resolve => setTimeout(resolve, delay));
-                }
+            if (!markdownResult.success) {
+                console.error(`[Main][${contentId}] Markdown conversion failed:`, markdownResult.error);
+                await updateContentStatus(supabase, contentId, 'failed');
+                return res.status(500).send(`Markdown conversion failed: ${markdownResult.error}`);
             }
 
-            throw new Error(`Failed to insert groups after ${maxRetries} attempts: ${lastError}`);
-        };
+            // 성공 응답
+            return res.status(200).send({
+                success: true,
+                contentId,
+                processType: 'markdown'
+            });
+        } else if (processType === 'groups') {
+            // 그룹 및 청크 생성 처리 로직
+            console.log(`[Main][${contentId}] Processing type: groups and chunks`);
 
-        // 그룹 삽입 실행
-        const insertedGroups = await insertGroups();
+            // 그룹 생성 시작
+            await updateContentStatus(supabase, contentId, 'groups_generating');
 
-        // 그룹 생성 완료 상태 업데이트
-        await updateContentStatus(supabase, contentId, 'groups_generated');
+            // 전체 텍스트에서 직접 그룹 생성
+            const { groups, error: groupsError } = await generateGroupsFromFullText(openai, text, additionalMemory);
 
-        // === 청크 생성 ===
-        console.log(`[Main][${contentId}] Starting chunk generation...`);
-        await updateContentStatus(supabase, contentId, 'chunks_generating');
+            if (groupsError || groups.length === 0) {
+                console.error(`[Main][${contentId}] Failed to generate groups:`, groupsError);
+                await updateContentStatus(supabase, contentId, 'failed');
+                return res.status(500).send(`Failed to generate groups: ${groupsError}`);
+            }
 
-        // 각 그룹에 대해 청크 생성 (병렬 처리)
-        const chunkGenerationPromises = insertedGroups.map((group: InsertedGroup, index: number) => {
-            return limit(async () => {
+            console.log(`[Main][${contentId}] Generated ${groups.length} groups`);
+
+            // 그룹 저장
+            const groupsToInsert = groups.map((group, index) => ({
+                content_id: contentId,
+                title: group.title,
+                original_text: group.originalSource,
+                position: index
+            }));
+
+            const { data: insertedGroups, error: insertError } = await supabase
+                .from('content_groups')
+                .insert(groupsToInsert)
+                .select('id, title');
+
+            if (insertError) {
+                console.error(`[Main][${contentId}] Failed to insert groups:`, insertError);
+                await updateContentStatus(supabase, contentId, 'failed');
+                return res.status(500).send(`Failed to insert groups: ${insertError.message}`);
+            }
+
+            // 그룹 생성 완료
+            await updateContentStatus(supabase, contentId, 'groups_generated');
+
+            // 청크 생성 시작
+            await updateContentStatus(supabase, contentId, 'chunks_generating');
+
+            // 각 그룹에 대해 청크 생성 (병렬 처리)
+            const chunkPromises = insertedGroups.map(async (group, index) => {
                 try {
-                    console.log(`[Main][${contentId}][Group ${index}] Generating chunks for group: ${group.title}`);
+                    const groupInfo = groups[index];
 
-                    // 해당 그룹의 원본 텍스트 가져오기
-                    const groupInfo = parsedGroups[index];
-                    if (!groupInfo) {
-                        throw new Error(`Group info not found for index ${index}`);
-                    }
-
-                    // 청크 생성 프롬프트
+                    // 청크 생성
                     const chunksPrompt = generateUnifiedChunksPrompt(additionalMemory);
-
-                    // 청크 생성 API 호출
                     const chunkCompletion = await openai.chat.completions.create({
                         model: "gpt-4.1-mini-2025-04-14",
                         messages: [
@@ -433,11 +412,16 @@ functions.http('processTextPipeline', async (req, res) => {
                     });
 
                     const chunkResultText = chunkCompletion.choices[0]?.message?.content?.trim() || '';
-                    const parsedChunks = parseChunkResult(chunkResultText, contentId!, 'direct', index);
+
+                    // contentId가 null이 아님을 확인하는 타입 가드 추가
+                    if (contentId === null) {
+                        return { groupId: group.id, success: false, error: 'Content ID is null' };
+                    }
+
+                    const parsedChunks = parseChunkResult(chunkResultText, contentId, 'direct', index);
 
                     if (parsedChunks.length === 0) {
-                        console.warn(`[Main][${contentId}][Group ${index}] No chunks generated for group.`);
-                        return { groupId: group.id, success: false, chunksCount: 0 };
+                        return { groupId: group.id, success: false, error: 'No chunks generated' };
                     }
 
                     // 청크 삽입
@@ -453,45 +437,44 @@ functions.http('processTextPipeline', async (req, res) => {
                         .insert(chunksToInsert);
 
                     if (chunkInsertError) {
-                        console.error(`[Main][${contentId}][Group ${index}] Failed to insert chunks:`, chunkInsertError);
-                        return { groupId: group.id, success: false, chunksCount: 0, error: chunkInsertError };
+                        return { groupId: group.id, success: false, error: chunkInsertError.message };
                     }
 
-                    console.log(`[Main][${contentId}][Group ${index}] Successfully inserted ${chunksToInsert.length} chunks.`);
                     return { groupId: group.id, success: true, chunksCount: chunksToInsert.length };
                 } catch (error) {
-                    console.error(`[Main][${contentId}][Group ${index}] Error generating chunks:`, error);
-                    return { groupId: group.id, success: false, error };
+                    return {
+                        groupId: group.id,
+                        success: false,
+                        error: error instanceof Error ? error.message : 'Unknown error'
+                    };
                 }
             });
-        });
 
-        // 모든 청크 생성 작업 완료 대기
-        const chunkResults = await Promise.all(chunkGenerationPromises);
+            // 모든 청크 생성 작업 완료 대기
+            const chunkResults = await Promise.all(chunkPromises);
 
-        // 청크 생성 결과 확인
-        const successfulChunks = chunkResults.filter(result => result.success);
-        const totalChunksCount = chunkResults.reduce((sum, result) => sum + (result.chunksCount || 0), 0);
+            // 청크 생성 결과 확인
+            const successfulChunks = chunkResults.filter(result => result.success);
 
-        console.log(`[Main][${contentId}] Chunk generation complete: ${successfulChunks.length}/${chunkResults.length} groups successful, total ${totalChunksCount} chunks.`);
+            if (successfulChunks.length === 0) {
+                console.error(`[Main][${contentId}] All chunk generation failed`);
+                await updateContentStatus(supabase, contentId, 'failed');
+                return res.status(500).send('Failed to generate chunks for all groups');
+            }
 
-        // 모든 그룹에 대해 청크 생성이 실패한 경우
-        if (successfulChunks.length === 0) {
-            console.error(`[Main][${contentId}] All chunk generation failed.`);
-            await updateContentStatus(supabase, contentId, 'failed');
-            return res.status(500).send('Failed to generate chunks for all groups');
+            // 최종 상태 업데이트
+            await updateFinalContentStatus(supabase, contentId);
+
+            // 성공 응답
+            return res.status(200).send({
+                success: true,
+                contentId,
+                groupsCount: insertedGroups.length,
+                chunksCount: successfulChunks.length
+            });
+        } else {
+            return res.status(400).send(`Invalid processType: ${processType}. Must be 'markdown' or 'groups'`);
         }
-
-        // 최종 상태 업데이트
-        await updateFinalContentStatus(supabase, contentId);
-
-        // 성공 응답
-        return res.status(200).send({
-            success: true,
-            contentId,
-            groupsCount: insertedGroups.length,
-            chunksCount: totalChunksCount
-        });
     } catch (error) {
         console.error(`[Main][${contentId}] Pipeline error:`, error);
 
@@ -515,15 +498,19 @@ async function generateGroupsFromFullText(openai: OpenAI, fullText: string, addi
     try {
         const groupsPrompt = generateGroupsPrompt(additionalMemory);
 
-        // OpenAI API 호출하여 그룹 생성 (기존 모델 유지)
+        // OpenAI API 호출하여 그룹 생성
         const groupCompletion = await openai.chat.completions.create({
-            model: "gpt-4.1-mini-2025-04-14",  // 기존 모델 유지
-            messages: [{ role: "system", content: groupsPrompt }, { role: "user", content: fullText }],
+            model: "gpt-4.1-mini-2025-04-14",
+            messages: [
+                { role: "system", content: groupsPrompt },
+                { role: "user", content: fullText }
+            ],
             temperature: 0,
-            max_tokens: 3500,  // 더 긴 응답 허용
+            max_tokens: 3500,
         });
 
         const groupResultText = groupCompletion.choices[0]?.message?.content?.trim() || '';
+
         if (!groupResultText) {
             return { groups: [], error: 'No group result text generated' };
         }
@@ -543,14 +530,12 @@ async function generateGroupsFromFullText(openai: OpenAI, fullText: string, addi
     }
 }
 
-// === 원래 Helper 함수 정의들 ===
-
 // contents 테이블 상태 업데이트 함수
 async function updateContentStatus(supabase: SupabaseClient, contentId: string, status: 'received' | 'title_generated' | 'groups_generating' | 'groups_generated' | 'chunks_generating' | 'completed' | 'failed') {
     console.log(`[DB][${contentId}] Updating contents.processing_status to: ${status}`);
     const { error } = await supabase
         .from('contents')
-        .update({ processing_status: status /* , created_at: new Date().toISOString() */ })
+        .update({ processing_status: status })
         .eq('id', contentId);
     if (error) {
         console.error(`[DB][${contentId}] Failed update contents status to ${status}:`, error.message);
@@ -558,4 +543,4 @@ async function updateContentStatus(supabase: SupabaseClient, contentId: string, 
     }
 }
 
-console.log("GCF Script - Bottom Level: Function registered."); 
+console.log("GCF Script - Bottom Level: Function registered.");

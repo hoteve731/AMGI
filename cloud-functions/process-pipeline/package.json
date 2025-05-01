@@ -5,19 +5,21 @@
   "main": "dist/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "tsc"
+    "build": "tsc",
+    "start": "functions-framework --target=processTextPipeline",
+    "dev": "npm run build && npm run start"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@google-cloud/functions-framework": "^3.5.1",
     "@supabase/supabase-js": "^2.49.4",
     "langchain": "^0.3.23",
     "openai": "^4.95.1",
     "p-limit": "^6.2.0"
   },
   "devDependencies": {
+    "@google-cloud/functions-framework": "^4.0.0",
     "@types/express": "^5.0.1",
     "@types/node": "^22.14.1",
     "typescript": "^5.8.3"

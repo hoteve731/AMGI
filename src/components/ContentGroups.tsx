@@ -14,6 +14,7 @@ type Content = {
     created_at: string
     user_id: string
     original_text: string
+    markdown_text?: string
 }
 
 type Chunk = {
@@ -42,7 +43,7 @@ type ContentWithGroups = Content & {
 }
 
 export default function ContentGroups({ content }: { content: ContentWithGroups }) {
-    const [activeTab, setActiveTab] = useState<'cards' | 'groups' | 'text'>('cards');
+    const [activeTab, setActiveTab] = useState<'notes' | 'cards' | 'groups' | 'text'>('notes');
     const [showOriginalText, setShowOriginalText] = useState(false);
     const [showAdditionalMemory, setShowAdditionalMemory] = useState(false);
     const [editingChunkId, setEditingChunkId] = useState<string | null>(null);
@@ -256,6 +257,55 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
         }
     };
 
+    // Helper function to render markdown text as HTML
+    function renderMarkdown(markdown: string): string {
+        // This is a simple implementation - in a real app, you'd use a library like marked or remark
+        if (!markdown) return '';
+
+        // Convert headers
+        let html = markdown
+            .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+            .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+            .replace(/^# (.*$)/gim, '<h1>$1</h1>');
+
+        // Convert bold and italic
+        html = html
+            .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/gim, '<em>$1</em>');
+
+        // Convert lists
+        html = html
+            .replace(/^\s*\n\* (.*)/gim, '<ul>\n<li>$1</li>')
+            .replace(/^\* (.*)/gim, '<li>$1</li>')
+            .replace(/^\s*\n- (.*)/gim, '<ul>\n<li>$1</li>')
+            .replace(/^- (.*)/gim, '<li>$1</li>')
+            .replace(/^\s*\n\d+\. (.*)/gim, '<ol>\n<li>$1</li>')
+            .replace(/^\d+\. (.*)/gim, '<li>$1</li>');
+
+        // Close lists
+        html = html
+            .replace(/<\/ul>\s*\n<ul>/gim, '')
+            .replace(/<\/ol>\s*\n<ol>/gim, '')
+            .replace(/<\/li>\s*\n<\/ul>/gim, '</li></ul>')
+            .replace(/<\/li>\s*\n<\/ol>/gim, '</li></ol>');
+
+        // Convert paragraphs
+        html = html
+            .replace(/^\s*\n\s*\n/gim, '</p><p>')
+            .replace(/^\s*\n/gim, '<br>');
+
+        // Wrap in paragraph tags if not already wrapped
+        if (!html.startsWith('<h') && !html.startsWith('<ul') && !html.startsWith('<ol') && !html.startsWith('<p')) {
+            html = '<p>' + html;
+        }
+        if (!html.endsWith('</h1>') && !html.endsWith('</h2>') && !html.endsWith('</h3>') &&
+            !html.endsWith('</ul>') && !html.endsWith('</ol>') && !html.endsWith('</p>')) {
+            html = html + '</p>';
+        }
+
+        return html;
+    }
+
     return (
         <main className="flex min-h-screen flex-col bg-gradient-to-b from-[#F8F4EF] to-[#E8D9C5] pb-12">
             {(isLoading || isDeleting || isDeletingContent || isNavigating) && <LoadingOverlay />}
@@ -293,6 +343,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                     <div className="relative flex justify-center max-w-md mx-auto">
                         <div className="relative flex w-full justify-between bg-white/70 backdrop-blur-xl rounded-full p-1 [box-shadow:0_2px_8px_rgba(0,0,0,0.1)] ring-1 ring-gray-200/70 ring-inset">
                             {[
+                                { id: 'notes', label: '노트' },
                                 { id: 'cards', label: '기억카드' },
                                 { id: 'groups', label: '그룹' },
                                 { id: 'text', label: '원본' }
@@ -312,7 +363,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                                             />
                                         )}
                                         <button
-                                            onClick={() => setActiveTab(tab.id as 'cards' | 'groups' | 'text')}
+                                            onClick={() => setActiveTab(tab.id as 'notes' | 'cards' | 'groups' | 'text')}
                                             className={`
                                                 relative z-20
                                                 w-full py-2 px-1
@@ -331,6 +382,73 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                         </div>
                     </div>
                 </div>
+
+                <AnimatePresence mode="wait">
+                    {activeTab === 'notes' && (
+                        <motion.div
+                            key="notes"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.2, ease: "easeInOut" }}
+                        >
+                            <div className="p-6 bg-white/80 backdrop-blur-md rounded-xl border border-white/20">
+                                <div className="prose max-w-none">
+                                    {content.markdown_text ? (
+                                        <div className="markdown-content" dangerouslySetInnerHTML={{ __html: renderMarkdown(content.markdown_text) }} />
+                                    ) : (
+                                        <div className="flex flex-col items-center justify-center py-8">
+                                            <div className="animate-pulse flex space-x-4">
+                                                <div className="rounded-full bg-slate-200 h-10 w-10"></div>
+                                                <div className="flex-1 space-y-6 py-1">
+                                                    <div className="h-2 bg-slate-200 rounded"></div>
+                                                    <div className="space-y-3">
+                                                        <div className="grid grid-cols-3 gap-4">
+                                                            <div className="h-2 bg-slate-200 rounded col-span-2"></div>
+                                                            <div className="h-2 bg-slate-200 rounded col-span-1"></div>
+                                                        </div>
+                                                        <div className="h-2 bg-slate-200 rounded"></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <p className="text-gray-500 mt-4">마크다운 노트를 생성 중입니다...</p>
+                                            <button
+                                                onClick={() => {
+                                                    // Call the API to generate markdown
+                                                    fetch('/api/generate', {
+                                                        method: 'POST',
+                                                        headers: {
+                                                            'Content-Type': 'application/json',
+                                                        },
+                                                        body: JSON.stringify({
+                                                            text: content.original_text,
+                                                            title: content.title,
+                                                            processType: 'markdown'
+                                                        }),
+                                                    })
+                                                        .then(response => {
+                                                            if (!response.ok) {
+                                                                throw new Error('마크다운 생성 중 오류가 발생했습니다.');
+                                                            }
+                                                            // Refresh the page to show the generated markdown
+                                                            router.refresh();
+                                                        })
+                                                        .catch(error => {
+                                                            console.error('마크다운 생성 중 오류:', error);
+                                                            alert('마크다운 생성 중 오류가 발생했습니다.');
+                                                        });
+                                                }}
+                                                className="mt-4 px-4 py-2 bg-[#5F4BB6] text-white rounded-lg hover:bg-opacity-90 transition-colors"
+                                            >
+                                                마크다운 노트 생성하기
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
 
                 <AnimatePresence mode="wait">
                     {activeTab === 'cards' && (

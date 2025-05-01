@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import Link from 'next/link'
 import { useSWRConfig } from 'swr'
+import { motion, AnimatePresence } from 'framer-motion'
 
 type ContentGroup = {
     id: string
@@ -17,6 +18,8 @@ type ContentGroup = {
 type Content = {
     id: string
     title: string
+    original_text: string
+    markdown_text?: string
 }
 
 export default function ContentDetail({
@@ -26,7 +29,7 @@ export default function ContentDetail({
     group: ContentGroup,
     content: Content
 }) {
-    const [showOriginal, setShowOriginal] = useState(false)
+    const [activeTab, setActiveTab] = useState<'notes' | 'cards' | 'original'>('notes')
     const [isDeleting, setIsDeleting] = useState(false)
     const router = useRouter()
     const supabase = createClientComponentClient()
@@ -64,6 +67,55 @@ export default function ContentDetail({
         }
     };
 
+    // Helper function to render markdown text as HTML
+    function renderMarkdown(markdown: string): string {
+        // This is a simple implementation - in a real app, you'd use a library like marked or remark
+        if (!markdown) return '';
+
+        // Convert headers
+        let html = markdown
+            .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+            .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+            .replace(/^# (.*$)/gim, '<h1>$1</h1>');
+
+        // Convert bold and italic
+        html = html
+            .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/gim, '<em>$1</em>');
+
+        // Convert lists
+        html = html
+            .replace(/^\s*\n\* (.*)/gim, '<ul>\n<li>$1</li>')
+            .replace(/^\* (.*)/gim, '<li>$1</li>')
+            .replace(/^\s*\n- (.*)/gim, '<ul>\n<li>$1</li>')
+            .replace(/^- (.*)/gim, '<li>$1</li>')
+            .replace(/^\s*\n\d+\. (.*)/gim, '<ol>\n<li>$1</li>')
+            .replace(/^\d+\. (.*)/gim, '<li>$1</li>');
+
+        // Close lists
+        html = html
+            .replace(/<\/ul>\s*\n<ul>/gim, '')
+            .replace(/<\/ol>\s*\n<ol>/gim, '')
+            .replace(/<\/li>\s*\n<\/ul>/gim, '</li></ul>')
+            .replace(/<\/li>\s*\n<\/ol>/gim, '</li></ol>');
+
+        // Convert paragraphs
+        html = html
+            .replace(/^\s*\n\s*\n/gim, '</p><p>')
+            .replace(/^\s*\n/gim, '<br>');
+
+        // Wrap in paragraph tags if not already wrapped
+        if (!html.startsWith('<h') && !html.startsWith('<ul') && !html.startsWith('<ol') && !html.startsWith('<p')) {
+            html = '<p>' + html;
+        }
+        if (!html.endsWith('</h1>') && !html.endsWith('</h2>') && !html.endsWith('</h3>') &&
+            !html.endsWith('</ul>') && !html.endsWith('</ol>') && !html.endsWith('</p>')) {
+            html = html + '</p>';
+        }
+
+        return html;
+    }
+
     return (
         <main className="flex min-h-screen flex-col bg-gradient-to-b from-[#F8F4EF] to-[#E8D9C5]">
             <div className="sticky top-0 bg-[#F8F4EF] border-b border-[#D4C4B7] h-12">
@@ -87,80 +139,156 @@ export default function ContentDetail({
 
             <div className="flex-1 max-w-2xl mx-auto w-full p-4">
                 <div className="space-y-4 mb-8">
-                    <h1 className="text-3xl font-bold text-gray-800">{group.title}</h1>
-                    <div className="text-sm text-gray-500">
-                        {group.chunks.length}개의 청크로 구성됨
+                    <h1 className="text-3xl font-bold text-gray-800">{content.title}</h1>
+                </div>
+
+                <div className="mb-6">
+                    <div className="flex bg-white rounded-full p-1 shadow-sm ring-1 ring-gray-200/70 ring-inset">
+                        <button
+                            onClick={() => setActiveTab('notes')}
+                            className={`flex-1 py-2 px-4 rounded-full text-sm font-medium transition-colors duration-200 ${activeTab === 'notes'
+                                    ? 'bg-[#5F4BB6] text-white font-bold'
+                                    : 'text-gray-500 hover:text-gray-700'
+                                }`}
+                        >
+                            노트
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('cards')}
+                            className={`flex-1 py-2 px-4 rounded-full text-sm font-medium transition-colors duration-200 ${activeTab === 'cards'
+                                    ? 'bg-[#5F4BB6] text-white font-bold'
+                                    : 'text-gray-500 hover:text-gray-700'
+                                }`}
+                        >
+                            기억카드
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('original')}
+                            className={`flex-1 py-2 px-4 rounded-full text-sm font-medium transition-colors duration-200 ${activeTab === 'original'
+                                    ? 'bg-[#5F4BB6] text-white font-bold'
+                                    : 'text-gray-500 hover:text-gray-700'
+                                }`}
+                        >
+                            원본
+                        </button>
                     </div>
                 </div>
 
-                <div className="mb-8">
-                    <button
-                        onClick={() => setShowOriginal(!showOriginal)}
-                        className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                    >
-                        {showOriginal ? '원문 숨기기' : '원문 보기'}
-                    </button>
-
-                    {showOriginal && (
-                        <div className="mt-4 p-4 bg-white/70 backdrop-blur-md rounded-xl border border-white/20">
-                            <h3 className="text-lg font-medium text-gray-800 mb-2">원문</h3>
-                            <p className="text-gray-700 whitespace-pre-wrap">{group.original_text}</p>
-                        </div>
-                    )}
-                </div>
-
-                <div className="space-y-0 relative">
-                    {group.chunks.map((chunk, index) => (
-                        <div
-                            key={index}
-                            className="relative pl-8 mb-6"
-                            style={{
-                                marginTop: index === 0 ? '0' : '-4px',
-                            }}
+                <AnimatePresence mode="wait">
+                    {activeTab === 'notes' && (
+                        <motion.div
+                            key="notes"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.2, ease: "easeInOut" }}
                         >
-                            {/* 연결 선 */}
-                            {index < group.chunks.length - 1 && (
-                                <div
-                                    className="absolute left-[7px] top-[40px] h-[calc(100%_+_12px)] w-1 bg-white/70"
-                                    style={{
-                                        background: 'linear-gradient(180deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.3) 100%)'
-                                    }}
-                                />
-                            )}
-
-                            {/* 원 */}
-                            <div
-                                className="absolute left-0 top-[18px] w-[15px] h-[15px] rounded-full bg-white border-2 border-[#D4C4B7]"
-                            />
-
-                            {/* 카드 */}
-                            <div
-                                className="
-                                    p-4 
-                                    bg-white/60
-                                    backdrop-blur-md 
-                                    rounded-xl
-                                    shadow-sm
-                                    border
-                                    border-white/20
-                                    [-webkit-backdrop-filter:blur(20px)]
-                                    [backdrop-filter:blur(20px)]
-                                "
-                            >
-                                <p className="text-gray-800">{chunk.summary}</p>
+                            <div className="p-6 bg-white/80 backdrop-blur-md rounded-xl border border-white/20">
+                                <div className="prose max-w-none">
+                                    {content.markdown_text ? (
+                                        <div className="markdown-content" dangerouslySetInnerHTML={{ __html: renderMarkdown(content.markdown_text) }} />
+                                    ) : (
+                                        <div className="flex flex-col items-center justify-center py-8">
+                                            <div className="animate-pulse flex space-x-4">
+                                                <div className="rounded-full bg-slate-200 h-10 w-10"></div>
+                                                <div className="flex-1 space-y-6 py-1">
+                                                    <div className="h-2 bg-slate-200 rounded"></div>
+                                                    <div className="space-y-3">
+                                                        <div className="grid grid-cols-3 gap-4">
+                                                            <div className="h-2 bg-slate-200 rounded col-span-2"></div>
+                                                            <div className="h-2 bg-slate-200 rounded col-span-1"></div>
+                                                        </div>
+                                                        <div className="h-2 bg-slate-200 rounded"></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <p className="text-gray-500 mt-4">마크다운 노트를 생성 중입니다...</p>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-                        </div>
-                    ))}
-                </div>
+                        </motion.div>
+                    )}
 
-                <div className="mt-8 mb-4">
-                    <Link
-                        href={`/content/${content.id}/learning?chunk=${group.chunks[0]?.id || ''}`}
-                        className="w-full block text-center py-3 px-4 rounded-lg bg-[#DDCFFD] text-white font-medium hover:bg-opacity-90 transition-colors"
-                    >
-                        반복 시작하기
-                    </Link>
-                </div>
+                    {activeTab === 'cards' && (
+                        <motion.div
+                            key="cards"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.2, ease: "easeInOut" }}
+                        >
+                            <div className="space-y-0 relative">
+                                {group.chunks.map((chunk, index) => (
+                                    <div
+                                        key={index}
+                                        className="relative pl-8 mb-6"
+                                        style={{
+                                            marginTop: index === 0 ? '0' : '-4px',
+                                        }}
+                                    >
+                                        {/* 연결 선 */}
+                                        {index < group.chunks.length - 1 && (
+                                            <div
+                                                className="absolute left-[7px] top-[40px] h-[calc(100%_+_12px)] w-1 bg-white/70"
+                                                style={{
+                                                    background: 'linear-gradient(180deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.3) 100%)'
+                                                }}
+                                            />
+                                        )}
+
+                                        {/* 원 */}
+                                        <div
+                                            className="absolute left-0 top-[18px] w-[15px] h-[15px] rounded-full bg-white border-2 border-[#D4C4B7]"
+                                        />
+
+                                        {/* 카드 */}
+                                        <div
+                                            className="
+                                                p-4 
+                                                bg-white/60
+                                                backdrop-blur-md 
+                                                rounded-xl
+                                                shadow-sm
+                                                border
+                                                border-white/20
+                                                [-webkit-backdrop-filter:blur(20px)]
+                                                [backdrop-filter:blur(20px)]
+                                            "
+                                        >
+                                            <p className="text-gray-800">{chunk.summary}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="mt-8 mb-4">
+                                <Link
+                                    href={`/content/${content.id}/learning?chunk=${group.chunks[0]?.id || ''}`}
+                                    className="w-full block text-center py-3 px-4 rounded-lg bg-[#DDCFFD] text-white font-medium hover:bg-opacity-90 transition-colors"
+                                >
+                                    반복 시작하기
+                                </Link>
+                            </div>
+                        </motion.div>
+                    )}
+
+                    {activeTab === 'original' && (
+                        <motion.div
+                            key="original"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.2, ease: "easeInOut" }}
+                        >
+                            <div className="p-6 bg-white/80 backdrop-blur-md rounded-xl border border-white/20">
+                                <div className="prose max-w-none">
+                                    <p className="whitespace-pre-wrap text-gray-700">{content.original_text}</p>
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
         </main>
     )

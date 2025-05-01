@@ -18,6 +18,7 @@ type Content = {
     chunks_count?: number
     isProcessing?: boolean
     group_names?: string[]
+    processing_status?: string
 }
 
 type ContentListProps = {
@@ -67,21 +68,26 @@ export default function ContentList({ contents: externalContents, showTabs = fal
             const contentsCopy = [...contentsToProcess];
             const newProcessingIds: string[] = [];
 
-            // 각 콘텐츠에 그룹 수에 따라 처리 상태 설정
+            // 각 콘텐츠에 processing_status에 따라 처리 상태 설정
             for (const content of contentsCopy) {
                 const index = contentsCopy.findIndex(c => c.id === content.id);
                 if (index !== -1) {
-                    // 그룹이 없거나 청크가 없으면 처리 중으로 간주
-                    const hasNoGroups = !content.groups_count || content.groups_count === 0;
-                    const hasNoChunks = !content.chunks_count || content.chunks_count === 0;
-                    const isProcessing = hasNoGroups || hasNoChunks;
-
+                    // processing_status가 completed가 아닐 때만 처리 중으로 간주
+                    // 기본값은 처리 중으로 설정 (processing_status가 없거나 completed가 아니면)
+                    const isProcessing = content.processing_status !== 'completed';
                     contentsCopy[index].isProcessing = isProcessing;
 
                     // 처리 중인 콘텐츠 ID 저장
                     if (isProcessing) {
                         newProcessingIds.push(content.id);
                     }
+
+                    // 콘텐츠 상태 로깅
+                    console.log(`[ContentList] Content ${content.id}:`, {
+                        title: content.title,
+                        processing_status: content.processing_status || 'undefined',
+                        isProcessing
+                    });
                 }
             }
 
@@ -98,14 +104,22 @@ export default function ContentList({ contents: externalContents, showTabs = fal
 
         for (const contentId of processingContentIds) {
             try {
+                // API 호출 전에 확인
+                if (!contentId) continue;
+
                 const response = await fetch(`/content/${contentId}/status`);
                 if (!response.ok) continue;
 
-                const data = await response.json();
+                try {
+                    const data = await response.json();
 
-                // 그룹과 청크가 생성되었는지 확인
-                if (data.groupsGenerated && data.chunksGenerated) {
-                    needsRefresh = true;
+                    // processing_status가 completed인지 확인
+                    if (data.processing_status === 'completed') {
+                        needsRefresh = true;
+                    }
+                } catch (jsonError) {
+                    console.error('콘텐츠 상태 JSON 파싱 오류:', jsonError);
+                    continue;
                 }
             } catch (error) {
                 console.error('콘텐츠 상태 확인 중 오류:', error);

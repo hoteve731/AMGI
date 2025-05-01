@@ -14,7 +14,13 @@ export function createClient() {
         domain: typeof window !== 'undefined' ? window.location.hostname : undefined
       },
       // Set cookie encoding for better compatibility
-      cookieEncoding: 'base64url'
+      cookieEncoding: 'base64url',
+      // Add auth persistence
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true
+      }
     }
   )
 }

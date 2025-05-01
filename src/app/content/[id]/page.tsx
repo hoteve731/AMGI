@@ -16,8 +16,9 @@ type MaskedChunk = {
 
 type Content = {
   id: string
-  // title: string
+  title: string
   original_text: string
+  markdown_text?: string
   chunks: Chunk[]
   masked_chunks: MaskedChunk[]
   created_at: string
@@ -28,7 +29,16 @@ type ContentGroup = {
   content_id: string
   title: string
   original_text: string
-  chunks: Array<{ summary: string, masked_text: string }>
+  chunks: Array<{ id: string, summary: string, masked_text: string }>
+}
+
+// Define the type for the nested query result
+type ContentGroupWithChunks = {
+  id: string
+  content_id: string
+  title: string
+  original_text: string
+  content_chunks: Array<{ id: string, summary: string, masked_text: string }>
 }
 
 // ✅ 핵심: Vercel 타입 충돌 피하기 위해 any 사용
@@ -50,7 +60,7 @@ export default async function Page(props: any) {
   try {
     const { data, error } = await supabase
       .from('contents')
-      .select('*')
+      .select('id, title, original_text, markdown_text, chunks, masked_chunks, created_at')
       .eq('id', id)
       .returns<Content>()
       .single()
@@ -82,11 +92,21 @@ export default async function Page(props: any) {
   // Fetch the first group associated with this content
   let group: ContentGroup | null = null
   try {
-    const { data, error } = await supabase
+    // Use the any type for the raw response and then transform it properly
+    const { data: rawData, error } = await supabase
       .from('content_groups')
-      .select('*')
+      .select(`
+        id, 
+        content_id, 
+        title, 
+        original_text, 
+        content_chunks (
+          id,
+          summary, 
+          masked_text
+        )
+      `)
       .eq('content_id', id)
-      .returns<ContentGroup>()
       .single()
 
     if (error) {
@@ -99,7 +119,29 @@ export default async function Page(props: any) {
       throw new Error(`Group fetch error: ${error.message}`)
     }
 
-    group = data
+    // Type assertion to help TypeScript understand the structure
+    const data = rawData as ContentGroupWithChunks;
+
+    // Transform the data to match the expected format
+    if (data && Array.isArray(data.content_chunks)) {
+      group = {
+        id: data.id,
+        content_id: data.content_id,
+        title: data.title,
+        original_text: data.original_text,
+        chunks: data.content_chunks
+      };
+    } else {
+      console.warn('No content chunks found for group');
+      group = {
+        id: data.id,
+        content_id: data.content_id,
+        title: data.title,
+        original_text: data.original_text,
+        chunks: []
+      };
+    }
+
   } catch (error: unknown) {
     console.error('Unexpected group fetch error:', error)
     if (error instanceof Error) {

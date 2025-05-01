@@ -405,23 +405,12 @@ export default function BottomSheet() {
 
         // 즉시 로딩 상태 설정 (검증 전에 UI 먼저 업데이트)
         setIsLoading(true);
-        setShowLoadingScreen(true); // 로딩 화면 표시
-        setIsBgProcessing(false);   // 백그라운드 처리 아님
-        setLoadingProgress(0);      // 0%에서 시작
-        setLoadingUIType('title');  // 첫 단계는 제목 생성
-        setLoadingStatusMessage('제목 생성 중...');
-        setPollingContentId(null);
-        setProcessingStatus('pending');
-        setProcessingError(null);
-        setProcessedGroups([]);
-        setGeneratedTitle('');
 
         // 입력 길이 검증
         const trimmedText = text.trim();
         if (trimmedText.length < 50) { // 최소 50자 필요
             // 검증 실패 시 로딩 상태 해제
             setIsLoading(false);
-            setShowLoadingScreen(false);
             alert('텍스트가 너무 짧습니다. 최소 50자 이상 입력해주세요.');
             return;
         }
@@ -431,7 +420,6 @@ export default function BottomSheet() {
         if (repeatedCharsPattern.test(trimmedText)) {
             // 검증 실패 시 로딩 상태 해제
             setIsLoading(false);
-            setShowLoadingScreen(false);
             alert('의미 없는 반복 문자가 포함되어 있습니다. 유효한 텍스트를 입력해주세요.');
             return;
         }
@@ -446,7 +434,6 @@ export default function BottomSheet() {
             if (pattern.test(trimmedText)) {
                 // 검증 실패 시 로딩 상태 해제
                 setIsLoading(false);
-                setShowLoadingScreen(false);
                 alert('의미 없는 텍스트 패턴이 감지되었습니다. 유효한 텍스트를 입력해주세요.');
                 return;
             }
@@ -458,7 +445,6 @@ export default function BottomSheet() {
             if (!isAllowed) {
                 // 제한에 도달하면 바텀시트를 닫고 구독 모달이 표시됨
                 setIsLoading(false);
-                setShowLoadingScreen(false);
                 collapseSheet();
                 return;
             }
@@ -494,8 +480,6 @@ export default function BottomSheet() {
                 console.error('응답 읽기 오류:', textError);
                 // 에러 처리 - contentId는 아직 없음
                 setIsLoading(false);
-                setLoadingStatusMessage('');
-                setLoadingProgress(0);
                 router.push('/');
                 return;
             }
@@ -509,21 +493,22 @@ export default function BottomSheet() {
                 throw new Error('생성된 콘텐츠 ID가 없습니다.');
             }
 
-            // 제목 업데이트
-            setGeneratedTitle(generateData.title || '제목 없음');
-            setLoadingUIType('group');
-            setLoadingProgress(90);
-            setLoadingStatusMessage('콘텐츠 분석 및 그룹 생성 중...');
+            // 모달 표시 없이 바로 홈으로 리디렉션
+            console.log('콘텐츠 생성 완료, 홈으로 리디렉션:', contentId);
 
-            // 콘텐츠가 준비될 때까지 폴링 실행
-            pollReadyStatus(contentId);
+            // 폼 초기화
+            resetForm();
+
+            // 바텀시트 닫기
+            collapseSheet();
+
+            // 홈으로 리디렉션
+            router.push('/');
 
         } catch (error) {
             console.error('Error during submission:', error);
             // 콘텐츠 ID가 없으므로 삭제 요청 없이 에러 처리
             setIsLoading(false);
-            setLoadingStatusMessage('');
-            setLoadingProgress(0);
             router.push('/');
         }
     };

@@ -43,6 +43,10 @@ export async function createClient() {
         },
       },
       cookieEncoding: 'base64url',
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true
+      }
     }
   )
 }
