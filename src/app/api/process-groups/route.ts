@@ -40,7 +40,7 @@ export async function POST(req: Request) {
             )
         }
 
-        const { contentId } = await req.json()
+        const { contentId, useMarkdownText } = await req.json()
 
         if (!contentId) {
             return NextResponse.json(
@@ -52,7 +52,7 @@ export async function POST(req: Request) {
         // 콘텐츠 정보 가져오기
         const { data: content, error: contentError } = await supabase
             .from('contents')
-            .select('original_text, additional_memory')
+            .select('original_text, markdown_text, additional_memory')
             .eq('id', contentId)
             .single()
 
@@ -63,7 +63,7 @@ export async function POST(req: Request) {
             )
         }
 
-        const text = content.original_text
+        const text = useMarkdownText && content.markdown_text ? content.markdown_text : content.original_text
         const additionalMemory = content.additional_memory || ''
 
         // 그룹 생성 처리

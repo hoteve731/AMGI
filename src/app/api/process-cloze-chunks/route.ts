@@ -40,7 +40,7 @@ export async function POST(req: Request) {
             )
         }
 
-        const { group_id, content_id } = await req.json()
+        const { group_id, content_id, useMarkdownText } = await req.json()
 
         if (!group_id || !content_id) {
             return NextResponse.json(
@@ -66,7 +66,7 @@ export async function POST(req: Request) {
         // 2. 콘텐츠 정보 조회 (추가 메모리 가져오기 위함)
         const { data: contentData, error: contentError } = await supabase
             .from('contents')
-            .select('additional_memory')
+            .select('additional_memory, markdown_text')
             .eq('id', content_id)
             .single()
 
@@ -75,6 +75,9 @@ export async function POST(req: Request) {
         }
 
         const additionalMemory = contentData?.additional_memory || '';
+
+        // 마크다운 텍스트 사용 여부 확인
+        const useMarkdownForChunks = useMarkdownText && contentData?.markdown_text && groupData.original_text;
 
         // 3. Cloze 청크 생성
         try {
@@ -90,7 +93,7 @@ export async function POST(req: Request) {
                         role: "system",
                         content: chunkSystemPrompt
                     },
-                    { role: "user", content: groupData.original_text }
+                    { role: "user", content: useMarkdownForChunks ? contentData.markdown_text : groupData.original_text }
                 ],
                 temperature: 0.1,
                 max_tokens: 10000

@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSWRConfig } from 'swr'
 import LoadingOverlay from './LoadingOverlay'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -57,6 +57,8 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
     const [isDeleting, setIsDeleting] = useState<string | null>(null);
     const [isDeletingContent, setIsDeletingContent] = useState(false);
     const [isMounted, setIsMounted] = useState(false);
+    const [isGeneratingCards, setIsGeneratingCards] = useState(false);
+    const [generationError, setGenerationError] = useState<string | null>(null);
 
     console.log('ContentGroups rendering with content:', content);
     useEffect(() => {
@@ -431,6 +433,64 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
         );
     }
 
+    // 기억카드 생성 함수
+    const handleGenerateMemoryCards = async () => {
+        if (!content.id || isGeneratingCards) return;
+
+        setIsGeneratingCards(true);
+        setGenerationError(null);
+
+        try {
+            // 1. 그룹 생성 API 호출
+            const groupsResponse = await fetch('/api/process-groups', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contentId: content.id,
+                    useMarkdownText: true
+                }),
+            });
+
+            if (!groupsResponse.ok) {
+                throw new Error('그룹 생성 중 오류가 발생했습니다.');
+            }
+
+            const groupsData = await groupsResponse.json();
+            console.log('Groups generated:', groupsData);
+
+            // 2. 각 그룹에 대해 청크 생성 API 호출
+            const chunkPromises = groupsData.group_ids.map(async (groupId: string) => {
+                const chunksResponse = await fetch('/api/process-cloze-chunks', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        group_id: groupId,
+                        content_id: content.id,
+                        useMarkdownText: true
+                    }),
+                });
+
+                if (!chunksResponse.ok) {
+                    throw new Error(`그룹 ${groupId}의 청크 생성 중 오류가 발생했습니다.`);
+                }
+
+                return chunksResponse.json();
+            });
+
+            // 모든 청크 생성 완료 대기
+            await Promise.all(chunkPromises);
+
+            // 3. 페이지 새로고침하여 생성된 카드 표시
+            window.location.reload();
+
+        } catch (error) {
+            console.error('Memory card generation error:', error);
+            setGenerationError(error instanceof Error ? error.message : '기억카드 생성 중 오류가 발생했습니다.');
+        } finally {
+            setIsGeneratingCards(false);
+        }
+    };
+
     return (
         <main className="flex min-h-screen flex-col bg-[#F8F4EF] pb-12 p-4">
             {(isLoading || isDeleting || isDeletingContent || isNavigating) && <LoadingOverlay />}
@@ -585,80 +645,78 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                             transition={{ duration: 0.2, ease: "easeInOut" }}
                             className="space-y-8"
                         >
-                            {content.groups.map((group) => {
-                                const cardCount = group.chunks?.filter(c => c.group_id === group.id).length || 0;
-                                console.log(`Rendering group ${group.id} (${group.title}) with count: ${cardCount}`);
+                            {content.groups.length > 0 && content.groups.some(group =>
+                                group.chunks && group.chunks.length > 0
+                            ) ? (
+                                content.groups.map((group) => {
+                                    const cardCount = group.chunks?.filter(c => c.group_id === group.id).length || 0;
+                                    console.log(`Rendering group ${group.id} (${group.title}) with count: ${cardCount}`);
 
-                                return (
-                                    <div key={group.id} className="space-y-4">
-                                        <h3 className="text-xl font-bold text-gray-800 text-center mt-14 mb-4">
-                                            {group.title} <span className="font-light text-gray-500">(<span className="font-bold">{cardCount}</span>)</span>
-                                        </h3>
+                                    return (
+                                        <div key={group.id} className="space-y-4">
+                                            <h3 className="text-xl font-bold text-gray-800 text-left mt-14 mb-4 px-4">
+                                                {group.title}
+                                            </h3>
 
-                                        {group.original_text && isMounted && (
-                                            <div
-                                                className="mx-4 mb-4 bg-white/70 backdrop-blur-sm rounded-xl border border-white/20 overflow-hidden"
-                                            >
-                                                <button
-                                                    type="button"
-                                                    className="flex items-center justify-between w-full px-4 py-3 text-sm text-gray-700 hover:bg-white/30 transition-colors"
-                                                    onClick={() => toggleGroupOriginalText(group.id)}
-                                                    aria-expanded={groupOriginalTextVisibility[group.id]}
-                                                >
-                                                    <span className="font-medium">
-                                                        {groupOriginalTextVisibility[group.id] ? "접기" : "원본 문단 보기"}
-                                                    </span>
-                                                    <motion.div
-                                                        animate={{ rotate: groupOriginalTextVisibility[group.id] ? 180 : 0 }}
-                                                        transition={{ duration: 0.3, ease: "easeInOut" }}
-                                                    >
-                                                        <svg
-                                                            className="w-5 h-5 text-gray-500"
-                                                            fill="none"
-                                                            stroke="currentColor"
-                                                            viewBox="0 0 24 24"
-                                                        >
-                                                            <path
-                                                                strokeLinecap="round"
-                                                                strokeLinejoin="round"
-                                                                strokeWidth={2}
-                                                                d="M19 9l-7 7-7-7"
-                                                            />
-                                                        </svg>
-                                                    </motion.div>
-                                                </button>
-                                                <AnimatePresence>
-                                                    {groupOriginalTextVisibility[group.id] && (
-                                                        <motion.div
-                                                            initial={{ height: 0, opacity: 0 }}
-                                                            animate={{ height: "auto", opacity: 1 }}
-                                                            exit={{ height: 0, opacity: 0 }}
-                                                            transition={{ duration: 0.3, ease: "easeInOut" }}
-                                                            className="overflow-hidden"
-                                                        >
-                                                            <div className="px-4 py-3 text-sm text-gray-700 whitespace-pre-wrap border-t border-gray-100">
-                                                                {group.original_text}
-                                                            </div>
-                                                        </motion.div>
-                                                    )}
-                                                </AnimatePresence>
-                                            </div>
-                                        )}
-
-                                        <GroupDetail
-                                            content={content}
-                                            group={{
-                                                ...group,
-                                                chunks: group.chunks?.filter(chunk => chunk.group_id === group.id) || []
-                                            }}
-                                            hideHeader={true}
-                                            hideCardCount={true}
-                                            key={group.id}
-                                            onChunkUpdate={handleChunkUpdate}
-                                        />
+                                            <GroupDetail
+                                                content={content}
+                                                group={{
+                                                    ...group,
+                                                    chunks: group.chunks?.filter(chunk => chunk.group_id === group.id) || []
+                                                }}
+                                                hideHeader={true}
+                                                hideCardCount={true}
+                                                key={group.id}
+                                                onChunkUpdate={handleChunkUpdate}
+                                            />
+                                        </div>
+                                    );
+                                })
+                            ) : (
+                                <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+                                    <div className="text-gray-500 mb-6">
+                                        아직 기억 카드가 없습니다.
                                     </div>
-                                );
-                            })}
+
+                                    {content.markdown_text ? (
+                                        <button
+                                            disabled={isGeneratingCards}
+                                            onClick={handleGenerateMemoryCards}
+                                            className={`
+                                                px-4 py-2 rounded-lg text-white
+                                                ${isGeneratingCards
+                                                    ? 'bg-gray-400 cursor-not-allowed'
+                                                    : 'bg-[#5F4BB6] hover:bg-opacity-90 transition-colors'}
+                                            `}
+                                        >
+                                            {isGeneratingCards ? (
+                                                <div className="flex items-center">
+                                                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                    </svg>
+                                                    기억카드 생성 중...
+                                                </div>
+                                            ) : (
+                                                '기억카드 생성'
+                                            )}
+                                        </button>
+                                    ) : (
+                                        <button
+                                            disabled={true}
+                                            className="px-4 py-2 bg-gray-400 text-white rounded-lg cursor-not-allowed"
+                                        >
+                                            노트를 먼저 생성해주세요
+                                        </button>
+                                    )}
+
+                                    {generationError && (
+                                        <div className="mt-4 text-red-500 text-sm">
+                                            {generationError}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </motion.div>
                     )}
                 </AnimatePresence>
