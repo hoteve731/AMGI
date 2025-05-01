@@ -32,37 +32,47 @@ body {
   /* Headings */
   .markdown-content h1 {
     font-size: 1.5rem;
-    font-weight: lighter;
-    margin-bottom: 0.25rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
   }
 
   .markdown-content h2 {
     font-size: 1.25rem;
-    font-weight: bold;
-    margin-bottom: 0.25rem;
+    font-weight: semibold;
+    margin-bottom: 0.5rem;
+    margin-top: 0.75rem;
   }
 
   .markdown-content h3 {
-    font-size: 1.125rem;
+    font-size: 1.1rem;
     font-weight: bold;
-    margin-bottom: 0.125rem;
+    margin-bottom: 0.5rem;
+    margin-top: 0.75rem;
   }
 
   .markdown-content h4 {
     font-size: 1rem;
     font-weight: bold;
-    margin-bottom: 0.125rem;
+    margin-bottom: 0.5rem;
+    margin-top: 0.75rem;
   }
 
   /* Paragraphs */
   .markdown-content p {
-    margin-bottom: 1rem;
+    margin-bottom: 0rem;
   }
 
   /* Lists */
   .markdown-content ul,
   .markdown-content ol {
-    margin-bottom: 1rem;
+    margin-bottom: 0rem;
+    padding-left: 1.5rem;
+  }
+  
+  /* 중첩된 리스트 스타일링 */
+  .markdown-content li > ul,
+  .markdown-content li > ol {
+    margin-top: 0.25rem;
     padding-left: 1.5rem;
   }
 
@@ -75,7 +85,7 @@ body {
   }
 
   .markdown-content li {
-    margin-bottom: 0.25rem;
+    margin-bottom: 0.125rem;
   }
 
   /* Blockquotes */
@@ -111,7 +121,6 @@ body {
     margin-top: 1rem;
     margin-bottom: 1rem;
     overflow: hidden;
-    border-radius: 0.25rem;
     border: 1px solid #d1d5db;
   }
 
@@ -120,15 +129,18 @@ body {
     padding: 0.5rem;
     border: 1px solid #d1d5db;
     font-size: 0.875rem;
+    background-color: #ffffff;
   }
 
   .markdown-content th {
-    background-color: #f7f7f7;
+    background-color: #f2f2f2;
     font-weight: bold;
+    border-bottom: 2px solid #d1d5db;
   }
 
+  /* 짝수 행 배경색 제거 */
   .markdown-content tr:nth-child(even) {
-    background-color: #f7f7f7;
+    background-color: transparent;
   }
 
   /* Horizontal rule */
