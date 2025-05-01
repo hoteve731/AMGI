@@ -1,9 +1,30 @@
 #!/bin/bash
 
-# Set environment variables
-export SUPABASE_URL="https://empkmxewxtabpjddjlha.supabase.co"
-export SUPABASE_SERVICE_ROLE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVtcGtteGV3eHRhYnBqZGRqbGhhIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0MjcwNTA4MCwiZXhwIjoyMDU4MjgxMDgwfQ.-DGPQwkQ4jpLWv7kTi6UuoBnWPjQ6WRdUgUmjYm3R68"
-export OPENAI_API_KEY="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"
+# Load environment variables from root .env.local file if it exists
+if [ -f ../../.env.local ]; then
+  source ../../.env.local
+fi
+
+# Check if environment variables are set, otherwise use default values
+if [ -z "$NEXT_PUBLIC_SUPABASE_URL" ]; then
+  echo "NEXT_PUBLIC_SUPABASE_URL is not set in .env.local file. Please add it."
+  exit 1
+fi
+
+if [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+  echo "SUPABASE_SERVICE_ROLE_KEY is not set in .env.local file. Please add it."
+  exit 1
+fi
+
+if [ -z "$OPENAI_API_KEY" ]; then
+  echo "OPENAI_API_KEY is not set in .env.local file. Please add it."
+  exit 1
+fi
+
+# Export variables with the correct names expected by the application
+export SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
+export SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY
+export OPENAI_API_KEY=$OPENAI_API_KEY
 
 # Kill any process using port 8081 (alternative port)
 lsof -ti:8081 | xargs kill -9 2>/dev/null
