@@ -50,12 +50,48 @@ export default function ContentList({ contents: externalContents, showTabs = fal
         !externalContents ? '/api/contents' : null,
         fetcher,
         {
-            refreshInterval: 0,
+            refreshInterval: 5000, // 5초마다 자동 갱신
             revalidateOnFocus: true,
             revalidateOnReconnect: true,
             dedupingInterval: 5000,
         }
     )
+
+    // 임시 콘텐츠 처리
+    useEffect(() => {
+        // 로컬 스토리지에서 임시 콘텐츠 가져오기
+        const tempContentString = localStorage.getItem('temp_content');
+        const realContentId = localStorage.getItem('real_content_id');
+
+        if (tempContentString) {
+            try {
+                const tempContent = JSON.parse(tempContentString);
+
+                // 실제 콘텐츠 ID가 있으면 임시 콘텐츠를 제거하고 데이터 갱신
+                if (realContentId) {
+                    localStorage.removeItem('temp_content');
+                    localStorage.removeItem('real_content_id');
+                    mutate(); // 데이터 다시 가져오기
+                } else {
+                    // 실제 콘텐츠 ID가 없으면 임시 콘텐츠를 표시
+                    const currentData = data || { contents: [] };
+
+                    // 이미 임시 콘텐츠가 있는지 확인
+                    const hasTempContent = currentData.contents.some(c => c.id === tempContent.id);
+
+                    if (!hasTempContent) {
+                        // 임시 콘텐츠 추가
+                        mutate({
+                            contents: [tempContent, ...currentData.contents]
+                        }, false);
+                    }
+                }
+            } catch (e) {
+                console.error('임시 콘텐츠 파싱 오류:', e);
+                localStorage.removeItem('temp_content');
+            }
+        }
+    }, [data, mutate]);
 
     // 실제 사용할 콘텐츠 데이터 결정
     const contentsToProcess = externalContents || data?.contents || []

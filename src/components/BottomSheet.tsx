@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import LoadingScreen from './LoadingScreen'
 import { useRouter } from 'next/navigation'
 import { ContentLimitManager } from '../App'
+import { useSWRConfig } from 'swr';
 
 // 토스트 타입 정의
 type ToastType = 'info' | 'success' | 'error' | 'warning' | 'bg-processing';
@@ -394,6 +395,8 @@ export default function BottomSheet() {
         });
     }, [loadingProgress, loadingStatusMessage, loadingUIType, isLoading, showLoadingScreen, isBgProcessing, processingStatus]);
 
+    const { mutate } = useSWRConfig();
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -405,6 +408,9 @@ export default function BottomSheet() {
 
         // 즉시 로딩 상태 설정 (검증 전에 UI 먼저 업데이트)
         setIsLoading(true);
+
+        // 모달 표시 비활성화
+        // setShowLoadingScreen(true); // 로딩 화면 표시 - 주석 처리
 
         // 입력 길이 검증
         const trimmedText = text.trim();
@@ -452,6 +458,28 @@ export default function BottomSheet() {
             // 축소된 바텀시트 (사용자 입력 화면)
             setIsExpanded(false);
 
+            // 임시 콘텐츠 생성 및 로컬 스토리지에 저장 (실시간 표시용)
+            const tempContentId = `temp-${Date.now()}`;
+            const tempContent = {
+                id: tempContentId,
+                title: '처리 중...',
+                created_at: new Date().toISOString(),
+                processing_status: 'pending',
+                isProcessing: true,
+                text_preview: trimmedText.substring(0, 50) + '...'
+            };
+
+            // 로컬 스토리지에 임시 콘텐츠 저장
+            localStorage.setItem('temp_content', JSON.stringify(tempContent));
+
+            // 콘텐츠 생성 요청 전에 SWR 캐시를 업데이트하여 UI에 임시 콘텐츠 표시
+            mutate('/api/contents', async (currentData: any) => {
+                if (!currentData) return { contents: [tempContent] };
+                return {
+                    contents: [tempContent, ...(currentData.contents || [])]
+                };
+            }, false); // 재검증하지 않음
+
             const generateResponse = await fetch('/api/generate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -480,6 +508,11 @@ export default function BottomSheet() {
                 console.error('응답 읽기 오류:', textError);
                 // 에러 처리 - contentId는 아직 없음
                 setIsLoading(false);
+
+                // 임시 콘텐츠 제거
+                localStorage.removeItem('temp_content');
+                mutate('/api/contents'); // 데이터 다시 가져오기
+
                 router.push('/');
                 return;
             }
@@ -493,7 +526,6 @@ export default function BottomSheet() {
                 throw new Error('생성된 콘텐츠 ID가 없습니다.');
             }
 
-            // 모달 표시 없이 바로 홈으로 리디렉션
             console.log('콘텐츠 생성 완료, 홈으로 리디렉션:', contentId);
 
             // 폼 초기화
@@ -502,6 +534,12 @@ export default function BottomSheet() {
             // 바텀시트 닫기
             collapseSheet();
 
+            // 임시 콘텐츠 ID와 실제 콘텐츠 ID 매핑 저장
+            localStorage.setItem('real_content_id', contentId);
+
+            // 데이터 다시 가져오기 - 임시 콘텐츠를 실제 콘텐츠로 대체
+            mutate('/api/contents');
+
             // 홈으로 리디렉션
             router.push('/');
 
@@ -509,6 +547,11 @@ export default function BottomSheet() {
             console.error('Error during submission:', error);
             // 콘텐츠 ID가 없으므로 삭제 요청 없이 에러 처리
             setIsLoading(false);
+
+            // 임시 콘텐츠 제거
+            localStorage.removeItem('temp_content');
+            mutate('/api/contents'); // 데이터 다시 가져오기
+
             router.push('/');
         }
     };
@@ -551,7 +594,7 @@ export default function BottomSheet() {
                         throw new Error(`서버 응답 오류: ${checkResponse.status} ${checkResponse.statusText}`);
                     }
 
-                    // 아직 허용 범위 내의 오류는 다음 폴링 시도
+                    // 아직 허용 범위 내의 오류는 다음 폴링에서 다시 시도
                     setTimeout(checkReadyStatus, pollInterval);
                     return;
                 }
@@ -726,7 +769,7 @@ export default function BottomSheet() {
         return () => window.removeEventListener('openBottomSheet', handleOpenBottomSheet);
     }, [isLoading]);
 
-    if (showLoadingScreen) {
+    if (false) { // showLoadingScreen 조건을 false로 변경하여 모달이 절대 표시되지 않도록 함
         return <LoadingScreen
             status={loadingUIType}
             progress={loadingProgress}
