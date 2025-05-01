@@ -1,24 +1,31 @@
 #!/bin/bash
 
-# Load environment variables from root .env.local file if it exists
-if [ -f ../../.env.local ]; then
-  source ../../.env.local
+# 스크립트가 있는 디렉토리로 이동
+cd "$(dirname "$0")"
+
+# 프로젝트 루트 디렉토리 (cloud-functions 상위 디렉토리)
+ROOT_DIR="$(cd ../.. && pwd)"
+
+# .env.local 파일 경로
+ENV_FILE="$ROOT_DIR/.env.local"
+
+# .env.local 파일이 존재하는지 확인
+if [ ! -f "$ENV_FILE" ]; then
+    echo "Error: .env.local file not found at $ENV_FILE"
+    exit 1
 fi
 
-# Check if environment variables are set, otherwise use default values
-if [ -z "$NEXT_PUBLIC_SUPABASE_URL" ]; then
-  echo "NEXT_PUBLIC_SUPABASE_URL is not set in .env.local file. Please add it."
-  exit 1
-fi
+# .env.local 파일에서 환경 변수 로드
+echo "Loading environment variables from $ENV_FILE"
+set -a  # 자동으로 내보내기 활성화
+source "$ENV_FILE"
+set +a  # 자동으로 내보내기 비활성화
 
-if [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
-  echo "SUPABASE_SERVICE_ROLE_KEY is not set in .env.local file. Please add it."
-  exit 1
-fi
-
-if [ -z "$OPENAI_API_KEY" ]; then
-  echo "OPENAI_API_KEY is not set in .env.local file. Please add it."
-  exit 1
+# 필요한 환경 변수가 설정되었는지 확인
+if [ -z "$NEXT_PUBLIC_SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ] || [ -z "$OPENAI_API_KEY" ]; then
+    echo "Error: Required environment variables are missing in .env.local"
+    echo "Make sure NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, and OPENAI_API_KEY are set"
+    exit 1
 fi
 
 # Export variables with the correct names expected by the application

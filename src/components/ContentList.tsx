@@ -50,7 +50,8 @@ export default function ContentList({ contents: externalContents, showTabs = fal
         !externalContents ? '/api/contents' : null,
         fetcher,
         {
-            refreshInterval: 5000, // 5초마다 자동 갱신
+            // 처리 중인 콘텐츠가 있을 때만 폴링 활성화
+            refreshInterval: processingContentIds.length > 0 ? 5000 : 0,
             revalidateOnFocus: true,
             revalidateOnReconnect: true,
             dedupingInterval: 5000,
@@ -108,13 +109,15 @@ export default function ContentList({ contents: externalContents, showTabs = fal
             for (const content of contentsCopy) {
                 const index = contentsCopy.findIndex(c => c.id === content.id);
                 if (index !== -1) {
-                    // processing_status가 completed가 아닐 때만 처리 중으로 간주
-                    // 기본값은 처리 중으로 설정 (processing_status가 없거나 completed가 아니면)
-                    const isProcessing = content.processing_status !== 'completed';
-                    contentsCopy[index].isProcessing = isProcessing;
-
-                    // 처리 중인 콘텐츠 ID 저장
-                    if (isProcessing) {
+                    // 처리 중인 콘텐츠 식별
+                    if (
+                        content.processing_status === 'pending' ||
+                        content.processing_status === 'title_generated' ||
+                        content.processing_status === 'groups_generating' ||
+                        content.processing_status === 'groups_generated' ||
+                        content.processing_status === 'chunks_generating' ||
+                        content.isProcessing
+                    ) {
                         newProcessingIds.push(content.id);
                     }
 
@@ -122,13 +125,14 @@ export default function ContentList({ contents: externalContents, showTabs = fal
                     console.log(`[ContentList] Content ${content.id}:`, {
                         title: content.title,
                         processing_status: content.processing_status || 'undefined',
-                        isProcessing
+                        isProcessing: content.isProcessing
                     });
                 }
             }
 
-            setProcessedContents(contentsCopy);
+            // 처리 중인 콘텐츠 ID 업데이트
             setProcessingContentIds(newProcessingIds);
+            setProcessedContents(contentsCopy);
         };
 
         processContents();

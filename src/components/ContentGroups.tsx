@@ -7,7 +7,6 @@ import { useSWRConfig } from 'swr'
 import LoadingOverlay from './LoadingOverlay'
 import { motion, AnimatePresence } from 'framer-motion'
 import GroupDetail from './GroupDetail'
-import { marked } from 'marked';
 import DOMPurify from 'isomorphic-dompurify';
 
 type Content = {
@@ -92,7 +91,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
         }));
     };
 
-    // Helper function to format text with double asterisks (**) as bold text
+    // Helper function to format text with double asterisks (**) as bold text and single asterisks (*) as bold text
     const formatBoldText = (text: string) => {
         if (!text) return '';
 
@@ -101,8 +100,8 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
         const textWithMaskedFormatting = text.replace(maskedPattern,
             '<span class="bg-black text-white px-1 py-0.5 rounded">$1</span>');
 
-        // Then handle the **bold** text pattern
-        const parts = textWithMaskedFormatting.split(/(\*\*[^*]+\*\*)|(<span class="bg-black text-white px-1 py-0.5 rounded">[^<]+<\/span>)/g);
+        // Then handle the **bold** text pattern and *bold* text pattern
+        const parts = textWithMaskedFormatting.split(/(\*\*[^*]+\*\*)|(\*[^*]+\*)|(<span class="bg-black text-white px-1 py-0.5 rounded">[^<]+<\/span>)/g);
 
         return parts.map((part, index) => {
             if (part && part.startsWith('<span class="bg-black text-white px-1 py-0.5 rounded">')) {
@@ -110,6 +109,10 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
             }
             else if (part && part.startsWith('**') && part.endsWith('**')) {
                 const boldText = part.slice(2, -2);
+                return <strong key={index}>{boldText}</strong>;
+            }
+            else if (part && part.startsWith('*') && part.endsWith('*')) {
+                const boldText = part.slice(1, -1);
                 return <strong key={index}>{boldText}</strong>;
             }
             return part;
@@ -260,18 +263,172 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
     };
 
     // Helper function to render markdown text as HTML
-    function renderMarkdown(markdown: string): string {
-        if (!markdown) return '';
+    function renderMarkdown(markdown: string): React.ReactNode {
+        if (!markdown) return null;
 
-        // Configure marked with options
-        marked.use({
-            gfm: true, // GitHub Flavored Markdown
-            breaks: true, // Convert \n to <br>
+        // Split the text into lines to handle line-based markdown elements
+        const lines = markdown.split('\n');
+
+        // Process table data
+        let tableData: { isHeader: boolean; cells: string[] }[] = [];
+        let collectingTable = false;
+
+        // First pass: collect table data
+        lines.forEach(line => {
+            if (line.trim().startsWith('|') && line.trim().endsWith('|')) {
+                // Skip separator rows (only dashes and pipes)
+                if (line.replace(/\|/g, '').replace(/-/g, '').replace(/:/g, '').trim() === '') {
+                    if (tableData.length > 0) {
+                        // Mark the previous row as header
+                        tableData[tableData.length - 1].isHeader = true;
+                    }
+                    return;
+                }
+
+                // Add row data
+                const cells = line.split('|').filter(cell => cell.trim() !== '').map(cell => cell.trim());
+                tableData.push({ isHeader: false, cells });
+                collectingTable = true;
+            } else if (collectingTable) {
+                // End of table
+                collectingTable = false;
+            }
         });
 
-        // Sanitize the HTML output to prevent XSS attacks
-        const html = marked.parse(markdown);
-        return DOMPurify.sanitize(html);
+        // Reset for second pass
+        collectingTable = false;
+        let currentTableRows: React.ReactNode[] = [];
+        let skipLines: number[] = [];
+
+        return (
+            <div className="markdown-content space-y-4">
+                {lines.map((line, lineIndex) => {
+                    // Skip lines that are part of a processed table
+                    if (skipLines.includes(lineIndex)) {
+                        return null;
+                    }
+
+                    // Handle horizontal divider
+                    if (line.trim() === '---') {
+                        return <hr key={lineIndex} className="my-4 border-t border-gray-300" />;
+                    }
+
+                    // Handle table start
+                    if (line.trim().startsWith('|') && line.trim().endsWith('|') && !collectingTable) {
+                        collectingTable = true;
+
+                        // Find all consecutive table rows
+                        let tableRows: { isHeader: boolean; cells: string[] }[] = [];
+                        let rowIndex = lineIndex;
+
+                        while (rowIndex < lines.length) {
+                            const currentLine = lines[rowIndex];
+
+                            // Skip separator rows
+                            if (currentLine.replace(/\|/g, '').replace(/-/g, '').replace(/:/g, '').trim() === '') {
+                                skipLines.push(rowIndex);
+                                rowIndex++;
+                                continue;
+                            }
+
+                            // Check if this is still a table row
+                            if (currentLine.trim().startsWith('|') && currentLine.trim().endsWith('|')) {
+                                const cells = currentLine.split('|')
+                                    .filter(cell => cell.trim() !== '')
+                                    .map(cell => cell.trim());
+
+                                tableRows.push({
+                                    isHeader: rowIndex === lineIndex, // First row is header
+                                    cells
+                                });
+
+                                skipLines.push(rowIndex);
+                                rowIndex++;
+                            } else {
+                                break;
+                            }
+                        }
+
+                        // Render the complete table
+                        return (
+                            <table key={lineIndex} className="min-w-full my-4 border-collapse">
+                                <thead className="bg-gray-100">
+                                    {tableRows.length > 0 && tableRows[0].isHeader && (
+                                        <tr>
+                                            {tableRows[0].cells.map((cell, cellIndex) => (
+                                                <th key={cellIndex} className="py-2 px-4 border border-gray-300 text-left font-medium">
+                                                    {formatBoldText(cell)}
+                                                </th>
+                                            ))}
+                                        </tr>
+                                    )}
+                                </thead>
+                                <tbody>
+                                    {tableRows
+                                        .filter((row, idx) => idx > 0 || !row.isHeader)
+                                        .map((row, rowIndex) => (
+                                            <tr key={rowIndex}>
+                                                {row.cells.map((cell, cellIndex) => (
+                                                    <td key={cellIndex} className="py-2 px-4 border border-gray-300">
+                                                        {formatBoldText(cell)}
+                                                    </td>
+                                                ))}
+                                            </tr>
+                                        ))}
+                                </tbody>
+                            </table>
+                        );
+                    }
+
+                    // Reset table collection flag if we're not on a table row
+                    if (collectingTable && !(line.trim().startsWith('|') && line.trim().endsWith('|'))) {
+                        collectingTable = false;
+                    }
+
+                    // Handle headers
+                    if (line.startsWith('# ')) {
+                        return (
+                            <h1 key={lineIndex} className="text-2xl font-bold mt-6 mb-4">
+                                {formatBoldText(line.substring(2))}
+                            </h1>
+                        );
+                    } else if (line.startsWith('## ')) {
+                        return (
+                            <h2 key={lineIndex} className="text-xl font-bold mt-5 mb-3">
+                                {formatBoldText(line.substring(3))}
+                            </h2>
+                        );
+                    } else if (line.startsWith('### ')) {
+                        return (
+                            <h3 key={lineIndex} className="text-lg font-bold mt-4 mb-2">
+                                {formatBoldText(line.substring(4))}
+                            </h3>
+                        );
+                    }
+                    // Handle list items
+                    else if (line.startsWith('* ') || line.startsWith('- ')) {
+                        return (
+                            <div key={lineIndex} className="flex ml-4 mb-2">
+                                <span className="mr-2">•</span>
+                                <div>{formatBoldText(line.substring(2))}</div>
+                            </div>
+                        );
+                    }
+                    // Handle empty lines
+                    else if (line.trim() === '') {
+                        return <div key={lineIndex} className="h-4"></div>;
+                    }
+                    // Handle normal paragraphs
+                    else {
+                        return (
+                            <p key={lineIndex} className="mb-4">
+                                {formatBoldText(line)}
+                            </p>
+                        );
+                    }
+                })}
+            </div>
+        );
     }
 
     return (
@@ -360,10 +517,12 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                             exit={{ opacity: 0 }}
                             transition={{ duration: 0.2, ease: "easeInOut" }}
                         >
-                            <div className="p-6 bg-white/80 backdrop-blur-md rounded-xl border border-white/20">
+                            <div className="py-2 bg-white/80 backdrop-blur-md rounded-xl border border-white/20">
                                 <div className="w-full">
                                     {content.markdown_text ? (
-                                        <div className="markdown-content" dangerouslySetInnerHTML={{ __html: renderMarkdown(content.markdown_text) }} />
+                                        <div className="flex-1 overflow-y-auto p-4">
+                                            {renderMarkdown(content.markdown_text)}
+                                        </div>
                                     ) : (
                                         <div className="flex flex-col items-center justify-center py-8">
                                             <div className="animate-pulse flex space-x-4">

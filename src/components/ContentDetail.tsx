@@ -119,7 +119,7 @@ export default function ContentDetail({
                                 : 'text-gray-500 hover:text-gray-700'
                                 }`}
                         >
-                            노트
+                            📔 노트
                         </button>
                         <button
                             onClick={() => setActiveTab('cards')}
@@ -151,10 +151,13 @@ export default function ContentDetail({
                             exit={{ opacity: 0 }}
                             transition={{ duration: 0.2, ease: "easeInOut" }}
                         >
-                            <div className="p-6 bg-white/80 backdrop-blur-md rounded-xl border border-white/20">
+                            <div className="py-6 px-3 bg-white/80 backdrop-blur-md rounded-xl border border-white/20">
                                 <div className="w-full">
                                     {content.markdown_text ? (
-                                        <div className="markdown-content" dangerouslySetInnerHTML={{ __html: renderMarkdown(content.markdown_text) }} />
+                                        <div
+                                            className="markdown-content"
+                                            dangerouslySetInnerHTML={{ __html: renderMarkdown(content.markdown_text) }}
+                                        />
                                     ) : (
                                         <div className="flex flex-col items-center justify-center py-8">
                                             <div className="animate-pulse flex space-x-4">

@@ -459,7 +459,7 @@ export default function BottomSheet() {
             setIsExpanded(false);
 
             // 임시 콘텐츠 생성 및 로컬 스토리지에 저장 (실시간 표시용)
-            const tempContentId = `temp-${Date.now()}`;
+            const tempContentId = crypto.randomUUID(); // UUID 형식으로 변경
             const tempContent = {
                 id: tempContentId,
                 title: '처리 중...',
