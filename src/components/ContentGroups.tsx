@@ -97,29 +97,96 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
         }));
     };
 
-    // Helper function to format text with double asterisks (**) as bold text and single asterisks (*) as bold text
+    // Helper function to format text with double asterisks (**) as bold text, single asterisks (*) as bold text, and handle links
     const formatBoldText = (text: string) => {
         if (!text) return '';
 
         // First handle the {{masked}} text pattern
         const maskedPattern = /\{\{([^{}]+)\}\}/g;
-        const textWithMaskedFormatting = text.replace(maskedPattern,
+        let processedText = text.replace(maskedPattern,
             '<span class="bg-black text-white px-1 py-0.5 rounded">$1</span>');
+        
+        // Process markdown links [text](url)
+        const markdownLinkRegex = /\[([^\]]+)\]\(([^\)]+)\)/g;
+        const links: {original: string, text: string, url: string}[] = [];
+        
+        // Find all markdown links and store them
+        let linkMatch;
+        while ((linkMatch = markdownLinkRegex.exec(processedText)) !== null) {
+            links.push({
+                original: linkMatch[0],  // The entire [text](url) match
+                text: linkMatch[1],      // The display text
+                url: linkMatch[2]        // The URL
+            });
+        }
+        
+        // Handle direct URLs that aren't in markdown format
+        const urlRegex = /(https?:\/\/[^\s\)]+)/g;
+        let urlMatch;
+        while ((urlMatch = urlRegex.exec(processedText)) !== null) {
+            // Skip if this URL is already part of a markdown link
+            let isInLink = false;
+            for (const link of links) {
+                if (link.original.includes(urlMatch[0]) || link.url === urlMatch[0]) {
+                    isInLink = true;
+                    break;
+                }
+            }
+            
+            if (!isInLink) {
+                links.push({
+                    original: urlMatch[0],
+                    text: urlMatch[0],
+                    url: urlMatch[0]
+                });
+            }
+        }
+        
+        // Replace links with unique placeholders
+        links.forEach((link, i) => {
+            const placeholder = `__LINK_${i}__`;
+            processedText = processedText.replace(link.original, placeholder);
+        });
 
-        // Then handle the **bold** text pattern and *bold* text pattern
-        const parts = textWithMaskedFormatting.split(/(\*\*[^*]+\*\*)|(\*[^*]+\*)|(<span class="bg-black text-white px-1 py-0.5 rounded">[^<]+<\/span>)/g);
+        // Handle bold formatting
+        const parts = processedText.split(/(\*\*[^*]+\*\*)|(\*[^*]+\*)|(<span class="bg-black text-white px-1 py-0.5 rounded">[^<]+<\/span>)|(__LINK_\d+__)/g);
 
         return parts.map((part, index) => {
-            if (part && part.startsWith('<span class="bg-black text-white px-1 py-0.5 rounded">')) {
+            if (!part) return null;
+            
+            // Handle masked text spans
+            if (part.startsWith('<span class="bg-black text-white px-1 py-0.5 rounded">')) {
                 return <span key={index} dangerouslySetInnerHTML={{ __html: part }} />;
             }
-            else if (part && part.startsWith('**') && part.endsWith('**')) {
+            // Handle bold text with double asterisks
+            else if (part.startsWith('**') && part.endsWith('**')) {
                 const boldText = part.slice(2, -2);
                 return <strong key={index}>{boldText}</strong>;
             }
-            else if (part && part.startsWith('*') && part.endsWith('*')) {
+            // Handle bold text with single asterisks
+            else if (part.startsWith('*') && part.endsWith('*')) {
                 const boldText = part.slice(1, -1);
                 return <strong key={index}>{boldText}</strong>;
+            }
+            // Handle link placeholders
+            else if (part.startsWith('__LINK_')) {
+                const linkIndex = parseInt(part.match(/\d+/)?.[0] || '0');
+                const link = links[linkIndex];
+                
+                if (link) {
+                    // Standard markdown format: [text](url) - text is displayed, url is the link target
+                    return (
+                        <a 
+                            key={index} 
+                            href={link.url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-purple-600 hover:underline hover:bg-purple-50 px-1 py-0.5 rounded transition-colors"
+                        >
+                            {link.text}
+                        </a>
+                    );
+                }
             }
             return part;
         });
@@ -410,6 +477,12 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                                 {formatBoldText(line.substring(4))}
                             </h3>
                         );
+                    } else if (line.startsWith('#### ')) {
+                        return (
+                            <h4 key={lineIndex} className="mt-3 mb-2">
+                                {formatBoldText(line.substring(5))}
+                            </h4>
+                        );
                     }
                     // Handle list items
                     else if (line.startsWith('* ') || line.startsWith('- ')) {
@@ -466,13 +539,13 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
 
             const groupsData = await groupsResponse.json();
             console.log('Groups generated:', groupsData);
-            
+
             // 그룹 정보 가져오기
             const groupsInfoResponse = await fetch(`/api/content-groups?contentId=${content.id}`);
             if (!groupsInfoResponse.ok) {
                 throw new Error('그룹 정보를 가져오는 중 오류가 발생했습니다.');
             }
-            
+
             const groupsInfo = await groupsInfoResponse.json();
             setProcessedGroups(groupsInfo.groups || []);
 
@@ -510,13 +583,19 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
             setGenerationStatus('complete'); // 완료 단계로 변경
             setGenerationProgress(100);
 
-            // 3. 기억카드 탭으로 전환 후 페이지 새로고침
-            localStorage.setItem(`content-${content.id}-activeTab`, 'cards');
-
-            // 약간의 지연 후 새로고침 (사용자가 완료 메시지를 볼 수 있도록)
+            // 3. 완료 후 페이지 새로고침 (사용자가 완료 메시지를 볼 수 있도록 약간 지연)
             setTimeout(() => {
-                window.location.reload();
-            }, 2000); // 완료 메시지를 더 오래 보여주기 위해 지연 시간 증가
+                // 모달 닫기
+                setIsGeneratingCards(false);
+                
+                // 로컬 스토리지에 탭 상태 저장 (새로고침 후에도 카드 탭이 선택되도록)
+                localStorage.setItem(`content-${content.id}-activeTab`, 'cards');
+                
+                // 페이지 새로고침 (데이터를 확실히 다시 로드하기 위해)
+                setTimeout(() => {
+                    router.refresh();
+                }, 100); // 모달이 사라지고 난 후 새로고침
+            }, 2000); // 완료 메시지를 더 오래 보여주기 위해 지연 시간 유지
 
         } catch (error) {
             console.error('Memory card generation error:', error);
@@ -535,22 +614,18 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
         <main className="flex min-h-screen flex-col bg-[#F8F4EF] pb-12 p-4">
             {/* 일반 로딩 오버레이 */}
             {(isLoading || isDeleting || isDeletingContent || isNavigating) && <LoadingOverlay />}
-            
+
             {/* 기억카드 생성 로딩 화면 */}
             {isGeneratingCards && (
-                <LoadingScreen 
+                <LoadingScreen
                     progress={generationProgress}
                     status={generationStatus}
                     previewTitle={content.title}
                     processedGroups={processedGroups}
-                    onClose={() => {
-                        setIsGeneratingCards(false);
-                        setGenerationProgress(0);
-                        setGenerationStatus('title');
-                    }}
+                    // Removed onClose prop to prevent closing the modal
                 />
             )}
-            <div className="sticky top-0 bg-[#F8F4EF] border-b border-[#D4C4B7] h-12 z-50">
+            {!isGeneratingCards && <div className="sticky top-0 bg-[#F8F4EF] border-b border-[#D4C4B7] h-12 z-50">
                 <button
                     onClick={handleGoBack}
                     className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center text-gray-600 hover:text-gray-900 transition-all duration-200 group"
@@ -568,7 +643,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
                 </button>
-            </div>
+            </div>}
 
             <div className="flex-1 max-w-2xl mx-auto w-full">
                 <div className="space-y-2 mb-6 mt-6">
@@ -732,9 +807,17 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                                     );
                                 })
                             ) : (
-                                <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
-                                    <div className="text-gray-500 mb-6">
-                                        아직 기억 카드가 없습니다.
+                                <div className="flex flex-col items-center justify-center py-12 px-6 text-center bg-white/60 backdrop-blur-sm rounded-xl border border-white/20 shadow-sm">
+                                    <img
+                                        src="/images/doneloopa.png"
+                                        alt="기억 카드"
+                                        className="w-20 h-20 mb-4 opacity-80"
+                                    />
+                                    <div className="text-gray-600 font-medium text-lg">
+                                        아직 기억 카드가 없습니다
+                                    </div>
+                                    <div className="text-gray-500 mb-6 text-sm max-w-md">
+                                        기억카드를 생성하여 효과적으로 학습해보세요
                                     </div>
 
                                     {content.markdown_text ? (
@@ -742,10 +825,11 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                                             disabled={isGeneratingCards}
                                             onClick={handleGenerateMemoryCards}
                                             className={`
-                                                px-4 py-2 rounded-lg text-white
+                                                px-6 py-2.5 rounded-full text-white font-medium flex items-center
+                                                shadow-sm transform transition-all duration-200
                                                 ${isGeneratingCards
                                                     ? 'bg-gray-400 cursor-not-allowed'
-                                                    : 'bg-[#5F4BB6] hover:bg-opacity-90 transition-colors'}
+                                                    : 'bg-[#5F4BB6] hover:bg-[#4F3B96] hover:shadow-md active:scale-95'}
                                             `}
                                         >
                                             {isGeneratingCards ? (
@@ -757,20 +841,31 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                                                     기억카드 생성 중...
                                                 </div>
                                             ) : (
-                                                '기억카드 생성'
+                                                <>
+                                                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                                    </svg>
+                                                    기억카드 생성하기
+                                                </>
                                             )}
                                         </button>
                                     ) : (
                                         <button
                                             disabled={true}
-                                            className="px-4 py-2 bg-gray-400 text-white rounded-lg cursor-not-allowed"
+                                            className="px-6 py-2.5 bg-gray-400 text-white rounded-full font-medium cursor-not-allowed shadow-sm flex items-center"
                                         >
+                                            <svg className="w-5 h-5 mr-2 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                            </svg>
                                             노트를 먼저 생성해주세요
                                         </button>
                                     )}
 
                                     {generationError && (
-                                        <div className="mt-4 text-red-500 text-sm">
+                                        <div className="mt-4 text-red-500 text-sm p-2 bg-red-50 rounded-lg">
+                                            <svg className="w-4 h-4 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                                            </svg>
                                             {generationError}
                                         </div>
                                     )}
