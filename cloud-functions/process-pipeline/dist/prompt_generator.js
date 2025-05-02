@@ -13,7 +13,10 @@ exports.generateMarkdownConversionPrompt = generateMarkdownConversionPrompt;
  * @returns 시스템 프롬프트 문자열
  */
 function generateGroupsPrompt(additionalMemory) {
-    return `당신은 텍스트를 학습하기 쉬운 기억 단위로 나누는 전문가입니다. 다음 지침을 반드시 따라주세요:
+    return `입력 텍스트의 언어를 감지하여 해당 언어로만 답변하세요.
+Detect the input-text language and reply only in that language.
+
+당신은 텍스트를 학습하기 쉬운 기억 단위로 나누는 전문가입니다. 다음 지침을 반드시 따라주세요:
  
  1. 주어진 텍스트를 1~4개의 '그룹'으로 나누세요. 다음 기준을 따릅니다:
     - 텍스트가 **짧거나 핵심 주제가 1개인 경우**, 그룹은 **1개만** 생성해도 됩니다.
@@ -78,7 +81,10 @@ function generateGroupsPrompt(additionalMemory) {
  * @returns 시스템 프롬프트 문자열
  */
 function generateUnifiedChunksPrompt(additionalMemory) {
-    const intro = `당신은 학습과 기억력 향상을 극대화하는 효과적인 '기억 카드'를 만드는 전문가입니다. 다음 지침을 절대적으로, 예외 없이, 정확하게 따라야 합니다. 특히 카드 형식(3번 항목)을 100% 준수하는 것이 매우 중요합니다.
+    const intro = `입력 텍스트의 언어를 감지하여 해당 언어로만 답변하세요.
+Detect the input-text language and reply only in that language.
+
+당신은 학습과 기억력 향상을 극대화하는 효과적인 '기억 카드'를 만드는 전문가입니다. 다음 지침을 절대적으로, 예외 없이, 정확하게 따라야 합니다. 특히 카드 형식(3번 항목)을 100% 준수하는 것이 매우 중요합니다.
 
 1. 주어진 텍스트 그룹에 대해 가장 중요하고 기억할 만한 내용들을 중심으로 4개 내외의'기억 카드'를 생성하세요. 오직 주어진 텍스트 내용만을 활용해야 하며, 외부 정보를 추가하거나 내용을 변경해서는 안 됩니다.
 
@@ -116,7 +122,10 @@ ${additionalMemory
  * @returns 시스템 프롬프트 문자열
  */
 function generateMarkdownConversionPrompt(additionalMemory) {
-    return `당신은 텍스트를 시각적으로 매력적이고 구조화된 마크다운 형식으로 변환하는 전문가입니다. 다음 지침을 따라 주어진 텍스트를 마크다운으로 변환하세요:
+    return `입력 텍스트의 언어를 감지하여 해당 언어로만 답변하세요.
+Detect the input-text language and reply only in that language.
+
+당신은 텍스트를 시각적으로 매력적이고 구조화된 마크다운 형식으로 변환하는 전문가입니다. 다음 지침을 따라 주어진 텍스트를 마크다운으로 변환하세요:
 
 1. 텍스트의 주요 내용을 분석하여 논리적인 구조로 재구성하세요:
    - 주요 주제는 # 또는 ## 헤더로, 부제목은 ### 또는 #### 헤더로 표시

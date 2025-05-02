@@ -370,7 +370,7 @@ export default function LoadingScreen({ progress, status, previewTitle, processe
                                 {processedGroups && processedGroups.length > 0 && (
                                     <>
                                         <h3 className="text-sm font-medium text-gray-500 mt-3 mb-2">
-                                            Generated Group: ({processedGroups.length})
+                                            Generated Group: {processedGroups.length}
                                         </h3>
                                         <div className="max-h-48 overflow-y-auto space-y-1.5 pr-2">
                                             {processedGroups.map((group, idx) => (
@@ -398,7 +398,7 @@ export default function LoadingScreen({ progress, status, previewTitle, processe
                                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                             </svg>
-                                            {status === 'group' ? '그룹' : '카드'} 생성 진행 중...
+                                            generating {status === 'group' ? 'groups' : 'cards'}...
                                         </div>
                                         <span className="text-blue-800 font-medium">{timeDisplay}</span>
                                     </div>

@@ -319,7 +319,7 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
                                     <div className="py-2">
                                       <span className="animate-pulse inline-block text-[#9F94F8]">Loading...</span>
                                     </div>
-                                  ) : '그룹이 없습니다.'}
+                                  ) : 'No groups.'}
                                 </div>
                               )}
                             </div>

@@ -52,15 +52,19 @@ export async function POST(req: Request) {
         }
 
         // 1. 제목 생성 - 타임아웃 적용
-        let title
+        let title = ''
+        let icon = ''
         try {
-            console.log('Attempting to generate title...')
+            console.log('Attempting to generate title and icon...')
             const titleCompletion = await withTimeout(openai.chat.completions.create({
                 model: "gpt-4.1-nano-2025-04-14",
                 messages: [
                     {
                         role: "system",
-                        content: "당신은 텍스트의 핵심을 정확히 파악하여 간결하고 명확한 제목을 생성하는 전문가입니다. 주어진 텍스트를 분석하고 30자 이내의 핵심적인 제목만 출력하세요. 따옴표나 기타 부가 설명 없이 제목 텍스트만 반환해야 합니다."
+                        content: `당신은 텍스트를 분석하여 JSON {"title": string, "icon": string} 형태로 반환하세요.
+- title: 30자 이내의 글의 핵심을 나타내는 제목 (설명 없이 순수 제목만)
+- icon: 콘텐츠를 대표하는 이모지 하나
+예시: {"title":"블록체인 기초","icon":"⛓️"}`
                     },
                     { role: "user", content: text }
                 ],
@@ -68,8 +72,19 @@ export async function POST(req: Request) {
                 max_tokens: 100
             }), TIMEOUT);
 
-            title = titleCompletion.choices[0].message.content || ''
-            console.log('Title generated:', title)
+            const raw = titleCompletion.choices[0].message.content || ''
+            console.log('Raw title/icon response:', raw)
+            try {
+                const parsed = JSON.parse(raw)
+                title = parsed.title
+                icon = parsed.icon
+            } catch (parseError) {
+                console.error('Failed to parse JSON:', parseError)
+                title = raw
+                icon = ''
+            }
+            console.log('Parsed title:', title, 'icon:', icon)
+
         } catch (error) {
             console.error('Title generation error:', error)
             const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.'
@@ -87,6 +102,7 @@ export async function POST(req: Request) {
                 .insert([{
                     user_id: session.user.id,
                     title,
+                    icon,
                     original_text: text,
                     additional_memory: additionalMemory || '',
                     chunks: [],

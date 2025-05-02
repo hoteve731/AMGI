@@ -8,11 +8,12 @@ import { useRouter } from 'next/navigation'
 import LoadingOverlay from './LoadingOverlay'
 import { motion } from 'framer-motion'
 import useSWR from 'swr'
-import { FolderIcon } from '@heroicons/react/24/outline'
+import { ChevronRightIcon } from '@heroicons/react/24/outline'
 
 type Content = {
     id: string
     title: string
+    icon?: string
     created_at: string
     groups_count?: number
     chunks_count?: number
@@ -280,7 +281,7 @@ export default function ContentList({ contents: externalContents, showTabs = fal
                         `}
                     >
                         <div className="p-5">
-                            <div className="flex justify-between items-start">
+                            <div className="flex justify-between items-center">
                                 {content.isProcessing ? (
                                     <div className="flex-1">
                                         <h2 className="text-lg font-bold text-gray-800">
@@ -311,56 +312,50 @@ export default function ContentList({ contents: externalContents, showTabs = fal
                                         </div>
                                     </div>
                                 ) : (
-                                    <div
-                                        className="flex-1 cursor-pointer"
+                                    <div className="flex-1 cursor-pointer relative"
                                         onClick={() => handleContentClick(content.id)}
                                     >
-                                        <h2 className="text-lg font-semibold text-gray-800">
-                                            {content.title}
-                                        </h2>
+                                        {/* Caret right icon - positioned at vertical center on the right */}
+                                        <div className="absolute right-1 top-1/2 -translate-y-1/2">
+                                            <ChevronRightIcon className="w-4 h-4 text-black text-opacity-40" />
+                                        </div>
 
-                                        {(content.groups_count === 0 && content.chunks_count === 0 && !content.isProcessing) && (
-                                            <div className="mt-2 text-base text-gray-500 font-semibold">
-                                                ✅ Your Note is ready. Now generate memory cards!
-                                            </div>
-                                        )}
+                                        {/* Icon with circular background - positioned at vertical center on the left */}
+                                        <div className="absolute left-0 top-1/2 -translate-y-1/2 flex items-center justify-center w-12 h-12 rounded-full bg-[#F8F4F0]">
+                                            <span className="text-xl">{content.icon || '📄'}</span>
+                                        </div>
 
-                                        {/* Bottom row with counts on left and date on right */}
-                                        <div className="flex justify-between items-center mt-5">
-                                            {/* Group and card counts on the left */}
-                                            <div className="flex items-center space-x-4">
-                                                <div className="flex items-center gap-1">
-                                                    <FolderIcon className="w-4 h-4 text-[#7969F7]" />
-                                                    <span className="text-xs text-gray-600">Group</span>
-                                                    <span className="text-xs font-semibold text-gray-800">{content.groups_count || 0}</span>
+                                        <div className="pl-16 pr-8">
+                                            {/* Title */}
+                                            <h2 className="text-lg font-semibold text-gray-800">
+                                                {content.title}
+                                            </h2>
+
+                                            {/* Ready message */}
+                                            {(content.groups_count === 0 && content.chunks_count === 0 && !content.isProcessing) && (
+                                                <div className="mt-1 mb-2 text-base text-gray-500 font-semibold">
+                                                    ✅ Your Note is ready. Now generate memory cards!
                                                 </div>
+                                            )}
 
-                                                <div className="flex items-center gap-1">
-                                                    <svg
-                                                        className="w-4 h-4 text-[#F59E42]"
-                                                        fill="none"
-                                                        stroke="currentColor"
-                                                        viewBox="0 0 24 24"
-                                                    >
-                                                        <path
-                                                            strokeLinecap="round"
-                                                            strokeLinejoin="round"
-                                                            strokeWidth={2}
-                                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                                                        />
-                                                    </svg>
-                                                    <span className="text-xs text-gray-600">Cards</span>
-                                                    <span className="text-xs font-semibold text-gray-800">{content.chunks_count || 0}</span>
+                                            {/* Bottom row with counts on left and date on right */}
+                                            <div className="flex items-center mt-2">
+                                                {/* Card count and date on the left */}
+                                                <div className="flex items-center gap-2 text-black text-opacity-40">
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="text-xs">{content.chunks_count || 0} Cards</span>
+                                                    </div>
+                                                    <span className="text-xs">•</span>
+
+                                                    {/* Date */}
+                                                    <span className="text-xs">
+                                                        {new Date(content.created_at).toLocaleDateString('en-US', {
+                                                            year: 'numeric',
+                                                            month: 'long',
+                                                            day: 'numeric'
+                                                        })}
+                                                    </span>
                                                 </div>
-                                            </div>
-
-                                            {/* Date on the right */}
-                                            <div className="text-xs font-light text-gray-400">
-                                                {new Date(content.created_at).toLocaleDateString('en-US', {
-                                                    year: 'numeric',
-                                                    month: 'long',
-                                                    day: 'numeric'
-                                                })}
                                             </div>
                                         </div>
                                     </div>
