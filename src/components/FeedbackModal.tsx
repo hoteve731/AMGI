@@ -16,6 +16,8 @@ export default function FeedbackModal({
 }: FeedbackModalProps) {
   // 실제 모달 표시 상태를 관리하는 상태 추가
   const [isVisible, setIsVisible] = useState(isOpen)
+  const [feedback, setFeedback] = useState('');
+  const [isSending, setIsSending] = useState(false);
 
   // isOpen prop이 변경될 때 isVisible 상태 업데이트
   useEffect(() => {
@@ -36,8 +38,8 @@ export default function FeedbackModal({
   // 이메일 문의 처리
   const handleSendInquiryEmail = () => {
     const emailAddress = 'loopa.service@gmail.com';
-    const subject = '[LOOPA] 문의사항';
-    const body = '안녕하세요, LOOPA 팀에게 문의드립니다.\n\n문의 내용:\n\n';
+    const subject = '[LOOPA] Feedback Request';
+    const body = 'Write your feedback here:\n\n';
 
     window.location.href = `mailto:${emailAddress}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     handleClose(); // 애니메이션과 함께 모달 닫기
@@ -47,6 +49,29 @@ export default function FeedbackModal({
   const handleKakaoChat = () => {
     window.open('https://open.kakao.com/me/Loopa', '_blank');
     handleClose(); // 애니메이션과 함께 모달 닫기
+  };
+
+  // 피드백 전송 처리
+  const handleSendFeedback = async () => {
+    if (!feedback.trim()) return;
+    setIsSending(true);
+    try {
+      const res = await fetch('/api/notifications/slack', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'feedback', data: { feedback } }),
+      });
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        throw new Error(result.error || 'Slack 알림 전송 실패');
+      }
+      handleClose();
+    } catch (error) {
+      console.error('피드백 전송 오류:', error);
+      alert('피드백 전송에 실패했습니다.');
+    } finally {
+      setIsSending(false);
+    }
   };
 
   // document 객체를 클라이언트 사이드에서만 사용하기 위한 상태 추가
@@ -94,8 +119,27 @@ export default function FeedbackModal({
 
             <div className="p-6 overflow-y-auto">
               <p className="text-gray-600 mb-4">
-                Send us your feedback or inquiries about any errors that occurred. Thank you for participating in the beta test!
+                Send us your feedback or inquiries about any errors that occurred.
               </p>
+
+              <div className="mb-4">
+                <textarea
+                  value={feedback}
+                  onChange={(e) => setFeedback(e.target.value)}
+                  placeholder="Write your feedback..."
+                  className="w-full h-24 p-2 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  disabled={isSending}
+                />
+              </div>
+              <div className="mb-4">
+                <button
+                  onClick={handleSendFeedback}
+                  disabled={isSending || !feedback.trim()}
+                  className="w-full bg-[#5f4bb6] text-white py-2 px-4 rounded-lg disabled:opacity-50"
+                >
+                  {isSending ? 'Sending...' : 'Send Feedback'}
+                </button>
+              </div>
 
               <div className="flex gap-3 mb-2">
                 <button

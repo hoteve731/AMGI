@@ -91,7 +91,7 @@ export default function LoginButton() {
                     </svg>
                 )}
                 <span className="font-medium">
-                    {isLoading ? '로그인 중...' : 'Google로 계속하기'}
+                    {isLoading ? 'Logging in...' : 'Continue with Google'}
                 </span>
             </button>
         </div>

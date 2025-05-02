@@ -60,6 +60,13 @@ export async function POST(request: Request) {
                 });
                 break;
 
+            case 'feedback':
+                console.log('피드백 전송 시도:', data.feedback);
+                success = await sendSlackNotification({
+                    text: `📢 새로운 피드백이 도착했습니다!\n${data.feedback}`,
+                });
+                break;
+
             default:
                 console.error('알 수 없는 알림 유형:', type);
                 return NextResponse.json(

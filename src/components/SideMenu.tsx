@@ -92,8 +92,8 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
   // 이메일로 구독 신청 기능 추가
   const handleSubscriptionEmail = () => {
     const emailAddress = 'loopa.service@gmail.com';
-    const subject = 'LOOPA 프리미엄 엑세스 신청';
-    const body = '사유를 간단하게 작성하여 보내주세요! 24시간 내로 답장을 드립니다.';
+    const subject = 'LOOPA Subscription Request';
+    const body = 'Write your subscription request here:\n\n';
 
     window.location.href = `mailto:${emailAddress}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     setShowSubscriptionModal(false); // 모달 닫기
@@ -102,8 +102,8 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
   // 1:1 문의 이메일 보내기
   const handleSendInquiryEmail = () => {
     const emailAddress = 'loopa.service@gmail.com';
-    const subject = 'LOOPA 1:1 문의';
-    const body = '문의 내용을 작성해 주세요. 최대한 빠르게 답변 드리겠습니다.';
+    const subject = 'LOOPA Inquiry';
+    const body = 'Write your inquiry here:\n\n';
 
     window.location.href = `mailto:${emailAddress}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   };
@@ -343,7 +343,7 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
                   className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-[#7969F7] to-[#9F94F8] text-white py-2.5 px-4 rounded-lg font-medium shadow-md hover:shadow-lg transition-all duration-200 active:scale-[0.98] mb-3"
                 >
                   <SparklesIcon className="w-5 h-5" />
-                  <span>Unlimited notes</span>
+                  <span className="text-sm font-bold">Unlimited notes</span>
                 </button>
 
                 <p className="text-gray-700 text-sm text-center mb-3">

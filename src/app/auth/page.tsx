@@ -24,11 +24,11 @@ export default async function AuthPage() {
                         className="rounded-2xl"
                     />
                 </div>
-                <h1 className="text-2xl font-bold text-[#7969F7]">
+                <h1 className="text-4xl font-bold text-[#7969F7]">
                     LOOPA
                 </h1>
-                <p className="mt-2 text-xl mb-8 font-medium text-gray-600">
-                    진짜 기억을 위한 반복 도우미
+                <p className="text-xl mb-8 font-light text-gray-600">
+                    AI notes for busy learners
                 </p>
             </div>
 
