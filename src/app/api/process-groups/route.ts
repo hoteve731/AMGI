@@ -64,19 +64,25 @@ export async function POST(req: Request) {
                 .select('id')
                 .eq('content_id', contentId);
 
-            return NextResponse.json({
-                success: true,
-                content_id: contentId,
-                group_ids: existingGroups?.map(g => g.id) || [],
-                message: '이미 처리가 완료된 콘텐츠입니다.'
-            });
-        }
+            // 그룹이 있으면 기존 그룹 반환
+            if (existingGroups && existingGroups.length > 0) {
+                return NextResponse.json({
+                    success: true,
+                    content_id: contentId,
+                    group_ids: existingGroups.map(g => g.id) || [],
+                    message: '이미 처리가 완료된 콘텐츠입니다.'
+                });
+            }
 
-        // 상태 업데이트: 그룹 생성 중
-        await supabase
-            .from('contents')
-            .update({ processing_status: 'groups_generating' })
-            .eq('id', contentId);
+            // 그룹이 없으면 처리 계속 진행 (상태는 변경하지 않음)
+            console.log(`[Process Groups API] Content ${contentId} is marked as completed but has no groups. Processing groups without changing status...`);
+        } else {
+            // 완료 상태가 아닌 경우에만 상태 업데이트
+            await supabase
+                .from('contents')
+                .update({ processing_status: 'groups_generating' })
+                .eq('id', contentId);
+        }
 
         // GCF URL 설정
         const isProduction = process.env.NODE_ENV === 'development' ? false : true;
