@@ -82,7 +82,7 @@ export default function FeedbackModal({
 
             <div className="flex justify-between items-center p-6 border-b border-gray-100 sticky top-0 bg-white z-10">
               <h3 className="text-lg font-semibold text-black flex items-center gap-1.5">
-                🚀 피드백 보내기
+                🚀 Send Feedback
               </h3>
               <button
                 onClick={handleClose}
@@ -94,7 +94,7 @@ export default function FeedbackModal({
 
             <div className="p-6 overflow-y-auto">
               <p className="text-gray-600 mb-4">
-                발생된 오류나 피드백을 자유롭게 보내주세요. 베타 테스트에 참여해주셔서 감사합니다!
+                Send us your feedback or inquiries about any errors that occurred. Thank you for participating in the beta test!
               </p>
 
               <div className="flex gap-3 mb-2">
@@ -105,7 +105,7 @@ export default function FeedbackModal({
                   <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                   </svg>
-                  <span className="text-sm">이메일</span>
+                  <span className="text-sm">Email</span>
                 </button>
                 <button
                   onClick={handleKakaoChat}
@@ -114,7 +114,7 @@ export default function FeedbackModal({
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M12 3C6.5 3 2 6.5 2 11c0 2.9 1.9 5.4 4.7 6.9.2.1.3.3.3.5 0 .2-.1.3-.1.5-.1.3-.3 1.1-.4 1.3 0 0 0 .1-.1.1v.1c0 .1 0 .1.1.1h.1c.1 0 1.2-.4 1.9-.7.3-.1.4-.1.6-.2.3.1.7.1 1 .1 5.5 0 10-3.5 10-8 0-4.5-4.5-8-10-8z" />
                   </svg>
-                  <span className="text-sm">카카오톡</span>
+                  <span className="text-sm">KakaoTalk</span>
                 </button>
               </div>
             </div>

@@ -451,8 +451,7 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.5, delay: 1 }}
             >
-                <p className="text-2xl font-bold">Welcome, {userName}!</p>
-                <p className="text-xl font-bold">Let's start reviewing!</p>
+                <p className="text-2xl font-bold">Welcome back, <br></br>{userName}!</p>
             </motion.div>
 
             <motion.div

@@ -185,7 +185,7 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
             animate={{ x: 0 }}
             exit={{ x: "-100%" }}
             transition={{ type: "tween", duration: 0.35 }}
-            className="fixed top-0 left-0 h-full z-[9999] w-3/4 max-w-[340px] bg-gradient-to-b from-[#F8F4EF] to-[#E8D9C5] shadow-2xl flex flex-col"
+            className="fixed top-0 left-0 h-full z-[9999] w-3/4 max-w-[340px] bg-[#F8F4EF] shadow-2xl flex flex-col"
           >
             {/* Header */}
             <div className="flex items-center justify-between h-16 px-5 bg-[#F8F4EF]">
@@ -381,24 +381,24 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
         )}
       </AnimatePresence>
 
-      {/* 구독 모달 - 상시 표시 가능하도록 AnimatePresence를 별도로 구성 */}
+      {/* 구독 모달 */}
       <AnimatePresence>
         {showSubscriptionModal && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[10000] flex items-center justify-center p-4"
-              onClick={() => setShowSubscriptionModal(false)}
-            />
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-[10000]"
+            onClick={() => setShowSubscriptionModal(false)}
+          >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               transition={{ type: "spring", bounce: 0.3, duration: 0.4 }}
-              className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-md bg-white/95 backdrop-filter backdrop-blur-md rounded-2xl p-6 shadow-2xl z-[10001] overflow-hidden border border-white/20"
+              className="w-[90%] max-w-md bg-white/95 backdrop-filter backdrop-blur-md rounded-2xl p-6 shadow-2xl z-[10001] overflow-hidden border border-white/20"
+              onClick={(e) => e.stopPropagation()}
             >
               <div className="absolute top-3 right-3">
                 <button
@@ -415,8 +415,8 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
                     <SparklesIcon className="w-8 h-8 text-[#7969F7]" />
                   </div>
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">LOOPA 프리미엄 구독</h3>
-                <p className="text-gray-600">더 많은 기능으로 학습 효율을 높이세요!</p>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">Unlimited Notes</h3>
+                <p className="text-gray-600">More features and unlimited access.</p>
               </div>
 
               <div className="space-y-4 mb-6">
@@ -427,8 +427,8 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
                     </svg>
                   </div>
                   <div>
-                    <p className="font-medium text-gray-800">노트 무한 생성</p>
-                    <p className="text-sm text-gray-600">5개 제한 없이 노트를 만들 수 있어요</p>
+                    <p className="font-medium text-gray-800">Unlimited notes</p>
+                    <p className="text-sm text-gray-600">Create as many notes as you want</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
@@ -438,8 +438,8 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
                     </svg>
                   </div>
                   <div>
-                    <p className="font-medium text-gray-800">입력 가능 글자수 무제한</p>
-                    <p className="text-sm text-gray-600">더 자세한 학습을 위해 입력 길이 제한이 없어져요</p>
+                    <p className="font-medium text-gray-800">Unlimited input</p>
+                    <p className="text-sm text-gray-600">More characters, more details</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
@@ -449,8 +449,8 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
                     </svg>
                   </div>
                   <div>
-                    <p className="font-medium text-gray-800">이미지/PDF 업로드 지원</p>
-                    <p className="text-sm text-gray-600">텍스트 뿐 아니라 이미지, PDF 문서를 업로드하여 기억 카드로 변환할 수 있어요</p>
+                    <p className="font-medium text-gray-800">Image/PDF upload support</p>
+                    <p className="text-sm text-gray-600">Upload images and PDF documents to convert them into memory cards</p>
                   </div>
                 </div>
               </div>
@@ -459,10 +459,10 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
                 className="w-full py-3 bg-gradient-to-r from-[#7969F7] to-[#9F94F8] text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-200 active:scale-[0.98]"
                 onClick={handleSubscriptionEmail}
               >
-                프리미엄 업그레이드 요청하기
+                Upgrade to Premium
               </button>
             </motion.div>
-          </>
+          </motion.div>
         )}
       </AnimatePresence>
     </>

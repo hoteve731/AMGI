@@ -123,13 +123,13 @@ export default function LoadingScreen({ progress, status, previewTitle, processe
         const steps: ProcessStep[] = [
             {
                 id: 1,
-                label: '텍스트 분석 및 제목 생성',
+                label: 'Text analysis',
                 status: 'completed',
                 description: 'Analyzing text and generating title...'
             },
             {
                 id: 2,
-                label: '그룹 생성',
+                label: 'Group generation',
                 description: 'Generating groups...',
                 status: status === 'title' ? 'progress' :
                     (status === 'content' || status === 'group') ? 'progress' :
@@ -137,14 +137,14 @@ export default function LoadingScreen({ progress, status, previewTitle, processe
             },
             {
                 id: 3,
-                label: '기억 카드 생성',
+                label: 'Memory card generation',
                 description: 'Generating memory cards...',
                 status: status === 'chunk' ? 'progress' :
                     status === 'complete' ? 'completed' : 'pending'
             },
             {
                 id: 4,
-                label: '완료',
+                label: 'Complete',
                 description: 'Processing complete. Redirecting to note...',
                 status: status === 'complete' ? 'completed' : 'pending'
             }
@@ -205,7 +205,7 @@ export default function LoadingScreen({ progress, status, previewTitle, processe
                 {/* 헤더 영역 */}
                 <div className="w-full p-4 flex justify-center items-center border-b border-gray-100">
                     <h1 className="text-xl font-bold text-gray-800">
-                        {isRedirecting ? '이동 준비 중' : '기억 카드 생성 중'}
+                        {isRedirecting ? '이동 준비 중' : 'Generating memory cards...'}
                     </h1>
                 </div>
 
@@ -217,7 +217,7 @@ export default function LoadingScreen({ progress, status, previewTitle, processe
                     <p>
                         {isRedirecting
                             ? 'Redirecting to note...'
-                            : 'Processing complete. Redirecting to note...'}
+                            : 'Processing...'}
                     </p>
                 </div>
 
@@ -358,7 +358,7 @@ export default function LoadingScreen({ progress, status, previewTitle, processe
                                 transition={{ duration: 0.3 }}
                             >
                                 {/* 제목 정보 */}
-                                <h3 className="text-sm font-medium text-gray-500 mb-1">생성된 제목:</h3>
+                                <h3 className="text-sm font-medium text-gray-500 mb-1">Generated Title:</h3>
                                 <p className="text-base font-medium text-gray-800 mb-3">
                                     <TypewriterText
                                         text={previewTitle}
@@ -370,7 +370,7 @@ export default function LoadingScreen({ progress, status, previewTitle, processe
                                 {processedGroups && processedGroups.length > 0 && (
                                     <>
                                         <h3 className="text-sm font-medium text-gray-500 mt-3 mb-2">
-                                            생성된 그룹 ({processedGroups.length}개):
+                                            Generated Group: ({processedGroups.length})
                                         </h3>
                                         <div className="max-h-48 overflow-y-auto space-y-1.5 pr-2">
                                             {processedGroups.map((group, idx) => (

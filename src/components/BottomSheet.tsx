@@ -462,7 +462,7 @@ export default function BottomSheet() {
             const tempContentId = crypto.randomUUID(); // UUID 형식으로 변경
             const tempContent = {
                 id: tempContentId,
-                title: '제목 생성 중...',
+                title: 'Generating title...',
                 created_at: new Date().toISOString(),
                 processing_status: 'pending',
                 isProcessing: true,
@@ -868,7 +868,7 @@ export default function BottomSheet() {
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                         </svg>
                                     </button>
-                                    <h2 className="text-lg font-semibold text-gray-700 flex-grow text-center">New Memory Note</h2>
+                                    <h2 className="text-lg font-semibold text-gray-700 flex-grow text-center">Upload text</h2>
                                     <motion.button
                                         type="button"
                                         onClick={handleSubmit}
