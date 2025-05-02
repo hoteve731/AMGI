@@ -118,30 +118,29 @@ export default function FeedbackModal({
             </div>
 
             <div className="p-6 overflow-y-auto">
-              <p className="text-gray-600 mb-4">
-                Send us your feedback or inquiries about any errors that occurred.
-              </p>
-
-              <div className="mb-4">
+              <div className="mb-1">
                 <textarea
                   value={feedback}
                   onChange={(e) => setFeedback(e.target.value)}
-                  placeholder="Write your feedback..."
-                  className="w-full h-24 p-2 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  placeholder="Write your feedback"
+                  className="w-full h-24 p-2 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-[#5f4bb6]"
                   disabled={isSending}
                 />
               </div>
-              <div className="mb-4">
+              <div className="mb-1">
                 <button
                   onClick={handleSendFeedback}
                   disabled={isSending || !feedback.trim()}
-                  className="w-full bg-[#5f4bb6] text-white py-2 px-4 rounded-lg disabled:opacity-50"
+                  className="w-full bg-[#5f4bb6] text-white font-bold py-2 px-4 rounded-lg disabled:opacity-30"
                 >
-                  {isSending ? 'Sending...' : 'Send Feedback'}
+                  {isSending ? 'Sending...' : 'Send'}
                 </button>
               </div>
+              <p className="text-gray-600 mt-8 mb-1 text-sm">
+                Or contact us via...
+              </p>
 
-              <div className="flex gap-3 mb-2">
+              <div className="flex gap-3 mb-1">
                 <button
                   onClick={handleSendInquiryEmail}
                   className="flex-1 flex items-center justify-center gap-1.5 bg-gray-50 border border-gray-300 text-gray-700 py-2.5 px-3 rounded-lg font-medium hover:bg-gray-100 transition-all duration-200 active:scale-[0.98]"
