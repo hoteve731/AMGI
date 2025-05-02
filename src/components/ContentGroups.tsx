@@ -105,11 +105,11 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
         const maskedPattern = /\{\{([^{}]+)\}\}/g;
         let processedText = text.replace(maskedPattern,
             '<span class="bg-black text-white px-1 py-0.5 rounded">$1</span>');
-        
+
         // Process markdown links [text](url)
         const markdownLinkRegex = /\[([^\]]+)\]\(([^\)]+)\)/g;
-        const links: {original: string, text: string, url: string}[] = [];
-        
+        const links: { original: string, text: string, url: string }[] = [];
+
         // Find all markdown links and store them
         let linkMatch;
         while ((linkMatch = markdownLinkRegex.exec(processedText)) !== null) {
@@ -119,7 +119,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                 url: linkMatch[2]        // The URL
             });
         }
-        
+
         // Handle direct URLs that aren't in markdown format
         const urlRegex = /(https?:\/\/[^\s\)]+)/g;
         let urlMatch;
@@ -132,7 +132,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                     break;
                 }
             }
-            
+
             if (!isInLink) {
                 links.push({
                     original: urlMatch[0],
@@ -141,7 +141,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                 });
             }
         }
-        
+
         // Replace links with unique placeholders
         links.forEach((link, i) => {
             const placeholder = `__LINK_${i}__`;
@@ -153,7 +153,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
 
         return parts.map((part, index) => {
             if (!part) return null;
-            
+
             // Handle masked text spans
             if (part.startsWith('<span class="bg-black text-white px-1 py-0.5 rounded">')) {
                 return <span key={index} dangerouslySetInnerHTML={{ __html: part }} />;
@@ -172,14 +172,14 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
             else if (part.startsWith('__LINK_')) {
                 const linkIndex = parseInt(part.match(/\d+/)?.[0] || '0');
                 const link = links[linkIndex];
-                
+
                 if (link) {
                     // Standard markdown format: [text](url) - text is displayed, url is the link target
                     return (
-                        <a 
-                            key={index} 
-                            href={link.url} 
-                            target="_blank" 
+                        <a
+                            key={index}
+                            href={link.url}
+                            target="_blank"
                             rel="noopener noreferrer"
                             className="text-purple-600 hover:underline hover:bg-purple-50 px-1 py-0.5 rounded transition-colors"
                         >
@@ -540,73 +540,117 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
             const groupsData = await groupsResponse.json();
             console.log('Groups generated:', groupsData);
 
-            // 그룹 정보 가져오기
-            const groupsInfoResponse = await fetch(`/api/content-groups?contentId=${content.id}`);
-            if (!groupsInfoResponse.ok) {
-                throw new Error('그룹 정보를 가져오는 중 오류가 발생했습니다.');
-            }
+            // 2. 백엔드 처리 상태 폴링 시작
+            // 그룹 생성 완료 및 청크 생성 진행 상태를 확인하는 함수
+            const pollProcessingStatus = async () => {
+                let isCompleted = false;
+                let currentStatus = '';
+                let currentStage = '';
+                let groups = [];
+                let chunks = [];
 
-            const groupsInfo = await groupsInfoResponse.json();
-            setProcessedGroups(groupsInfo.groups || []);
+                // 폴링 간격 (밀리초)
+                const POLLING_INTERVAL = 1000;
 
-            // 2. 각 그룹에 대해 청크 생성 API 호출
-            setGenerationStatus('chunk'); // 청크(기억카드) 생성 단계로 변경
-            setGenerationProgress(60);
+                while (!isCompleted) {
+                    try {
+                        // 처리 상태 확인 API 호출
+                        const statusResponse = await fetch(`/api/check-content?id=${content.id}`);
+                        if (!statusResponse.ok) {
+                            throw new Error('처리 상태 확인 중 오류가 발생했습니다.');
+                        }
 
-            const totalGroups = groupsData.group_ids.length;
-            let completedGroups = 0;
+                        const statusData = await statusResponse.json();
+                        console.log('Current processing status:', statusData);
 
-            const chunkPromises = groupsData.group_ids.map(async (groupId: string, index: number) => {
-                const chunksResponse = await fetch('/api/process-cloze-chunks', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        group_id: groupId,
-                        content_id: content.id,
-                        useMarkdownText: true
-                    }),
-                });
+                        // 현재 처리 상태 업데이트 (API 응답 구조에 맞게 수정)
+                        currentStatus = statusData.processingStatus || '';
+                        currentStage = statusData.currentStage || '';
 
-                if (!chunksResponse.ok) {
-                    throw new Error(`그룹 ${groupId}의 청크 생성 중 오류가 발생했습니다.`);
+                        console.log(`현재 상태: ${currentStatus}, 현재 단계: ${currentStage}`);
+
+                        // 그룹 정보 가져오기 (그룹이 생성된 경우)
+                        if (currentStatus === 'groups_generated' ||
+                            currentStatus === 'chunks_generating' ||
+                            currentStatus === 'completed' ||
+                            currentStage === 'group_creation' ||
+                            currentStage === 'chunk_generation' ||
+                            currentStage === 'completed') {
+                            const groupsInfoResponse = await fetch(`/api/content-groups?contentId=${content.id}`);
+                            if (groupsInfoResponse.ok) {
+                                const groupsInfo = await groupsInfoResponse.json();
+                                groups = groupsInfo.groups || [];
+                                setProcessedGroups(groups);
+
+                                // 그룹 생성 단계에서 청크 생성 단계로 전환
+                                if (currentStatus === 'groups_generated' || currentStatus === 'chunks_generating' || currentStage === 'chunk_generation') {
+                                    setGenerationStatus('chunk');
+                                    setGenerationProgress(60);
+                                }
+
+                                // 청크 정보 가져오기 (청크가 생성 중이거나 완료된 경우)
+                                if (currentStatus === 'chunks_generating' || currentStatus === 'completed' || currentStage === 'chunk_generation' || currentStage === 'completed') {
+                                    // 각 그룹의 청크 수 확인하여 진행률 계산
+                                    let totalChunks = 0;
+                                    let completedChunks = 0;
+
+                                    for (const group of groups) {
+                                        const chunksResponse = await fetch(`/api/chunks?groupId=${group.id}`);
+                                        if (chunksResponse.ok) {
+                                            const chunksData = await chunksResponse.json();
+                                            const groupChunks = chunksData.chunks || [];
+                                            completedChunks += groupChunks.length;
+                                            // 예상 청크 수 (그룹당 평균 3-4개 정도로 가정)
+                                            totalChunks += 4;
+                                        }
+                                    }
+
+                                    // 진행률 업데이트 (60%~90% 사이)
+                                    if (totalChunks > 0) {
+                                        const chunkProgress = Math.min(completedChunks / totalChunks, 1);
+                                        setGenerationProgress(60 + Math.floor(chunkProgress * 30));
+                                    }
+                                }
+                            }
+                        }
+
+                        // 완료 상태 확인
+                        if (currentStatus === 'completed' || currentStage === 'completed') {
+                            setGenerationStatus('complete');
+                            setGenerationProgress(100);
+                            isCompleted = true;
+
+                            // 완료 후 모달 닫기 및 페이지 새로고침
+                            setTimeout(() => {
+                                setIsGeneratingCards(false);
+                                localStorage.setItem(`content-${content.id}-activeTab`, 'cards');
+                                setTimeout(() => {
+                                    router.refresh();
+                                }, 100);
+                            }, 2000); // 완료 메시지를 2초간 보여줌
+
+                            break;
+                        }
+
+                        // 폴링 간격만큼 대기
+                        await new Promise(resolve => setTimeout(resolve, POLLING_INTERVAL));
+
+                    } catch (error) {
+                        console.error('Status polling error:', error);
+                        throw error;
+                    }
                 }
+            };
 
-                completedGroups++;
-                setGenerationProgress(60 + Math.floor((completedGroups / totalGroups) * 30));
-
-                return chunksResponse.json();
-            });
-
-            // 모든 청크 생성 완료 대기
-            await Promise.all(chunkPromises);
-
-            setGenerationStatus('complete'); // 완료 단계로 변경
-            setGenerationProgress(100);
-
-            // 3. 완료 후 페이지 새로고침 (사용자가 완료 메시지를 볼 수 있도록 약간 지연)
-            setTimeout(() => {
-                // 모달 닫기
-                setIsGeneratingCards(false);
-                
-                // 로컬 스토리지에 탭 상태 저장 (새로고침 후에도 카드 탭이 선택되도록)
-                localStorage.setItem(`content-${content.id}-activeTab`, 'cards');
-                
-                // 페이지 새로고침 (데이터를 확실히 다시 로드하기 위해)
-                setTimeout(() => {
-                    router.refresh();
-                }, 100); // 모달이 사라지고 난 후 새로고침
-            }, 2000); // 완료 메시지를 더 오래 보여주기 위해 지연 시간 유지
+            // 폴링 시작
+            await pollProcessingStatus();
 
         } catch (error) {
             console.error('Memory card generation error:', error);
             setGenerationError(error instanceof Error ? error.message : '기억카드 생성 중 오류가 발생했습니다.');
-        } finally {
-            // 오류 발생 시에만 로딩 상태 해제 (성공 시에는 페이지 새로고침으로 처리)
-            if (generationError) {
-                setIsGeneratingCards(false);
-                setGenerationProgress(0);
-                setGenerationStatus('title');
-            }
+            setIsGeneratingCards(false);
+            setGenerationProgress(0);
+            setGenerationStatus('title');
         }
     };
 
@@ -622,7 +666,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                     status={generationStatus}
                     previewTitle={content.title}
                     processedGroups={processedGroups}
-                    // Removed onClose prop to prevent closing the modal
+                // Removed onClose prop to prevent closing the modal
                 />
             )}
             {!isGeneratingCards && <div className="sticky top-0 bg-[#F8F4EF] border-b border-[#D4C4B7] h-12 z-50">
@@ -788,9 +832,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
 
                                     return (
                                         <div key={group.id} className="space-y-4">
-                                            <h3 className="text-xl font-bold text-gray-800 text-left mt-14 mb-4 px-4">
-                                                {group.title}
-                                            </h3>
+                                            <h3 className="text-xl font-bold text-gray-800 mb-2">{group.title}</h3>
 
                                             <GroupDetail
                                                 content={content}

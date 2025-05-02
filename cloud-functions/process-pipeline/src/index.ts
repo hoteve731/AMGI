@@ -202,17 +202,28 @@ async function updateSegmentStatus(supabase: SupabaseClient, segmentId: string, 
 function parseGroupResult(resultText: string, contentId: string, segmentId: string): ParsedGroup[] {
     console.log(`[Parse][${contentId}][${segmentId}] Parsing group result...`);
     const groups: ParsedGroup[] = [];
-    const groupMatches = resultText.matchAll(/###\s*(.*?)\s*\n([\s\S]*?)(?=###|$)/g);
 
-    for (const match of groupMatches) {
+    // 새로운 정규식 패턴: <그룹 N> 형식을 찾고, 그 다음에 제목과 오리지널 소스를 추출
+    const groupPattern = /<그룹\s*\d+>\s*제목:\s*(.*?)(?:\s*\n|\r\n)오리지널\s*소스:\s*([\s\S]*?)(?=<그룹|$)/gi;
+
+    const matches = Array.from(resultText.matchAll(groupPattern));
+
+    for (const match of matches) {
         const title = match[1]?.trim() || '';
         const originalSource = match[2]?.trim() || '';
+
         if (title && originalSource) {
             groups.push({ title, originalSource });
         }
     }
 
     console.log(`[Parse][${contentId}][${segmentId}] Parsed ${groups.length} groups.`);
+
+    // 디버깅을 위한 추가 로그
+    if (groups.length === 0) {
+        console.warn(`[Parse][${contentId}][${segmentId}] No groups found. Raw result text: "${resultText.substring(0, 200)}..."`);
+    }
+
     return groups;
 }
 
@@ -220,17 +231,28 @@ function parseGroupResult(resultText: string, contentId: string, segmentId: stri
 function parseChunkResult(resultText: string, contentId: string, segmentId: string, groupIndex: number): ParsedChunk[] {
     console.log(`[Parse][${contentId}][${segmentId}][Grp ${groupIndex}] Parsing chunk result...`);
     const chunks: ParsedChunk[] = [];
-    const chunkMatches = resultText.matchAll(/\*\*Q:\s*(.*?)\s*\*\*\s*\n\s*\*\*A:\s*([\s\S]*?)(?=\*\*Q:|\*\*A:|\s*$)/g);
 
-    for (const match of chunkMatches) {
+    // 새로운 정규식 패턴: "카드 N: 앞면 / 뒷면" 형식을 찾음
+    const chunkPattern = /카드\s*\d+\s*:\s*(.*?)\s*\/\s*([\s\S]*?)(?=카드\s*\d+\s*:|$)/gi;
+
+    const matches = Array.from(resultText.matchAll(chunkPattern));
+
+    for (const match of matches) {
         const front = match[1]?.trim() || '';
         const back = match[2]?.trim() || '';
+
         if (front && back) {
             chunks.push({ front, back });
         }
     }
 
     console.log(`[Parse][${contentId}][${segmentId}][Grp ${groupIndex}] Parsed ${chunks.length} chunks.`);
+
+    // 디버깅을 위한 추가 로그
+    if (chunks.length === 0) {
+        console.warn(`[Parse][${contentId}][${segmentId}][Grp ${groupIndex}] No chunks found. Raw result text: "${resultText.substring(0, 200)}..."`);
+    }
+
     return chunks;
 }
 
@@ -520,6 +542,12 @@ async function generateGroupsFromFullText(openai: OpenAI, fullText: string, addi
         if (parsedGroups.length === 0) {
             return { groups: [], error: 'No groups parsed from result text' };
         }
+
+        // 생성된 그룹 이름 로그 출력
+        console.log('[Groups] Generated group titles:');
+        parsedGroups.forEach((group, index) => {
+            console.log(`[Groups] Group ${index + 1}: ${group.title}`);
+        });
 
         return { groups: parsedGroups };
     } catch (error) {

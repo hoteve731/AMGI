@@ -105,7 +105,7 @@ function useToast() {
     return { toast: addToast, removeToast, ToastContainer };
 }
 
-const MIN_LENGTH = 20;
+const MIN_LENGTH = 50;
 const MAX_LENGTH = 5000;
 
 export default function BottomSheet() {
@@ -462,7 +462,7 @@ export default function BottomSheet() {
             const tempContentId = crypto.randomUUID(); // UUID 형식으로 변경
             const tempContent = {
                 id: tempContentId,
-                title: '처리 중...',
+                title: '제목 생성 중...',
                 created_at: new Date().toISOString(),
                 processing_status: 'pending',
                 isProcessing: true,
@@ -567,12 +567,12 @@ export default function BottomSheet() {
         setLoadingProgress(10);
 
         let retryCount = 0;
-        const maxRetries = 30; // 최대 시도 횟수 증가 (30번 = 약 60초)
+        const maxRetries = 30; // 최대 시도 횟수
         const pollInterval = 2000; // 2초마다 체크
 
         // 데이터 완전성 확인 카운터
         let dataConsistencyCounter = 0;
-        const requiredConsistentChecks = 2; // 연속 2번 동일한 완료 상태 확인 필요
+        const requiredConsistentChecks = 3; // 연속 3번 동일한 완료 상태 확인 필요
 
         // API 오류 카운터
         let consecutiveErrorCount = 0;
@@ -612,12 +612,15 @@ export default function BottomSheet() {
                     switch (checkData.processingStatus) {
                         case 'pending':
                         case 'received':
+                            setLoadingUIType('title');
+                            setLoadingProgress(20);
+                            setLoadingStatusMessage('제목 생성 중...');
+                            break;
+
                         case 'title_generated':
-                            if (loadingUIType !== 'title') {
-                                setLoadingUIType('title');
-                                setLoadingProgress(30);
-                                setLoadingStatusMessage('제목 생성 중...');
-                            }
+                            setLoadingUIType('title');
+                            setLoadingProgress(30);
+                            setLoadingStatusMessage('제목 생성 완료...');
                             // 제목이 있으면 표시
                             if (checkData.title) {
                                 setGeneratedTitle(checkData.title);
@@ -625,33 +628,53 @@ export default function BottomSheet() {
                             break;
 
                         case 'groups_generating':
-                        case 'groups_generated':
-                            if (loadingUIType !== 'group') {
-                                setLoadingUIType('group');
-                                setLoadingProgress(50);
-                                setLoadingStatusMessage('그룹 생성 중...');
-                            }
+                            setLoadingUIType('group');
+                            setLoadingProgress(40);
+                            setLoadingStatusMessage('그룹 생성 중...');
                             // 제목이 있으면 표시
                             if (checkData.title) {
                                 setGeneratedTitle(checkData.title);
                             }
+
+                            // 그룹 정보 가져오기 (있는 경우)
+                            await loadGroupsInfo(contentId);
+                            break;
+
+                        case 'groups_generated':
+                            setLoadingUIType('group');
+                            setLoadingProgress(60);
+                            setLoadingStatusMessage('그룹 생성 완료, 카드 생성 준비 중...');
+                            // 제목이 있으면 표시
+                            if (checkData.title) {
+                                setGeneratedTitle(checkData.title);
+                            }
+
+                            // 그룹 정보 가져오기 (있는 경우)
+                            await loadGroupsInfo(contentId);
+
+                            // 그룹 정보 로드 후 약간의 지연 추가 (타이핑 효과를 볼 수 있도록)
+                            await new Promise(resolve => setTimeout(resolve, 2000));
                             break;
 
                         case 'chunks_generating':
-                            if (loadingUIType !== 'chunk') {
-                                setLoadingUIType('chunk');
-                                setLoadingProgress(70);
-                                setLoadingStatusMessage('기억 카드 생성 중...');
-                            }
+                            setLoadingUIType('chunk');
+                            setLoadingProgress(70);
+                            setLoadingStatusMessage('기억 카드 생성 중...');
+
                             // 청크 수에 따른 진행률 업데이트
                             if (checkData.totalChunksCount > 0) {
                                 const progress = Math.min(90, 70 + Math.min(checkData.totalChunksCount * 2, 20));
                                 setLoadingProgress(progress);
                             }
+
+                            // 그룹 정보 가져오기 (있는 경우)
+                            await loadGroupsInfo(contentId);
                             break;
 
                         case 'completed':
-                            // 완료 상태 확인 로직 (아래에서 처리)
+                            setLoadingUIType('complete');
+                            setLoadingProgress(100);
+                            setLoadingStatusMessage('처리가 완료되었습니다. 결과 페이지로 이동합니다...');
                             break;
 
                         case 'failed':
@@ -660,28 +683,6 @@ export default function BottomSheet() {
                                 window.location.href = '/';
                             }, 3000);
                             return;
-                    }
-                }
-
-                // 그룹 정보 가져오기 (그룹이 있는 경우)
-                if (checkData.groupsCount > 0) {
-                    try {
-                        // 그룹 정보 가져오기
-                        const groupsResponse = await fetch(`/api/content-groups?contentId=${contentId}`);
-                        if (groupsResponse.ok) {
-                            const groupsData = await groupsResponse.json();
-                            if (groupsData.groups && groupsData.groups.length > 0) {
-                                setProcessedGroups(groupsData.groups);
-                            }
-                        } else if (groupsResponse.status === 404) {
-                            // 404 오류는 조용히 무시 (API가 아직 배포 중일 수 있음)
-                            console.log('[그룹 정보] API가 아직 준비되지 않았습니다. 다음 폴링에서 다시 시도합니다.');
-                        } else {
-                            console.warn(`[그룹 정보] 응답 오류: ${groupsResponse.status}`);
-                        }
-                    } catch (groupError) {
-                        // 네트워크 오류 등은 로깅만 하고 폴링은 계속 진행
-                        console.warn('그룹 정보 가져오기 오류 (폴링은 계속 진행):', groupError);
                     }
                 }
 
@@ -694,6 +695,10 @@ export default function BottomSheet() {
                     // 연속으로 일정 횟수 이상 완료 상태 확인 시 진짜 완료로 간주
                     if (dataConsistencyCounter >= requiredConsistentChecks) {
                         console.log('[데이터 준비 완료] 리다이렉트 준비');
+
+                        // 완료 상태에서 추가 지연 (완료 메시지를 볼 수 있도록)
+                        await new Promise(resolve => setTimeout(resolve, 3000));
+
                         handleRedirect(contentId);
                         return;
                     }
@@ -723,6 +728,27 @@ export default function BottomSheet() {
 
                 // 오류 발생 시 재시도
                 setTimeout(checkReadyStatus, pollInterval);
+            }
+        };
+
+        // 그룹 정보 로드 함수
+        const loadGroupsInfo = async (contentId: string) => {
+            try {
+                console.log('[그룹 정보 로드] 시작');
+                const groupsResponse = await fetch(`/api/content-groups?contentId=${contentId}`);
+                if (groupsResponse.ok) {
+                    const groupsData = await groupsResponse.json();
+                    if (groupsData.groups && groupsData.groups.length > 0) {
+                        console.log('[그룹 정보 로드] 성공:', groupsData.groups.length, '개의 그룹');
+                        setProcessedGroups(groupsData.groups);
+                        return true;
+                    }
+                }
+                console.log('[그룹 정보 로드] 그룹 정보 없음');
+                return false;
+            } catch (error) {
+                console.error('[그룹 정보 로드] 오류:', error);
+                return false;
             }
         };
 
