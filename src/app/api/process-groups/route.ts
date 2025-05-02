@@ -103,8 +103,14 @@ export async function POST(req: Request) {
             const text = useMarkdownText && content.markdown_text ? content.markdown_text : content.original_text;
             const additionalMemory = content.additional_memory || '';
 
-            // 클라우드 함수에 요청 보내기
-            const response = await withTimeout(fetch(gcfUrl, {
+            // 그룹 ID 가져오기 (이미 존재하는 경우)
+            const { data: existingGroups } = await supabase
+                .from('content_groups')
+                .select('id')
+                .eq('content_id', contentId);
+
+            // GCF 호출 (fire-and-forget 방식)
+            fetch(gcfUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -117,24 +123,60 @@ export async function POST(req: Request) {
                     userId: session.user.id,
                     title: content.title || 'Untitled Content'
                 }),
-            }), TIMEOUT);
+            }).then(async response => {
+                // GCF 응답 상태 확인 (선택 사항, fire-and-forget이므로 깊게 처리 안 함)
+                if (!response.ok) {
+                    console.warn(`[Process Groups API] GCF trigger request for ${contentId} returned status: ${response.status}`);
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || '클라우드 함수 호출 중 오류가 발생했습니다.');
-            }
+                    try {
+                        const responseText = await response.text();
+                        console.warn(`[Process Groups API] GCF error response body: ${responseText}`);
 
-            // 그룹 ID 가져오기
-            const { data: groupsData } = await supabase
-                .from('content_groups')
-                .select('id')
-                .eq('content_id', contentId);
+                        // 오류 상태에 따라 콘텐츠 상태 업데이트 (선택적)
+                        const { error: updateError } = await supabase
+                            .from('contents')
+                            .update({ processing_status: 'error' })
+                            .eq('id', contentId);
 
+                        if (updateError) {
+                            console.error(`[Process Groups API] Failed to update content status to error: ${updateError.message}`);
+                        }
+                    } catch (readError) {
+                        console.error(`[Process Groups API] Failed to read GCF error response: ${readError}`);
+                    }
+                } else {
+                    // 성공 응답 로깅
+                    try {
+                        const responseData = await response.json();
+                        console.log(`[Process Groups API] GCF trigger successful for ${contentId}. Response: ${JSON.stringify(responseData)}`);
+                    } catch (parseError) {
+                        console.log(`[Process Groups API] GCF trigger successful for ${contentId}, but failed to parse response: ${parseError}`);
+                    }
+                }
+            }).catch(err => {
+                // 네트워크 오류 등 fetch 호출 자체의 오류 로깅
+                console.error(`[Process Groups API] Failed to trigger GCF for ${contentId}:`, err);
+
+                // 네트워크 오류 시 콘텐츠 상태 업데이트 (선택적)
+                supabase
+                    .from('contents')
+                    .update({ processing_status: 'error' })
+                    .eq('id', contentId)
+                    .then(({ error }) => {
+                        if (error) {
+                            console.error(`[Process Groups API] Failed to update content status to error: ${error.message}`);
+                        }
+                    });
+            });
+
+            console.log(`[Process Groups API] Triggered GCF for contentId: ${contentId}`);
+
+            // 즉시 응답 반환
             return NextResponse.json({
                 success: true,
                 content_id: contentId,
-                group_ids: groupsData?.map(g => g.id) || [],
-                message: '그룹 생성 요청이 성공적으로 처리되었습니다.'
+                group_ids: existingGroups?.map(g => g.id) || [],
+                message: '그룹 생성 요청이 시작되었습니다. 처리 상태를 확인하려면 상태 API를 사용하세요.'
             });
         } catch (error) {
             console.error('Cloud function call error:', error);
