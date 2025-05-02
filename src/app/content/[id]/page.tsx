@@ -51,11 +51,17 @@ type GroupDetailGroup = {
   position: number
 }
 
-// ✅ 핵심: Vercel 타입 충돌 피하기 위해 any 사용
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export default async function Page(props: any) {
-  const params = props?.params as { id?: string }
-  const id = typeof params?.id === 'string' ? params.id : ''
+// Define proper types for the props
+type PageProps = {
+  params: Promise<{ id: string }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}
+
+export default async function Page({ params, searchParams }: PageProps) {
+  // Ensure params and searchParams are properly awaited
+  const resolvedParams = await params
+  const resolvedSearchParams = await searchParams
+  const id = resolvedParams.id
 
   if (!id) {
     console.error('Invalid ID param:', params)

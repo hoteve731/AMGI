@@ -7,12 +7,14 @@ import ContentGroups from '@/components/ContentGroups'
 
 // Define proper types for the props
 type PageProps = {
-  params: { id: string }
+  params: Promise<{ id: string }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
 }
 
-export default async function Page({ params }: PageProps) {
-  // Ensure params is properly awaited
-  const resolvedParams = await Promise.resolve(params)
+export default async function Page({ params, searchParams }: PageProps) {
+  // Ensure params and searchParams are properly awaited
+  const resolvedParams = await params
+  const resolvedSearchParams = await searchParams
   const id = resolvedParams.id
 
   if (!id) {

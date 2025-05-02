@@ -7,13 +7,14 @@ import { createClient } from '@/utils/supabase/server'
 
 // Define proper types for the props
 type PageProps = {
-  params: { id: string; groupId: string }
-  searchParams: Record<string, string | string[] | undefined>
+  params: Promise<{ id: string; groupId: string }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
 }
 
 export default async function Page({ params, searchParams }: PageProps) {
-  // Ensure params is properly awaited
-  const resolvedParams = await Promise.resolve(params);
+  // Ensure params and searchParams are properly awaited
+  const resolvedParams = await params;
+  const resolvedSearchParams = await searchParams;
   
   // 타입 안전성 보장을 위해 타입 가드 추가
   if (!resolvedParams || !('id' in resolvedParams) || !('groupId' in resolvedParams)) {
