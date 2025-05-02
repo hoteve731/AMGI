@@ -36,6 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.processTextPipeline = void 0;
 // cloud-functions/process-pipeline/src/index.ts
 const functions = __importStar(require("@google-cloud/functions-framework"));
 const openai_1 = __importDefault(require("openai"));
@@ -281,7 +282,7 @@ async function convertTextToMarkdown(supabase, openai, contentId, text, addition
     }
 }
 // === 메인 HTTP 핸들러 - 로직 일부 복원 ===
-functions.http('processTextPipeline', async (req, res) => {
+exports.processTextPipeline = functions.http('processTextPipeline', async (req, res) => {
     // CORS, Method Check, Initialization Check (이전과 동일)
     res.set('Access-Control-Allow-Origin', '*');
     res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');

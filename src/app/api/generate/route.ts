@@ -101,7 +101,10 @@ export async function POST(req: Request) {
 
             // --- 백그라운드 파이프라인 트리거 (Fire-and-forget) ---
             // GCF URL 설정
-            const gcfUrl = process.env.GCF_PROCESS_PIPELINE_URL;
+            const gcfUrl = process.env.NODE_ENV === 'production'
+                ? 'https://us-central1-amgi-454605.cloudfunctions.net/process-pipeline'
+                : process.env.GCF_PROCESS_PIPELINE_URL || 'http://localhost:8080';
+
             if (!gcfUrl) {
                 console.error(`[Generate API] GCF URL is not configured`);
                 throw new Error('Server configuration error: GCF URL is not set');
