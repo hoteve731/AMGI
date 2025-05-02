@@ -307,3 +307,76 @@ export async function DELETE(request: Request) {
     )
   }
 }
+
+export async function PATCH(request: Request) {
+  try {
+    const { id, title, icon } = await request.json()
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Content ID is required.' },
+        { status: 400 }
+      )
+    }
+
+    const supabase = await createClient()
+
+    // 사용자 인증 확인
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    if (userError || !user) {
+      return NextResponse.json(
+        { error: '인증되지 않은 사용자입니다.' },
+        { status: 401 }
+      )
+    }
+
+    // 수정할 콘텐츠가 현재 사용자의 것인지 확인
+    const { data: contentData, error: contentError } = await supabase
+      .from('contents')
+      .select('user_id')
+      .eq('id', id)
+      .single()
+
+    if (contentError) {
+      console.error('콘텐츠 조회 중 오류:', contentError)
+      return NextResponse.json(
+        { error: '콘텐츠를 찾을 수 없습니다.' },
+        { status: 404 }
+      )
+    }
+
+    if (contentData.user_id !== user.id) {
+      return NextResponse.json(
+        { error: '이 콘텐츠를 수정할 권한이 없습니다.' },
+        { status: 403 }
+      )
+    }
+
+    // 콘텐츠 업데이트
+    const updateData: { title?: string; icon?: string } = {}
+    if (title !== undefined) updateData.title = title
+    if (icon !== undefined) updateData.icon = icon
+
+    const { error: updateError } = await supabase
+      .from('contents')
+      .update(updateData)
+      .eq('id', id)
+
+    if (updateError) {
+      console.error('콘텐츠 업데이트 중 오류:', updateError)
+      return NextResponse.json(
+        { error: '콘텐츠 업데이트 중 오류가 발생했습니다.' },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json({ success: true })
+
+  } catch (error) {
+    console.error('예상치 못한 오류:', error)
+    return NextResponse.json(
+      { error: '서버 오류가 발생했습니다.' },
+      { status: 500 }
+    )
+  }
+}

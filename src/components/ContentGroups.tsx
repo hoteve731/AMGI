@@ -9,10 +9,13 @@ import LoadingScreen from './LoadingScreen'
 import { motion, AnimatePresence } from 'framer-motion'
 import GroupDetail from './GroupDetail'
 import DOMPurify from 'isomorphic-dompurify';
+import EditNoteModal from './EditNoteModal'
+import { PencilIcon } from '@heroicons/react/24/outline'
 
 type Content = {
     id: string
     title: string
+    icon?: string
     created_at: string
     user_id: string
     original_text: string
@@ -59,6 +62,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
     const [isDeletingContent, setIsDeletingContent] = useState(false);
     const [isMounted, setIsMounted] = useState(false);
     const [isGeneratingCards, setIsGeneratingCards] = useState(false);
+    const [showEditModal, setShowEditModal] = useState(false);
     const [generationError, setGenerationError] = useState<string | null>(null);
     const [generationStatus, setGenerationStatus] = useState<'title' | 'content' | 'group' | 'chunk' | 'complete'>('title');
     const [generationProgress, setGenerationProgress] = useState<number>(0);
@@ -691,9 +695,19 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
 
             <div className="flex-1 max-w-2xl mx-auto w-full">
                 <div className="space-y-2 mb-6 mt-6">
-                    <h1 className="text-3xl font-bold text-gray-800 text-left">{content.title}</h1>
-                    <div className="text-gray-400 font-medium text-left">
-                        {new Date(content.created_at).toLocaleDateString('ko-KR')}
+                    <div className="flex items-center justify-between">
+                        <h1 className="text-3xl font-bold text-gray-800 text-left">{content.title}</h1>
+                    </div>
+                    <div className="flex items-center text-left gap-3">
+                        <button
+                            onClick={() => setShowEditModal(true)}
+                            className="bg-white px-3 py-1 rounded-xl text-gray-600 font-bold text-sm hover:bg-gray-50 transition-colors"
+                        >
+                            Edit note
+                        </button>
+                        <div className="text-gray-400 font-medium">
+                            {new Date(content.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                        </div>
                     </div>
                 </div>
 
@@ -859,7 +873,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                                         No memory cards yet
                                     </div>
                                     <div className="text-gray-500 mb-6 text-sm max-w-md">
-                                    Create memory cards to study effectively!
+                                        Create memory cards to study effectively!
                                     </div>
 
                                     {content.markdown_text ? (
@@ -1043,6 +1057,20 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                     </div>
                 )}
             </div>
+
+            {/* Edit Note Modal */}
+            <EditNoteModal
+                isOpen={showEditModal}
+                onClose={() => setShowEditModal(false)}
+                contentId={content.id}
+                initialTitle={content.title || ''}
+                initialIcon={content.icon || '📝'}
+                onUpdate={(title, icon) => {
+                    // Refresh content data after successful update
+                    router.refresh();
+                }}
+            />
         </main>
-    )
+    );
+
 }

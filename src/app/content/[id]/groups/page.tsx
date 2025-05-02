@@ -5,10 +5,15 @@ import { createClient } from '@/utils/supabase/server'
 import { notFound } from 'next/navigation'
 import ContentGroups from '@/components/ContentGroups'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export default async function Page(props: any) {
-  const params = props?.params as { id?: string }
-  const id = typeof params?.id === 'string' ? params.id : ''
+// Define proper types for the props
+type PageProps = {
+  params: { id: string }
+}
+
+export default async function Page({ params }: PageProps) {
+  // Ensure params is properly awaited
+  const resolvedParams = await Promise.resolve(params)
+  const id = resolvedParams.id
 
   if (!id) {
     console.error('Invalid ID param:', params)

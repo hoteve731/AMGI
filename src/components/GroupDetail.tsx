@@ -7,6 +7,7 @@ import LoadingOverlay from './LoadingOverlay'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { requestFCMPermission, scheduleNotification } from '@/utils/firebase'
+// 에디트 모달 제거
 
 type Chunk = {
     id: string
@@ -31,6 +32,7 @@ type ContentGroup = {
 type Content = {
     id: string
     title: string
+    icon?: string
     user_id: string
     original_text: string
     created_at: string
@@ -680,6 +682,8 @@ export default function GroupDetail({
     }
 
     const [activeTab, setActiveTab] = useState<'memory' | 'group' | 'text'>('memory')
+    // Edit 모달 관련 코드 제거
+
     if (!currentGroup) {
         return (
             <main className="flex min-h-screen flex-col bg-[#F8F4EF]">
@@ -1038,6 +1042,7 @@ export default function GroupDetail({
                     </div>
                 </div>
             </div>
+            {/* EditNoteModal 제거 */}
         </main>
     );
 }

@@ -205,7 +205,7 @@ export default function LoadingScreen({ progress, status, previewTitle, processe
                 {/* 헤더 영역 */}
                 <div className="w-full p-4 flex justify-center items-center border-b border-gray-100">
                     <h1 className="text-xl font-bold text-gray-800">
-                        {isRedirecting ? '이동 준비 중' : 'Generating memory cards...'}
+                        {isRedirecting ? 'Redirecting to note...' : 'Generating memory cards...'}
                     </h1>
                 </div>
 

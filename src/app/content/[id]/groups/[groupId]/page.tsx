@@ -5,18 +5,24 @@ import GroupDetail from '@/components/GroupDetail'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/utils/supabase/server'
 
-export default async function Page(props: any) {
-  // props에서 params와 searchParams 추출
-  const { params, searchParams } = props;
+// Define proper types for the props
+type PageProps = {
+  params: { id: string; groupId: string }
+  searchParams: Record<string, string | string[] | undefined>
+}
 
+export default async function Page({ params, searchParams }: PageProps) {
+  // Ensure params is properly awaited
+  const resolvedParams = await Promise.resolve(params);
+  
   // 타입 안전성 보장을 위해 타입 가드 추가
-  if (!params || typeof params !== 'object' || !('id' in params) || !('groupId' in params)) {
-    console.error('Invalid params structure:', params);
+  if (!resolvedParams || !('id' in resolvedParams) || !('groupId' in resolvedParams)) {
+    console.error('Invalid params structure:', resolvedParams);
     notFound();
   }
 
-  const contentId = params.id as string;
-  const groupId = params.groupId as string;
+  const contentId = resolvedParams.id;
+  const groupId = resolvedParams.groupId;
 
   if (!contentId || !groupId) {
     console.error('Invalid ID params:', params)
