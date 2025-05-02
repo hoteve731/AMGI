@@ -192,7 +192,7 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
                         className="text-center"
                     >
                         <span className="text-[#5F4BB6] text-3xl font-extrabold">{stats.total}</span>
-                        <span className="text-white text-2xl font-bold">/{stats.total} 완료</span>
+                        <span className="text-white text-2xl font-bold">/{stats.total}Completed</span>
                     </motion.div>
 
                     <motion.button
@@ -216,7 +216,7 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
                         <div className={`${stats.new >= 100 ? 'w-auto px-2' : 'w-6'} h-6 rounded-full bg-[#FDFF8C] flex items-center justify-center mr-2`}>
                             <span className="text-gray-800 text-sm font-bold">{stats.new}</span>
                         </div>
-                        <span className="text-white text-sm font-medium">새 카드</span>
+                        <span className="text-white text-sm font-medium">New</span>
                     </motion.div>
 
                     <motion.div
@@ -228,7 +228,7 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
                         <div className={`${stats.learning >= 100 ? 'w-auto px-2' : 'w-6'} h-6 rounded-full bg-white flex items-center justify-center mr-2`}>
                             <span className="text-[#B4B6E4] text-sm font-bold">{stats.learning}</span>
                         </div>
-                        <span className="text-white text-sm font-medium">학습 중</span>
+                        <span className="text-white text-sm font-medium">Learning</span>
                     </motion.div>
 
                     <motion.div
@@ -240,7 +240,7 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
                         <div className={`${stats.review >= 100 ? 'w-auto px-2' : 'w-6'} h-6 rounded-full bg-[#5F4BB6] flex items-center justify-center mr-2`}>
                             <span className="text-white text-sm font-bold">{stats.review}</span>
                         </div>
-                        <span className="text-white text-sm font-medium">복습 중</span>
+                        <span className="text-white text-sm font-medium">Review</span>
                     </motion.div>
                 </div>
 
@@ -295,8 +295,8 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.5, delay: 1 }}
                 >
-                    <p className="text-xl font-bold">{userName}님,</p>
-                    <p className="text-xl font-bold">모든 카드를 완료했어요!</p>
+                    <p className="text-xl font-bold">{userName},</p>
+                    <p className="text-xl font-bold">All cards are completed!</p>
                 </motion.div>
 
                 <motion.div
@@ -309,7 +309,7 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
                         onClick={handleAddIdea}
                         className="w-full py-4 px-6 rounded-xl bg-white text-[#7969F7] font-semibold hover:bg-gray-50 transition-all duration-200 flex items-center justify-center"
                     >
-                        <span>기억하고 싶은 텍스트 추가</span>
+                        <span>Add Text to Remember</span>
                         <span className="ml-2 text-[#7969F7] text-lg">+</span>
                     </button>
                 </motion.div>
@@ -348,7 +348,7 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
                     className="text-center"
                 >
                     <span className="text-white text-4xl font-extrabold">{completedCards}</span>
-                    <span className="text-[#5F4BB6] text-3xl font-bold">/{stats.total} 완료</span>
+                    <span className="text-[#5F4BB6] text-3xl font-bold">/{stats.total} Completed</span>
                 </motion.div>
 
                 <motion.button
@@ -372,7 +372,7 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
                     <div className={`${stats.new >= 100 ? 'w-auto px-2' : 'w-6'} h-6 rounded-full bg-[#FDFF8C] flex items-center justify-center mr-2`}>
                         <span className="text-gray-800 text-sm font-bold">{stats.new}</span>
                     </div>
-                    <span className="text-white text-sm font-medium">새 카드</span>
+                    <span className="text-white text-sm font-medium">New</span>
                 </motion.div>
 
                 <motion.div
@@ -384,7 +384,7 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
                     <div className={`${stats.learning >= 100 ? 'w-auto px-2' : 'w-6'} h-6 rounded-full bg-white flex items-center justify-center mr-2`}>
                         <span className="text-[#B4B6E4] text-sm font-bold">{stats.learning}</span>
                     </div>
-                    <span className="text-white text-sm font-medium">학습 중</span>
+                    <span className="text-white text-sm font-medium">Learning</span>
                 </motion.div>
 
                 <motion.div
@@ -396,7 +396,7 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
                     <div className={`${stats.review >= 100 ? 'w-auto px-2' : 'w-6'} h-6 rounded-full bg-[#5F4BB6] flex items-center justify-center mr-2`}>
                         <span className="text-white text-sm font-bold">{stats.review}</span>
                     </div>
-                    <span className="text-white text-sm font-medium">복습 중</span>
+                    <span className="text-white text-sm font-medium">Review</span>
                 </motion.div>
             </div>
 
@@ -451,8 +451,8 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.5, delay: 1 }}
             >
-                <p className="text-2xl font-bold">{userName}님,</p>
-                <p className="text-xl font-bold">반복을 시작해 볼까요?</p>
+                <p className="text-2xl font-bold">Welcome, {userName}!</p>
+                <p className="text-xl font-bold">Let's start reviewing!</p>
             </motion.div>
 
             <motion.div
@@ -465,7 +465,7 @@ export default function ReviewDashboard({ userName }: ReviewDashboardProps) {
                     onClick={handleStartReview}
                     className="w-full py-4 px-6 rounded-xl bg-white text-[#7969F7] font-bold hover:bg-gray-50 transition-all duration-200 flex items-center justify-center"
                 >
-                    <span>{stats.due}장 반복 시작하기 </span>
+                    <span>{stats.due} cards to review</span>
                 </button>
             </motion.div>
 
@@ -515,7 +515,7 @@ function StatsModal({
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="flex justify-between items-center p-6 border-b border-gray-100 sticky top-0 bg-white z-10">
-                    <h3 className="text-xl font-bold text-gray-800">반복 현황</h3>
+                    <h3 className="text-xl font-bold text-gray-800">How to Use</h3>
                     <button
                         onClick={onClose}
                         className="text-gray-500 hover:text-gray-700"
@@ -526,67 +526,35 @@ function StatsModal({
                     </button>
                 </div>
 
-                <div className="p-6 space-y-4 overflow-y-auto">
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                        <h4 className="font-medium text-gray-700 mb-2">카드 상태</h4>
-                        <div className="grid grid-cols-2 gap-2 mb-3">
-                            <div className="flex items-center">
-                                <div className={`${stats.new >= 100 ? 'w-auto px-2' : 'w-3'} h-3 rounded-full bg-[#FDFF8C] mr-2`}></div>
-                                <span className="text-sm text-gray-600">새 카드: {stats.new}</span>
-                            </div>
-                            <div className="flex items-center">
-                                <div className={`${stats.learning >= 100 ? 'w-auto px-2' : 'w-3'} h-3 rounded-full bg-white border border-gray-300 mr-2`}></div>
-                                <span className="text-sm text-gray-600">학습 중: {stats.learning}</span>
-                            </div>
-                            <div className="flex items-center">
-                                <div className={`${stats.review >= 100 ? 'w-auto px-2' : 'w-3'} h-3 rounded-full bg-[#5F4BB6] mr-2`}></div>
-                                <span className="text-sm text-gray-600">복습 중: {stats.review}</span>
-                            </div>
-                            <div className="flex items-center">
-                                <div className={`${stats.due >= 100 ? 'w-auto px-2' : 'w-3'} h-3 rounded-full bg-green-500 mr-2`}></div>
-                                <span className="text-sm text-gray-600">지금 학습 필요: {stats.due}</span>
-                            </div>
-                        </div>
-
-                        <div className="w-full border-t border-gray-200 pt-3 mt-2">
-                            <div className="flex justify-between items-center">
-                                <span className="font-bold text-gray-800">전체 기억카드</span>
-                                <span className="font-bold text-gray-800">{stats.total}</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                        <h4 className="font-medium text-gray-700 mb-2">암기 현황</h4>
-                        <div className="mb-2">
-                            <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-                                <div
-                                    className="h-full bg-[#7969F7]"
-                                    style={{ width: `${completionPercentage}%` }}
-                                ></div>
-                            </div>
-                        </div>
-                        <p className="text-sm text-gray-600 text-center">{completionPercentage}% 완료</p>
-                    </div>
-
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                        <h4 className="font-medium text-gray-700 mb-2">카드 상태</h4>
-                        <div className="text-sm text-gray-600 space-y-1">
-                            <p>* 새 카드: 아직 한번도 학습하지 않은 카드</p>
-                            <p>* 학습 중: 학습 단계에 있는 카드</p>
-                            <p>* 복습 중: 학습 단계를 졸업하고 장기 기억으로 이동한 카드</p>
-                            <p>* 지금 학습 필요: 당장 학습/복습이 필요한 카드</p>
-                        </div>
-                    </div>
-
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                        <h4 className="font-medium text-gray-700 mb-2">기억 알고리즘</h4>
-                        <p className="text-sm text-gray-600 mb-2">
-                            LOOPA는 AI를 활용한 자동 기억카드 변환과 간격 반복(Spaced Repetition) 알고리즘을 사용하여 효율적인 기억을 돕습니다.
+                <div className="p-6 space-y-8 overflow-y-auto">
+                    <div className="text-center mb-2">
+                        <p className="text-xl font-semibold text-gray-700 leading-relaxed">
+                            ✨ Review cards at optimal intervals to strengthen your memory ✨
                         </p>
-                        <ul className="text-sm text-gray-600 list-disc pl-5 space-y-1">
+                    </div>
 
-                        </ul>
+                    <div>
+                        <h4 className="font-bold text-gray-700 mb-3 flex items-center">
+                            <span className="mr-2">📊</span> Card Status
+                        </h4>
+                        <div className="text-sm text-gray-600 space-y-1 ml-6">
+                            <p>• New: First-time cards</p>
+                            <p>• Learning: Short interval cards</p>
+                            <p>• Review: Long interval cards</p>
+                            <p>• Due: Today's cards</p>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4 className="font-bold text-gray-700 mb-3 flex items-center">
+                            <span className="mr-2">🧠</span> Memory Algorithm
+                        </h4>
+                        <div className="text-sm text-gray-600 space-y-1 ml-6">
+                            <p>• ❌ Forgotten: Reset learning</p>
+                            <p>• 😐 Recalled partially: Shorter interval</p>
+                            <p>• 😄 Recalled with effort: Standard interval</p>
+                            <p>• 👑 Immediately: Longer interval</p>
+                        </div>
                     </div>
                 </div>
             </motion.div>

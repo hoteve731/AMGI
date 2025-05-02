@@ -269,7 +269,7 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
                           <div className="line-clamp-2 font-medium text-gray-800 text-sm mb-2">{content.title}</div>
                           <div className="text-xs text-gray-600 flex items-center gap-1">
                             <FolderIcon className="w-4 h-4 text-[#7969F7]" />
-                            <span>그룹 {content.groups_count ?? 0}개</span>
+                            <span>{content.groups_count ?? 0} Group</span>
                           </div>
                         </div>
                       </button>
@@ -309,7 +309,7 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
                                           d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                                         />
                                       </svg>
-                                      <span>카드 {group.active_card_count ?? 0}</span>
+                                      <span>{group.active_card_count ?? 0} Cards</span>
                                     </div>
                                   </button>
                                 ))
@@ -317,7 +317,7 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
                                 <div className="text-xs text-gray-500 p-3 text-center">
                                   {contentGroups[content.id] === undefined ? (
                                     <div className="py-2">
-                                      <span className="animate-pulse inline-block text-[#9F94F8]">그룹 로딩 중...</span>
+                                      <span className="animate-pulse inline-block text-[#9F94F8]">Loading...</span>
                                     </div>
                                   ) : '그룹이 없습니다.'}
                                 </div>
@@ -343,18 +343,18 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
                   className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-[#7969F7] to-[#9F94F8] text-white py-2.5 px-4 rounded-lg font-medium shadow-md hover:shadow-lg transition-all duration-200 active:scale-[0.98] mb-3"
                 >
                   <SparklesIcon className="w-5 h-5" />
-                  <span>유료 구독하기</span>
+                  <span>Unlimited notes</span>
                 </button>
 
                 <p className="text-gray-700 text-sm text-center mb-3">
-                  더 많은 기능과 <br></br>무제한 액세스를 누리세요.
+                  More features and <br></br>unlimited access.
                 </p>
 
                 <div>
                   <div className="flex items-center gap-1.5 mb-1.5">
                     <DocumentTextIcon className="w-4 h-4 text-gray-600" />
                     <span className="text-sm font-medium text-gray-700">
-                      <span className="font-bold">{contentCount}</span>/{MAX_FREE_CONTENTS}개 노트 무료
+                      <span className="font-bold">Free Notes {contentCount}</span>/{MAX_FREE_CONTENTS}
                     </span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2.5">
@@ -390,7 +390,7 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[10000]"
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[10000] flex items-center justify-center p-4"
               onClick={() => setShowSubscriptionModal(false)}
             />
             <motion.div

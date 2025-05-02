@@ -125,12 +125,12 @@ export default function LoadingScreen({ progress, status, previewTitle, processe
                 id: 1,
                 label: '텍스트 분석 및 제목 생성',
                 status: 'completed',
-                description: '텍스트를 분석하고 제목을 생성합니다.'
+                description: 'Analyzing text and generating title...'
             },
             {
                 id: 2,
                 label: '그룹 생성',
-                description: '텍스트를 아이디어별 그룹으로 나눕니다.',
+                description: 'Generating groups...',
                 status: status === 'title' ? 'progress' :
                     (status === 'content' || status === 'group') ? 'progress' :
                         status === 'chunk' || status === 'complete' ? 'completed' : 'pending'
@@ -138,14 +138,14 @@ export default function LoadingScreen({ progress, status, previewTitle, processe
             {
                 id: 3,
                 label: '기억 카드 생성',
-                description: '그룹별 기억 카드를 생성합니다.',
+                description: 'Generating memory cards...',
                 status: status === 'chunk' ? 'progress' :
                     status === 'complete' ? 'completed' : 'pending'
             },
             {
                 id: 4,
                 label: '완료',
-                description: '완료되었습니다. 잠시 후 해당 노트로 이동합니다.',
+                description: 'Processing complete. Redirecting to note...',
                 status: status === 'complete' ? 'completed' : 'pending'
             }
         ]
@@ -216,8 +216,8 @@ export default function LoadingScreen({ progress, status, previewTitle, processe
                     </svg>
                     <p>
                         {isRedirecting
-                            ? '잠시 후 결과 페이지로 이동합니다...'
-                            : '생성이 완료되면 자동으로 이동합니다. (30초 내외 소요)'}
+                            ? 'Redirecting to note...'
+                            : 'Processing complete. Redirecting to note...'}
                     </p>
                 </div>
 

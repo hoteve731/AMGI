@@ -324,18 +324,17 @@ export default function ReviewPage() {
                     <svg className="w-5 h-5 group-hover:scale-110 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                     </svg>
-                    <span className="ml-2 font-bold group-hover:font-bold transition-all duration-200">홈</span>
+                    <span className="ml-2 font-bold group-hover:font-bold transition-all duration-200">Home</span>
                 </button>
             </div>
 
             <div className="flex-1 max-w-2xl mx-auto w-full p-4 flex flex-col overflow-hidden">
-                {/* 그룹 제목 */}
-                <h1 className="text-sm font-medium text-gray-600 mb-1 mt-2 text-center">
-                    {currentCard?.content_groups?.title || '복습'}
-                </h1>
+                {/* <h1 className="text-sm font-medium text-gray-600 mb-1 mt-2 text-center">
+                    {currentCard?.content_groups?.title || 'Review'}
+                </h1> */}
 
                 {/* 상단 여백 추가 */}
-                <div className="h-6"></div>
+                <div className="h-2"></div>
 
                 {/* 카드 진행 상태 태그 - 그룹 타이틀 아래 중앙에 배치 */}
                 <div className="flex justify-center mb-1">
@@ -391,14 +390,14 @@ export default function ReviewPage() {
                                                         currentCard?.card_state === 'review' || currentCard?.card_state === 'graduated' ? 'bg-[#5F4BB6]' :
                                                             'bg-gray-400'
                                                     }`}></div>
-                                                <div className="text-sm font-medium text-gray-800">
-                                                    {currentCard?.card_state === 'new' ? '새 카드' :
-                                                        currentCard?.card_state === 'learning' ? '학습 중' :
-                                                            currentCard?.card_state === 'graduated' || currentCard?.card_state === 'review' ? '복습' :
-                                                                '재학습'}
+                                                <div className="text-sm font-semibold text-gray-800">
+                                                    {currentCard?.card_state === 'new' ? 'New' :
+                                                        currentCard?.card_state === 'learning' ? 'Learning' :
+                                                            currentCard?.card_state === 'graduated' || currentCard?.card_state === 'review' ? 'Review' :
+                                                                'Relearning'}
                                                     {currentCard?.repetition_count !== undefined && (
-                                                        <span className="ml-1 text-gray-600">
-                                                            (반복 {currentCard.repetition_count}회)
+                                                        <span className="ml-1 font-medium text-gray-500">
+                                                            (Repetition: {currentCard.repetition_count})
                                                         </span>
                                                     )}
                                                 </div>
@@ -428,7 +427,7 @@ export default function ReviewPage() {
                         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                         </svg>
-                        <span className="ml-1 text-m font-medium">이 카드 비활성화 (스킵)</span>
+                        <span className="ml-1 text-m font-medium">Skip this card</span>
                     </button>
                 </div>
 
@@ -446,7 +445,7 @@ export default function ReviewPage() {
                                     className="w-full flex flex-col items-center justify-center p-4 rounded-xl bg-white hover:bg-gray-50 transition-colors shadow-lg"
                                     disabled={isSubmitting}
                                 >
-                                    <span className="text-gray-800 font-semibold">정답 보기</span>
+                                    <span className="text-gray-800 font-semibold">Show Answer</span>
                                 </button>
                             ) : (
                                 // 뒷면: 난이도 버튼들
@@ -474,7 +473,7 @@ export default function ReviewPage() {
                                         <div className="text-xl mb-1">❌</div>
                                         <span className="text-black text-sm font-semibold">Forgotten</span>
                                         <span className="text-black text-xs font-normal">
-                                            {getNextIntervalPreview(currentCard, 'again')} 후 복습
+                                            {getNextIntervalPreview(currentCard, 'again')}
                                         </span>
                                     </button>
                                     <button
@@ -500,7 +499,7 @@ export default function ReviewPage() {
                                         <div className="text-xl mb-1">😐</div>
                                         <span className="text-black text-sm font-semibold">Recalled partially</span>
                                         <span className="text-black text-xs font-normal">
-                                            {getNextIntervalPreview(currentCard, 'hard')} 후 복습
+                                            {getNextIntervalPreview(currentCard, 'hard')}
                                         </span>
                                     </button>
                                     <button
@@ -526,7 +525,7 @@ export default function ReviewPage() {
                                         <div className="text-xl mb-1">😄</div>
                                         <span className="text-black text-sm font-semibold">Recalled with effort</span>
                                         <span className="text-black text-xs font-normal">
-                                            {getNextIntervalPreview(currentCard, 'good')} 후 복습
+                                            {getNextIntervalPreview(currentCard, 'good')}
                                         </span>
                                     </button>
                                     <button
@@ -552,7 +551,7 @@ export default function ReviewPage() {
                                         <div className="text-xl mb-1">👑</div>
                                         <span className="text-black text-sm font-semibold">Immediately</span>
                                         <span className="text-black text-xs font-normal">
-                                            {getNextIntervalPreview(currentCard, 'easy')} 후 복습
+                                            {getNextIntervalPreview(currentCard, 'easy')}
                                         </span>
                                     </button>
                                 </div>

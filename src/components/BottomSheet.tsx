@@ -156,9 +156,9 @@ export default function BottomSheet() {
     };
 
     const getCounterText = () => {
-        if (textLength === 0) return `${MAX_LENGTH}자까지 입력 가능`;
-        if (isLengthUnderMin) return `${MIN_LENGTH}자 이상 입력해주세요. (${textLength}/${MAX_LENGTH})`;
-        if (isLengthOverMax) return `글자 수 초과 (${textLength}/${MAX_LENGTH})`;
+        if (textLength === 0) return `${MAX_LENGTH} characters allowed`;
+        if (isLengthUnderMin) return `${MIN_LENGTH} characters minimum. (${textLength}/${MAX_LENGTH})`;
+        if (isLengthOverMax) return `Character limit exceeded (${textLength}/${MAX_LENGTH})`;
         return `${textLength}/${MAX_LENGTH}`;
     }
 
@@ -842,10 +842,10 @@ export default function BottomSheet() {
                             >
                                 <div className="w-full">
                                     <div className="text-[#7C6FFB] font-medium text-sm mb-1">
-                                        기억하고 싶은 텍스트
+                                        Things that want to remember
                                     </div>
                                     <div className="text-gray-400 text-base truncate">
-                                        {text ? text : '여기에 타이핑하거나 붙여넣으세요...'}
+                                        {text ? text : 'Type/paste here...'}
                                     </div>
                                 </div>
                                 <div className="flex-shrink-0 ml-2">
@@ -868,7 +868,7 @@ export default function BottomSheet() {
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                         </svg>
                                     </button>
-                                    <h2 className="text-lg font-medium text-gray-700 flex-grow text-center">새 기억 카드 생성</h2>
+                                    <h2 className="text-lg font-semibold text-gray-700 flex-grow text-center">New Memory Note</h2>
                                     <motion.button
                                         type="button"
                                         onClick={handleSubmit}
@@ -877,7 +877,7 @@ export default function BottomSheet() {
                                         whileHover={{ scale: (isLoading || (!showAdditionalMemoryInput && (text.trim().length === 0 || !isLengthValid))) ? 1 : 1.05 }}
                                         whileTap={{ scale: (isLoading || (!showAdditionalMemoryInput && (text.trim().length === 0 || !isLengthValid))) ? 1 : 0.95 }}
                                     >
-                                        {showAdditionalMemoryInput ? '생성하기' : '다음'}
+                                        {showAdditionalMemoryInput ? 'Create' : 'Next'}
                                     </motion.button>
                                 </div>
 
@@ -894,7 +894,7 @@ export default function BottomSheet() {
                                 ) : (
                                     <form onSubmit={handleSubmit} className="flex-1 flex flex-col p-4 overflow-y-auto">
                                         <div className="text-[#7C6FFB] font-medium text-sm mb-2">
-                                            기억하고 싶은 텍스트
+                                            Things that want to remember
                                         </div>
                                         <AnimatePresence mode="wait" initial={false}>
                                             {showAdditionalMemoryInput ? (
@@ -903,7 +903,7 @@ export default function BottomSheet() {
                                                         ref={additionalMemoryRef}
                                                         value={additionalMemory}
                                                         onChange={(e) => setAdditionalMemory(e.target.value)}
-                                                        placeholder="(선택) 특별히 기억하고 싶은 부분을 알려주세요."
+                                                        placeholder="(Optional) Special part you want to remember"
                                                         className="w-full h-20 resize-none rounded-lg p-2 focus:outline-none text-base border border-gray-200 focus:border-[#A99BFF] focus:border-2 mb-2 text-gray-900"
                                                         disabled={isLoading}
                                                     />
@@ -924,7 +924,7 @@ export default function BottomSheet() {
                                                         ref={textareaRef}
                                                         value={text}
                                                         onChange={(e) => setText(e.target.value)}
-                                                        placeholder="여기에 타이핑하거나 붙여넣으세요..."
+                                                        placeholder="Type/paste here..."
                                                         className={`flex-grow w-full p-3 border ${isLengthOverMax ? 'border-red-300' : 'border-gray-200'} rounded-lg resize-none focus:outline-none focus:ring-2 ${isLengthOverMax ? 'focus:ring-red-500/50' : 'focus:ring-[#9488f7]/50'} focus:border-transparent transition-shadow duration-150 text-base leading-relaxed text-gray-900`}
                                                         disabled={isLoading}
                                                     />

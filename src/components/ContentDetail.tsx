@@ -128,7 +128,7 @@ export default function ContentDetail({
                                 : 'text-gray-500 hover:text-gray-700'
                                 }`}
                         >
-                            기억카드
+                            Cards
                         </button>
                         <button
                             onClick={() => setActiveTab('original')}
@@ -137,7 +137,7 @@ export default function ContentDetail({
                                 : 'text-gray-500 hover:text-gray-700'
                                 }`}
                         >
-                            원본
+                            Original
                         </button>
                     </div>
                 </div>

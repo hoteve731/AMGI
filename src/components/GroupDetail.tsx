@@ -420,7 +420,7 @@ export default function GroupDetail({
     const handleDeleteGroup = async () => {
         if (!currentGroup) return;
 
-        if (!confirm('정말로 이 그룹을 삭제하시겠습니까? 모든 기억 카드가 삭제되며, 이 작업은 되돌릴 수 없습니다.')) {
+        if (!confirm('Are you sure you want to delete this group? All memory cards will be deleted and this action cannot be undone.')) {
             return;
         }
 
@@ -471,7 +471,7 @@ export default function GroupDetail({
     const [isDeletingContent, setIsDeletingContent] = useState(false)
 
     const handleDeleteContent = async () => {
-        if (!confirm('정말로 이 콘텐츠를 삭제하시겠습니까? 모든 그룹과 기억 카드가 삭제되며, 이 작업은 되돌릴 수 없습니다.')) {
+        if (!confirm('Are you sure you want to delete this content? All groups and memory cards will be deleted and this action cannot be undone.')) {
             return
         }
 
@@ -697,7 +697,7 @@ export default function GroupDetail({
                         onClick={() => router.push('/')}
                         className="absolute left-10 top-1/2 -translate-y-1/2 text-gray-800 font-medium hover:text-gray-600"
                     >
-                        홈
+                        Home
                     </button>
                 </div>
 
@@ -784,7 +784,7 @@ export default function GroupDetail({
                                                 aria-expanded={showOriginalText}
                                             >
                                                 <span className="font-medium">
-                                                    {showOriginalText ? "접기" : "원본 문단 보기"}
+                                                    {showOriginalText ? "Hide" : "Show Original Text"}
                                                 </span>
                                                 <motion.div
                                                     animate={{ rotate: showOriginalText ? 180 : 0 }}
@@ -847,7 +847,7 @@ export default function GroupDetail({
                                             d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                                         />
                                     </svg>
-                                    <h3 className="text-xl font-bold text-gray-800">기억카드<span className="text-sm font-normal text-gray-500 ml-1">({currentGroup.chunks?.length || 0})</span></h3>
+                                    <h3 className="text-xl font-bold text-gray-800">Cards<span className="text-sm font-normal text-gray-500 ml-1">({currentGroup.chunks?.length || 0})</span></h3>
                                 </div>
                             </div>
                         )}
@@ -886,13 +886,13 @@ export default function GroupDetail({
                                                                         'bg-gray-400'
                                                                 }`}></div>
                                                             <div className="text-sm font-medium text-gray-800">
-                                                                {chunk.card_state === 'new' ? '새 카드' :
-                                                                    chunk.card_state === 'learning' ? '학습 중' :
-                                                                        chunk.card_state === 'relearning' ? '재학습' :
-                                                                            chunk.card_state === 'graduated' || chunk.card_state === 'review' ? '복습' :
-                                                                                '미설정'}
+                                                                {chunk.card_state === 'new' ? 'New' :
+                                                                    chunk.card_state === 'learning' ? 'Learning' :
+                                                                        chunk.card_state === 'relearning' ? 'Relearning' :
+                                                                            chunk.card_state === 'graduated' || chunk.card_state === 'review' ? 'Review' :
+                                                                                'Unset'}
                                                                 {chunk.repetition_count !== undefined &&
-                                                                    <span className="opacity-70"> (반복 {chunk.repetition_count}회)</span>
+                                                                    <span className="opacity-70"> (Repetition: {chunk.repetition_count})</span>
                                                                 }
                                                             </div>
                                                         </div>

@@ -677,7 +677,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                     <svg className="w-5 h-5 group-hover:scale-110 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                     </svg>
-                    <span className="ml-2 font-medium group-hover:font-semibold transition-all duration-200">홈</span>
+                    <span className="ml-2 font-medium group-hover:font-semibold transition-all duration-200">Home</span>
                 </button>
                 <button
                     onClick={handleDeleteContent}
@@ -701,10 +701,10 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                     <div className="relative flex w-full">
                         <div className="relative flex w-full justify-between bg-white/70 backdrop-blur-xl rounded-full p-1 [box-shadow:0_1px_4px_rgba(0,0,0,0.05)] ring-1 ring-gray-200/70 ring-inset">
                             {[
-                                { id: 'notes', label: '노트' },
-                                { id: 'cards', label: '기억카드' },
-                                { id: 'groups', label: '그룹' },
-                                { id: 'text', label: '원본' }
+                                { id: 'notes', label: 'Notes' },
+                                { id: 'cards', label: 'Cards' },
+                                { id: 'groups', label: 'Groups' },
+                                { id: 'text', label: 'Transcript' }
                             ].map((tab) => {
                                 const isActive = activeTab === tab.id;
                                 return (
@@ -855,11 +855,11 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                                         alt="기억 카드"
                                         className="w-20 h-20 mb-4 opacity-80"
                                     />
-                                    <div className="text-gray-600 font-medium text-lg">
-                                        아직 기억 카드가 없습니다
+                                    <div className="text-gray-600 font-semibold text-lg">
+                                        No memory cards yet
                                     </div>
                                     <div className="text-gray-500 mb-6 text-sm max-w-md">
-                                        기억카드를 생성하여 효과적으로 학습해보세요
+                                    Create memory cards to study effectively!
                                     </div>
 
                                     {content.markdown_text ? (
@@ -880,14 +880,14 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                                                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                                     </svg>
-                                                    기억카드 생성 중...
+                                                    Creating memory cards...
                                                 </div>
                                             ) : (
                                                 <>
                                                     <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                                                     </svg>
-                                                    기억카드 생성하기
+                                                    Create memory cards
                                                 </>
                                             )}
                                         </button>
@@ -899,7 +899,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                                             <svg className="w-5 h-5 mr-2 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                             </svg>
-                                            노트를 먼저 생성해주세요
+                                            Create notes first
                                         </button>
                                     )}
 
@@ -1020,7 +1020,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                                         d="M9 5l7 7-7 7"
                                     />
                                 </svg>
-                                <span className="text-lg font-medium text-gray-800">특별히 기억하고 싶은 내용</span>
+                                <span className="text-lg font-medium text-gray-800">Special highlight</span>
                             </div>
                             <div></div>
                         </button>

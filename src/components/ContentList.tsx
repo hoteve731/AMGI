@@ -283,7 +283,7 @@ export default function ContentList({ contents: externalContents, showTabs = fal
                             <div className="flex justify-between items-start">
                                 {content.isProcessing ? (
                                     <div className="flex-1">
-                                        <h2 className="text-xl font-bold text-gray-800">
+                                        <h2 className="text-lg font-bold text-gray-800">
                                             {content.title}
                                         </h2>
                                         <div className="mt-2">
@@ -306,7 +306,7 @@ export default function ContentList({ contents: externalContents, showTabs = fal
                                                         />
                                                     ))}
                                                 </div>
-                                                <span className="ml-2 text-sm text-[#7969F7]">처리 중...</span>
+                                                <span className="ml-2 text-sm text-[#7969F7]">Processing...</span>
                                             </div>
                                         </div>
                                     </div>
@@ -315,50 +315,53 @@ export default function ContentList({ contents: externalContents, showTabs = fal
                                         className="flex-1 cursor-pointer"
                                         onClick={() => handleContentClick(content.id)}
                                     >
-                                        <h2 className="text-xl font-bold text-gray-800">
+                                        <h2 className="text-lg font-semibold text-gray-800">
                                             {content.title}
                                         </h2>
 
-                                        {content.group_names && content.group_names.length > 0 && (
-                                            <p className="text-sm text-gray-500 mt-1 line-clamp-2">
-                                                {content.group_names.join(', ')}
-                                            </p>
+                                        {(content.groups_count === 0 && content.chunks_count === 0 && !content.isProcessing) && (
+                                            <div className="mt-2 text-base text-gray-500 font-semibold">
+                                                ✅ Your Note is ready. Now generate memory cards!
+                                            </div>
                                         )}
 
-                                        <div className="flex items-center mt-3 space-x-4">
-                                            <div className="flex items-center gap-1">
-                                                <FolderIcon className="w-4 h-4 text-[#7969F7]" />
-                                                <span className="text-sm text-gray-600">그룹</span>
-                                                <span className="text-sm font-medium text-gray-800">{content.groups_count || 0}</span>
+                                        {/* Bottom row with counts on left and date on right */}
+                                        <div className="flex justify-between items-center mt-5">
+                                            {/* Group and card counts on the left */}
+                                            <div className="flex items-center space-x-4">
+                                                <div className="flex items-center gap-1">
+                                                    <FolderIcon className="w-4 h-4 text-[#7969F7]" />
+                                                    <span className="text-xs text-gray-600">Group</span>
+                                                    <span className="text-xs font-semibold text-gray-800">{content.groups_count || 0}</span>
+                                                </div>
+
+                                                <div className="flex items-center gap-1">
+                                                    <svg
+                                                        className="w-4 h-4 text-[#F59E42]"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        viewBox="0 0 24 24"
+                                                    >
+                                                        <path
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                            strokeWidth={2}
+                                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                                        />
+                                                    </svg>
+                                                    <span className="text-xs text-gray-600">Cards</span>
+                                                    <span className="text-xs font-semibold text-gray-800">{content.chunks_count || 0}</span>
+                                                </div>
                                             </div>
 
-                                            <div className="flex items-center gap-1">
-                                                <svg
-                                                    className="w-4 h-4 text-[#F59E42]"
-                                                    fill="none"
-                                                    stroke="currentColor"
-                                                    viewBox="0 0 24 24"
-                                                >
-                                                    <path
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                        strokeWidth={2}
-                                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                                                    />
-                                                </svg>
-                                                <span className="text-sm text-gray-600">카드</span>
-                                                <span className="text-sm font-medium text-gray-800">{content.chunks_count || 0}</span>
+                                            {/* Date on the right */}
+                                            <div className="text-xs font-light text-gray-400">
+                                                {new Date(content.created_at).toLocaleDateString('en-US', {
+                                                    year: 'numeric',
+                                                    month: 'long',
+                                                    day: 'numeric'
+                                                })}
                                             </div>
-                                        </div>
-
-                                        <div className="mt-2 text-xs text-gray-400">
-                                            {new Date(content.created_at).toLocaleString('ko-KR', {
-                                                year: 'numeric',
-                                                month: 'long',
-                                                day: 'numeric',
-                                                hour: '2-digit',
-                                                minute: '2-digit'
-                                            })}
                                         </div>
                                     </div>
                                 )}

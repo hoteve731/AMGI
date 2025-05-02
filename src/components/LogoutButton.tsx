@@ -73,10 +73,10 @@ export default function LogoutButton() {
                             />
                         ))}
                     </div>
-                    <span className="text-gray-900">로그아웃 중...</span>
+                    <span className="text-gray-900">Logging out...</span>
                 </>
             ) : (
-                <span className="text-gray-900">로그아웃</span>
+                <span className="text-gray-900">Logout</span>
             )}
         </button>
     )
