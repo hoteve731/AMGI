@@ -64,7 +64,7 @@ export async function processSingleSegment(
 
         await asyncRetry(async (bail) => {
             const completion = await openai.chat.completions.create({
-                model: "gpt-4.1-mini-2025-04-14",
+                model: "gpt-4.1-nano-2025-04-14",
                 messages: [
                     { role: "system", content: groupSystemPrompt },
                     { role: "user", content: segment_text } // 입력으로 세그먼트 텍스트 사용
@@ -122,7 +122,7 @@ export async function processSingleSegment(
 
                     await asyncRetry(async () => {
                         const completion = await openai.chat.completions.create({
-                            model: "gpt-4.1-mini-2025-04-14", // 모델 유지 또는 변경 고려
+                            model: "gpt-4.1-nano-2025-04-14", // 모델 유지 또는 변경 고려
                             messages: [
                                 { role: "system", content: unifiedSystemPrompt },
                                 { role: "user", content: group.original_text } // 그룹 원본 텍스트 사용

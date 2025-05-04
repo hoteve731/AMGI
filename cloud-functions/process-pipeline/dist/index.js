@@ -81,7 +81,7 @@ async function processSingleSegment(supabase, openai, segment) {
         const groupsPrompt = (0, prompt_generator_1.generateGroupsPrompt)(additionalMemory);
         console.log(`[Segment ${segmentPosition}][${segmentId}] Generating groups...`);
         const groupCompletion = await openai.chat.completions.create({
-            model: "gpt-4.1-mini-2025-04-14",
+            model: "gpt-4.1-nano-2025-04-14",
             messages: [{ role: "system", content: groupsPrompt }, { role: "user", content: segmentText }],
             temperature: 0, max_tokens: 10000,
         });
@@ -126,7 +126,7 @@ async function processSingleSegment(supabase, openai, segment) {
                 // 청크 생성
                 const chunksPrompt = (0, prompt_generator_1.generateUnifiedChunksPrompt)(additionalMemory);
                 const chunkCompletion = await openai.chat.completions.create({
-                    model: "gpt-4.1-mini-2025-04-14",
+                    model: "gpt-4.1-nano-2025-04-14",
                     messages: [{ role: "system", content: chunksPrompt }, { role: "user", content: groupInfo.originalSource }],
                     temperature: 0, max_tokens: 10000,
                 });
@@ -256,7 +256,7 @@ async function convertTextToMarkdown(supabase, openai, contentId, text, addition
         console.log(`[Markdown][${contentId}] Generated markdown conversion prompt`);
         // 2. OpenAI API 호출
         const markdownCompletion = await openai.chat.completions.create({
-            model: "gpt-4.1-mini-2025-04-14",
+            model: "gpt-4.1-nano-2025-04-14",
             messages: [
                 { role: "system", content: markdownPrompt },
                 { role: "user", content: text }
@@ -385,7 +385,7 @@ exports.processTextPipeline = functions.http('processTextPipeline', async (req, 
                     // 청크 생성
                     const chunksPrompt = (0, prompt_generator_1.generateUnifiedChunksPrompt)(additionalMemory);
                     const chunkCompletion = await openai.chat.completions.create({
-                        model: "gpt-4.1-mini-2025-04-14",
+                        model: "gpt-4.1-nano-2025-04-14",
                         messages: [
                             { role: "system", content: chunksPrompt },
                             { role: "user", content: groupInfo.originalSource }
@@ -471,7 +471,7 @@ async function generateGroupsFromFullText(openai, fullText, additionalMemory) {
         const groupsPrompt = (0, prompt_generator_1.generateGroupsPrompt)(additionalMemory);
         // OpenAI API 호출하여 그룹 생성
         const groupCompletion = await openai.chat.completions.create({
-            model: "gpt-4.1-mini-2025-04-14",
+            model: "gpt-4.1-nano-2025-04-14",
             messages: [
                 { role: "system", content: groupsPrompt },
                 { role: "user", content: fullText }
