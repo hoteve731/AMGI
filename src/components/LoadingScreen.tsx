@@ -346,66 +346,6 @@ export default function LoadingScreen({ progress, status, previewTitle, processe
                             </div>
                         ))}
                     </div>
-
-                    {/* 생성 상태 디스플레이 */}
-                    <AnimatePresence>
-                        {previewTitle && (
-                            <motion.div
-                                className="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-lg"
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -10 }}
-                                transition={{ duration: 0.3 }}
-                            >
-                                {/* 제목 정보 */}
-                                <h3 className="text-sm font-medium text-gray-500 mb-1">Generated Title:</h3>
-                                <p className="text-base font-medium text-gray-800 mb-3">
-                                    <TypewriterText
-                                        text={previewTitle}
-                                        speed={50}
-                                    />
-                                </p>
-
-                                {/* 실제 그룹 정보 표시 */}
-                                {processedGroups && processedGroups.length > 0 && (
-                                    <>
-                                        <h3 className="text-sm font-medium text-gray-500 mt-3 mb-2">
-                                            Generated Group: {processedGroups.length}
-                                        </h3>
-                                        <div className="max-h-48 overflow-y-auto space-y-1.5 pr-2">
-                                            {processedGroups.map((group, idx) => (
-                                                <div key={group.id || idx} className="bg-white p-2 rounded border border-gray-100 shadow-sm">
-                                                    <p className="text-xs font-medium text-gray-700">
-                                                        {idx + 1}.
-                                                        <TypewriterText
-                                                            text={group.title || `그룹 ${idx + 1}`}
-                                                            speed={30}
-                                                            delay={idx * 150}
-                                                            className="ml-1"
-                                                        />
-                                                    </p>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </>
-                                )}
-
-                                {/* 진행 상태 표시 (그룹 정보 아래에 표시) */}
-                                {status !== 'complete' && processedGroups.length > 0 && (
-                                    <div className="mt-3 px-2 py-1.5 bg-blue-50 rounded-md text-xs text-blue-700 flex items-center justify-between">
-                                        <div className="flex items-center">
-                                            <svg className="animate-spin h-3 w-3 mr-1.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                            </svg>
-                                            generating {status === 'group' ? 'groups' : 'cards'}...
-                                        </div>
-                                        <span className="text-blue-800 font-medium">{timeDisplay}</span>
-                                    </div>
-                                )}
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
                 </div>
             </motion.div>
         </div>

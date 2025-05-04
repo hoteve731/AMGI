@@ -113,7 +113,7 @@ export default function BottomSheet() {
     const [text, setText] = useState('')
     const [additionalMemory, setAdditionalMemory] = useState('')
     const [isLoading, setIsLoading] = useState(false)
-    const [loadingUIType, setLoadingUIType] = useState<'title' | 'content' | 'group' | 'chunk' | 'complete'>('title')
+    const [loadingUIType, setLoadingUIType] = useState<'title' | 'group' | 'chunk' | 'complete'>('title')
     const [processingStatus, setProcessingStatus] = useState<string | null>(null)
     const [processingError, setProcessingError] = useState<string | null>(null)
     const [processedGroups, setProcessedGroups] = useState<any[]>([])
@@ -337,7 +337,7 @@ export default function BottomSheet() {
                 } else if (data.status === 'processing_groups') {
                     setLoadingUIType('group');
                     setLoadingProgress(30);
-                    setLoadingStatusMessage('그룹 생성 중...');
+                    setLoadingStatusMessage('기억 그룹 생성 중...');
                     if (data.title && !generatedTitle) setGeneratedTitle(data.title);
                     // 여기서 그룹 데이터 업데이트
                     setProcessedGroups(data.groups || []);
@@ -672,20 +672,14 @@ export default function BottomSheet() {
                         case 'groups_generating':
                             setLoadingUIType('group');
                             setLoadingProgress(40);
-                            setLoadingStatusMessage('그룹 생성 중...');
-                            // 제목이 있으면 표시
-                            if (checkData.title) {
-                                setGeneratedTitle(checkData.title);
-                            }
-
-                            // 그룹 정보 가져오기 (있는 경우)
-                            await loadGroupsInfo(contentId);
+                            setLoadingStatusMessage('기억 그룹 생성 중...');
                             break;
 
                         case 'groups_generated':
                             setLoadingUIType('group');
-                            setLoadingProgress(60);
-                            setLoadingStatusMessage('그룹 생성 완료, 카드 생성 준비 중...');
+                            setLoadingProgress(50);
+                            setLoadingStatusMessage('기억 그룹 생성 완료...');
+
                             // 제목이 있으면 표시
                             if (checkData.title) {
                                 setGeneratedTitle(checkData.title);
@@ -702,12 +696,18 @@ export default function BottomSheet() {
 
                             // 청크 수에 따른 진행률 업데이트
                             if (checkData.totalChunksCount > 0) {
-                                const progress = Math.min(90, 70 + Math.min(checkData.totalChunksCount * 2, 20));
-                                setLoadingProgress(progress);
-                            }
+                                // 50%~90% 사이에서 청크 생성 진행률 표시
+                                const baseProgress = 50;
+                                const maxProgress = 90;
+                                const progressRange = maxProgress - baseProgress;
 
-                            // 그룹 정보 가져오기 (있는 경우)
-                            await loadGroupsInfo(contentId);
+                                // 청크 생성 진행률 계산
+                                const chunkProgress = checkData.totalChunksCount > 0
+                                    ? (checkData.completedChunksCount / checkData.totalChunksCount) * progressRange
+                                    : 0;
+
+                                setLoadingProgress(Math.min(baseProgress + chunkProgress, maxProgress));
+                            }
                             break;
 
                         case 'completed':

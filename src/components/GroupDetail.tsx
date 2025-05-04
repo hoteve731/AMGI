@@ -639,7 +639,7 @@ export default function GroupDetail({
     const deleteChunk = async (e: React.MouseEvent, chunkId: string) => {
         e.stopPropagation() // Prevent card click event
 
-        if (!currentGroup || !currentGroup.chunks || !confirm('정말로 이 기억카드를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+        if (!currentGroup || !currentGroup.chunks || !confirm('Are you sure you want to delete this memory card? This action cannot be undone.')) {
             return
         }
 
@@ -670,7 +670,7 @@ export default function GroupDetail({
 
         } catch (error) {
             console.error('Error deleting chunk:', error)
-            alert('기억카드 삭제 중 오류가 발생했습니다.')
+            alert('Memory card deletion failed.')
         } finally {
             setIsLoading(false)
         }

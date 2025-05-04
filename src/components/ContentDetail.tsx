@@ -38,7 +38,7 @@ export default function ContentDetail({
     const { mutate } = useSWRConfig()
 
     const handleDeleteContent = async () => {
-        if (!confirm('정말로 이 콘텐츠를 삭제하시겠습니까? 모든 그룹과 기억 카드가 삭제되며, 이 작업은 되돌릴 수 없습니다.')) {
+        if (!confirm('Are you sure you want to delete this content? All groups and memory cards will be deleted and this action cannot be undone.')) {
             return
         }
 

@@ -203,7 +203,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
 
     const handleDeleteChunk = async (e: React.MouseEvent, chunkId: string) => {
         e.stopPropagation();
-        if (!confirm('정말로 이 기억카드를 삭제하시겠습니까?')) {
+        if (!confirm('Are you sure you want to delete this memory card?')) {
             return;
         }
 
@@ -258,7 +258,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
     };
 
     const handleDelete = async (groupId: string) => {
-        if (!confirm('정말로 이 그룹을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+        if (!confirm('Are you sure you want to delete this group? This action cannot be undone.')) {
             return
         }
 
@@ -288,7 +288,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
     }
 
     const handleDeleteContent = async () => {
-        if (!confirm('정말로 이 콘텐츠를 삭제하시겠습니까? 모든 그룹과 기억 카드가 삭제되며, 이 작업은 되돌릴 수 없습니다.')) {
+        if (!confirm('Are you sure you want to delete this content? All groups and memory cards will be deleted and this action cannot be undone.')) {
             return
         }
 

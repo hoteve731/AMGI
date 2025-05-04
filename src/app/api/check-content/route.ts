@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 
 // 현재 처리 단계 결정 함수
-function determineCurrentStage(content: any, groups: any[], chunksExist: boolean) {
+function determineCurrentStage(content: any, hasGroup: boolean, chunksExist: boolean) {
     if (!content) return 'pending';
 
     switch (content.processing_status) {
@@ -14,7 +14,7 @@ function determineCurrentStage(content: any, groups: any[], chunksExist: boolean
         case 'chunks_generating':
             return 'chunk_generation';
         case 'completed':
-            return groups.length > 0 && chunksExist ? 'completed' : 'chunk_generation';
+            return hasGroup && chunksExist ? 'completed' : 'chunk_generation';
         case 'failed':
             return 'failed';
         default:
@@ -67,74 +67,54 @@ export async function GET(request: Request) {
         const processingStatus = content?.processing_status || 'pending';
         const isProcessingComplete = processingStatus === 'completed';
 
-        // 그룹 데이터 조회
-        const { data: groups, error: groupsError } = await supabase
+        // 단일 그룹 데이터 조회 (간소화된 로직)
+        const { data: group, error: groupError } = await supabase
             .from('content_groups')
             .select('id')
-            .eq('content_id', contentId);
+            .eq('content_id', contentId)
+            .single();
 
-        if (groupsError) {
-            console.error('Error fetching groups:', groupsError);
-            return NextResponse.json({
-                isReady: false,
-                error: groupsError.message,
-                timestamp
-            }, { status: 404 });
-        }
-
-        // 그룹이 있는지만 간단히 확인 (속도 향상을 위해)
-        if (!groups || groups.length === 0) {
+        // 그룹이 없는 경우
+        if (groupError || !group) {
             return NextResponse.json({
                 isReady: false,
                 contentExists: !!content,
                 groupsCount: 0,
                 totalChunksCount: 0,
                 processingStatus,
-                currentStage: determineCurrentStage(content, [], false),
+                currentStage: determineCurrentStage(content, false, false),
                 title: content?.title || null,
                 isProcessingComplete,
-                reason: 'Groups not created yet',
+                reason: 'Group not created yet',
                 timestamp
             });
         }
 
-        // 청크 존재 여부만 간단히 확인 (첫 번째 그룹에 대해서만)
-        const { count, error: chunksCountError } = await supabase
+        // 청크 존재 여부 및 개수 확인
+        const { count: chunksCount, error: chunksCountError } = await supabase
             .from('content_chunks')
             .select('id', { count: 'exact', head: true })
-            .eq('group_id', groups[0].id)
-            .limit(1);
+            .eq('group_id', group.id);
 
         if (chunksCountError) {
             console.error('Error checking chunks:', chunksCountError);
         }
 
-        const chunksExist = count && count > 0;
+        // 명시적으로 boolean 타입으로 변환
+        const chunksExist = !!(chunksCount && chunksCount > 0);
+        const totalChunksCount = chunksCount || 0;
 
         // 준비 상태: 콘텐츠가 있고, 그룹이 있으며, 청크가 존재하고, 처리가 완료되었는지
         // 단순화된 준비 상태 확인 - 처리 상태가 completed이면 준비 완료로 간주
         const isReady = !!content && isProcessingComplete;
 
-        // 모든 그룹의 청크 수 계산 (선택적)
-        let totalChunksCount = 0;
-        if (chunksExist) {
-            const { count: totalCount, error: totalCountError } = await supabase
-                .from('content_chunks')
-                .select('id', { count: 'exact', head: true })
-                .in('group_id', groups.map(g => g.id));
-
-            if (!totalCountError) {
-                totalChunksCount = totalCount || 0;
-            }
-        }
-
         // 현재 처리 단계 결정
-        const currentStage = determineCurrentStage(content, groups, !!chunksExist);
+        const currentStage = determineCurrentStage(content, !!group, chunksExist);
 
         return NextResponse.json({
             isReady,
             contentExists: !!content,
-            groupsCount: groups.length,
+            groupsCount: 1, // 항상 1개의 그룹
             totalChunksCount,
             processingStatus,
             currentStage,
@@ -145,7 +125,7 @@ export async function GET(request: Request) {
             timestamp, // 타임스탬프 추가
             reason: !isReady ? (
                 !content ? 'Content missing' :
-                    groups.length === 0 ? 'No groups' :
+                    !group ? 'No group' :
                         !chunksExist ? 'No chunks' :
                             !isProcessingComplete ? 'Processing not complete' :
                                 'Unknown reason'

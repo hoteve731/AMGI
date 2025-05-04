@@ -3,7 +3,7 @@ import * as functions from '@google-cloud/functions-framework';
 import OpenAI from 'openai';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
-import { generateGroupsPrompt, generateUnifiedChunksPrompt, generateMarkdownConversionPrompt } from './prompt_generator';
+import { generateUnifiedChunksPrompt, generateMarkdownConversionPrompt } from './prompt_generator';
 
 console.log("GCF Script - Top Level: Starting execution..."); // 최상단 로그
 
@@ -50,123 +50,101 @@ try {
 // === 단일 세그먼트 처리 함수 ===
 async function processSingleSegment(supabase: SupabaseClient, openai: OpenAI, segment: SegmentToProcess): Promise<SegmentResult> {
     const { id: segmentId, content_id: contentId, segment_text: segmentText, position: segmentPosition, additionalMemory } = segment;
-    console.log(`[Segment ${segmentPosition}][${segmentId}] Starting processing.`);
+    console.log(`[Segment ${segmentPosition}][${segmentId}] Starting processing (simplified).`);
 
     try {
         // 1. 세그먼트 상태 업데이트: processing_groups
         await updateSegmentStatus(supabase, segmentId, 'processing_groups');
 
-        // 2. 그룹 생성 (OpenAI)
-        const groupsPrompt = generateGroupsPrompt(additionalMemory);
-        console.log(`[Segment ${segmentPosition}][${segmentId}] Generating groups...`);
-        const groupCompletion = await openai.chat.completions.create({
-            model: "gpt-4.1-nano-2025-04-14",
-            messages: [{ role: "system", content: groupsPrompt }, { role: "user", content: segmentText }],
-            temperature: 0, max_tokens: 10000,
-        });
-        const groupResultText = groupCompletion.choices[0]?.message?.content?.trim() || '';
-        const parsedGroups = parseGroupResult(groupResultText, contentId, segmentId);
-
-        if (parsedGroups.length === 0) {
-            console.warn(`[Segment ${segmentPosition}][${segmentId}] No groups generated or parsed. Marking as completed.`);
-            await updateSegmentStatus(supabase, segmentId, 'completed');
-            return { success: true, segmentId };
-        }
+        // 2. 단일 그룹 직접 생성 (OpenAI API 호출 없음)
+        console.log(`[Segment ${segmentPosition}][${segmentId}] Creating single group directly...`);
 
         // 3. 그룹 저장 (DB Insert)
-        console.log(`[Segment ${segmentPosition}][${segmentId}] Inserting ${parsedGroups.length} groups...`);
-        const groupsToInsert = parsedGroups.map((group, index) => ({
+        console.log(`[Segment ${segmentPosition}][${segmentId}] Inserting single group...`);
+        const groupToInsert = {
             content_id: contentId,
-            title: group.title,
-            original_text: group.originalSource,
+            title: '', // 제목 필드는 비워둠
+            original_text: segmentText, // 세그먼트 텍스트를 그대로 사용
             segment_position: segmentPosition,
-            position: index
-        }));
+            position: 0 // 단일 그룹이므로 position은 0
+        };
 
         // 그룹 삽입 실행
         const { data: insertedGroups, error: groupInsertError } = await supabase
             .from('content_groups')
-            .insert(groupsToInsert)
+            .insert([groupToInsert])
             .select('id, title');
 
         if (groupInsertError) {
-            console.error(`[Segment ${segmentPosition}][${segmentId}] Failed to insert groups:`, groupInsertError);
+            console.error(`[Segment ${segmentPosition}][${segmentId}] Failed to insert group:`, groupInsertError);
             await updateSegmentStatus(supabase, segmentId, 'failed');
-            return { success: false, segmentId, error: `Failed to insert groups: ${groupInsertError.message}` };
+            return { success: false, segmentId, error: `Failed to insert group: ${groupInsertError.message}` };
         }
 
-        console.log(`[Segment ${segmentPosition}][${segmentId}] Successfully inserted ${insertedGroups.length} groups.`);
+        if (!insertedGroups || insertedGroups.length === 0) {
+            console.error(`[Segment ${segmentPosition}][${segmentId}] No group was inserted.`);
+            await updateSegmentStatus(supabase, segmentId, 'failed');
+            return { success: false, segmentId, error: 'No group was inserted' };
+        }
+
+        const insertedGroup = insertedGroups[0];
+        console.log(`[Segment ${segmentPosition}][${segmentId}] Successfully inserted single group with ID: ${insertedGroup.id}`);
 
         // 4. 세그먼트 상태 업데이트: processing_chunks
         await updateSegmentStatus(supabase, segmentId, 'processing_chunks');
 
-        // 5. 각 그룹에 대해 청크 생성 (병렬 처리)
-        console.log(`[Segment ${segmentPosition}][${segmentId}] Generating chunks for ${insertedGroups.length} groups...`);
-        const chunkPromises = insertedGroups.map(async (group, index) => {
-            try {
-                const groupInfo = parsedGroups[index];
-                if (!groupInfo) {
-                    throw new Error(`Group info not found for index ${index}`);
-                }
+        // 5. 청크 생성
+        console.log(`[Segment ${segmentPosition}][${segmentId}] Generating chunks for single group...`);
 
-                // 청크 생성
-                const chunksPrompt = generateUnifiedChunksPrompt(additionalMemory);
-                const chunkCompletion = await openai.chat.completions.create({
-                    model: "gpt-4.1-nano-2025-04-14",
-                    messages: [{ role: "system", content: chunksPrompt }, { role: "user", content: groupInfo.originalSource }],
-                    temperature: 0, max_tokens: 10000,
-                });
-                const chunkResultText = chunkCompletion.choices[0]?.message?.content?.trim() || '';
-                const parsedChunks = parseChunkResult(chunkResultText, contentId, segmentId, index);
+        try {
+            // 청크 생성 (여전히 OpenAI API 사용)
+            const chunksPrompt = generateUnifiedChunksPrompt(additionalMemory);
+            const chunkCompletion = await openai.chat.completions.create({
+                model: "gpt-4.1-nano-2025-04-14",
+                messages: [{ role: "system", content: chunksPrompt }, { role: "user", content: segmentText }],
+                temperature: 0, max_tokens: 10000,
+            });
+            const chunkResultText = chunkCompletion.choices[0]?.message?.content?.trim() || '';
+            const parsedChunks = parseChunkResult(chunkResultText, contentId, segmentId, 0);
 
-                if (parsedChunks.length === 0) {
-                    console.warn(`[Segment ${segmentPosition}][${segmentId}][Group ${index}] No chunks generated.`);
-                    return { groupId: group.id, success: false, error: 'No chunks generated' };
-                }
-
-                // 청크 삽입
-                const chunksToInsert = parsedChunks.map((chunk, chunkIndex) => ({
-                    group_id: group.id,
-                    summary: chunk.front,
-                    masked_text: chunk.back,
-                    position: chunkIndex
-                }));
-
-                const { error: chunkInsertError } = await supabase
-                    .from('content_chunks')
-                    .insert(chunksToInsert);
-
-                if (chunkInsertError) {
-                    return { groupId: group.id, success: false, error: chunkInsertError.message };
-                }
-
-                console.log(`[Segment ${segmentPosition}][${segmentId}][Group ${index}] Successfully inserted ${chunksToInsert.length} chunks.`);
-                return { groupId: group.id, success: true, chunksCount: chunksToInsert.length };
-            } catch (error) {
-                console.error(`[Segment ${segmentPosition}][${segmentId}][Group ${index}] Error processing chunks:`, error);
-                return { groupId: group.id, success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+            if (parsedChunks.length === 0) {
+                console.warn(`[Segment ${segmentPosition}][${segmentId}] No chunks generated.`);
+                await updateSegmentStatus(supabase, segmentId, 'completed');
+                return { success: true, segmentId };
             }
-        });
 
-        // 모든 청크 생성 작업 완료 대기
-        const chunkResults = await Promise.all(chunkPromises);
+            // 청크 삽입
+            const chunksToInsert = parsedChunks.map((chunk, chunkIndex) => ({
+                group_id: insertedGroup.id,
+                summary: chunk.front,
+                masked_text: chunk.back,
+                position: chunkIndex
+            }));
 
-        // 청크 생성 결과 확인
-        const successfulChunks = chunkResults.filter(result => result.success);
-        console.log(`[Segment ${segmentPosition}][${segmentId}] Chunk generation complete: ${successfulChunks.length}/${chunkResults.length} groups successful.`);
+            const { error: chunkInsertError } = await supabase
+                .from('content_chunks')
+                .insert(chunksToInsert);
+
+            if (chunkInsertError) {
+                console.error(`[Segment ${segmentPosition}][${segmentId}] Failed to insert chunks:`, chunkInsertError);
+                await updateSegmentStatus(supabase, segmentId, 'failed');
+                return { success: false, segmentId, error: `Failed to insert chunks: ${chunkInsertError.message}` };
+            }
+
+            console.log(`[Segment ${segmentPosition}][${segmentId}] Successfully inserted ${chunksToInsert.length} chunks.`);
+        } catch (chunkError) {
+            console.error(`[Segment ${segmentPosition}][${segmentId}] Error generating chunks:`, chunkError);
+            await updateSegmentStatus(supabase, segmentId, 'failed');
+            return { success: false, segmentId, error: `Failed to generate chunks: ${chunkError instanceof Error ? chunkError.message : 'Unknown error'}` };
+        }
 
         // 6. 세그먼트 상태 업데이트: completed
         await updateSegmentStatus(supabase, segmentId, 'completed');
-
         return { success: true, segmentId };
     } catch (error) {
-        console.error(`[Segment ${segmentPosition}][${segmentId}] Error processing segment:`, error);
-        try {
-            await updateSegmentStatus(supabase, segmentId, 'failed');
-        } catch (statusError) {
-            console.error(`[Segment ${segmentPosition}][${segmentId}] Failed to update status to 'failed':`, statusError);
-        }
-        return { success: false, segmentId, error: error instanceof Error ? error.message : 'Unknown error' };
+        console.error(`[Segment ${segmentPosition}][${segmentId}] Processing error:`, error);
+        await updateSegmentStatus(supabase, segmentId, 'failed');
+        return { success: false, segmentId, error: `Processing failed: ${error instanceof Error ? error.message : 'Unknown error'}` };
     }
 }
 
@@ -374,114 +352,101 @@ export const processTextPipeline = functions.http('processTextPipeline', async (
                 processType: 'markdown'
             });
         } else if (processType === 'groups') {
-            // 그룹 및 청크 생성 처리 로직
-            console.log(`[Main][${contentId}] Processing type: groups and chunks`);
+            // 그룹 및 청크 생성 처리 로직 (간소화됨)
+            console.log(`[Main][${contentId}] Processing type: groups and chunks (simplified)`);
 
-            // 그룹 생성 시작
+            // 콘텐츠 마크다운 텍스트 가져오기
+            const { data: contentData, error: contentError } = await supabase
+                .from('contents')
+                .select('markdown_text')
+                .eq('id', contentId)
+                .single();
+
+            if (contentError || !contentData?.markdown_text) {
+                console.error(`[Main][${contentId}] Failed to fetch markdown text:`, contentError);
+                await updateContentStatus(supabase, contentId, 'failed');
+                return res.status(500).send('Failed to fetch markdown text');
+            }
+
+            const markdownText = contentData.markdown_text;
+            console.log(`[Main][${contentId}] Retrieved markdown text (length: ${markdownText.length})`);
+
+            // 단일 그룹 생성 (그룹 분할 없음)
             await updateContentStatus(supabase, contentId, 'groups_generating');
+            console.log(`[Main][${contentId}] Creating single group with full markdown text`);
 
-            // 전체 텍스트에서 직접 그룹 생성
-            const { groups, error: groupsError } = await generateGroupsFromFullText(openai, text, additionalMemory);
-
-            if (groupsError || groups.length === 0) {
-                console.error(`[Main][${contentId}] Failed to generate groups:`, groupsError);
-                await updateContentStatus(supabase, contentId, 'failed');
-                return res.status(500).send(`Failed to generate groups: ${groupsError}`);
-            }
-
-            console.log(`[Main][${contentId}] Generated ${groups.length} groups`);
-
-            // 그룹 저장
-            const groupsToInsert = groups.map((group, index) => ({
-                content_id: contentId,
-                title: group.title,
-                original_text: group.originalSource,
-                position: index
-            }));
-
-            const { data: insertedGroups, error: insertError } = await supabase
+            // 단일 그룹 삽입
+            const { data: insertedGroup, error: insertError } = await supabase
                 .from('content_groups')
-                .insert(groupsToInsert)
-                .select('id, title');
+                .insert([{
+                    content_id: contentId,
+                    title: '', // 타이틀 사용하지 않음
+                    original_text: markdownText, // 마크다운 텍스트 그대로 사용
+                    position: 0 // 단일 그룹이므로 position은 0
+                }])
+                .select('id')
+                .single();
 
-            if (insertError) {
-                console.error(`[Main][${contentId}] Failed to insert groups:`, insertError);
+            if (insertError || !insertedGroup) {
+                console.error(`[Main][${contentId}] Failed to insert group:`, insertError);
                 await updateContentStatus(supabase, contentId, 'failed');
-                return res.status(500).send(`Failed to insert groups: ${insertError.message}`);
+                return res.status(500).send('Failed to insert group');
             }
 
-            // 그룹 생성 완료
+            console.log(`[Main][${contentId}] Single group created with ID: ${insertedGroup.id}`);
             await updateContentStatus(supabase, contentId, 'groups_generated');
 
             // 청크 생성 시작
             await updateContentStatus(supabase, contentId, 'chunks_generating');
+            console.log(`[Main][${contentId}] Generating chunks for the single group`);
 
-            // 각 그룹에 대해 청크 생성 (병렬 처리)
-            const chunkPromises = insertedGroups.map(async (group, index) => {
-                try {
-                    const groupInfo = groups[index];
+            // 단일 그룹에 대한 청크 생성
+            try {
+                const chunksPrompt = generateUnifiedChunksPrompt(additionalMemory);
+                const chunkCompletion = await openai.chat.completions.create({
+                    model: "gpt-4.1-nano-2025-04-14",
+                    messages: [
+                        { role: "system", content: chunksPrompt },
+                        { role: "user", content: markdownText }
+                    ],
+                    temperature: 0,
+                    max_tokens: 10000,
+                });
 
-                    // 청크 생성
-                    const chunksPrompt = generateUnifiedChunksPrompt(additionalMemory);
-                    const chunkCompletion = await openai.chat.completions.create({
-                        model: "gpt-4.1-nano-2025-04-14",
-                        messages: [
-                            { role: "system", content: chunksPrompt },
-                            { role: "user", content: groupInfo.originalSource }
-                        ],
-                        temperature: 0,
-                        max_tokens: 10000,
-                    });
-
-                    const chunkResultText = chunkCompletion.choices[0]?.message?.content?.trim() || '';
-
-                    // contentId가 null이 아님을 확인하는 타입 가드 추가
-                    if (contentId === null) {
-                        return { groupId: group.id, success: false, error: 'Content ID is null' };
-                    }
-
-                    const parsedChunks = parseChunkResult(chunkResultText, contentId, 'direct', index);
-
-                    if (parsedChunks.length === 0) {
-                        return { groupId: group.id, success: false, error: 'No chunks generated' };
-                    }
-
-                    // 청크 삽입
-                    const chunksToInsert = parsedChunks.map((chunk, chunkIndex) => ({
-                        group_id: group.id,
-                        summary: chunk.front,
-                        masked_text: chunk.back,
-                        position: chunkIndex
-                    }));
-
-                    const { error: chunkInsertError } = await supabase
-                        .from('content_chunks')
-                        .insert(chunksToInsert);
-
-                    if (chunkInsertError) {
-                        return { groupId: group.id, success: false, error: chunkInsertError.message };
-                    }
-
-                    return { groupId: group.id, success: true, chunksCount: chunksToInsert.length };
-                } catch (error) {
-                    return {
-                        groupId: group.id,
-                        success: false,
-                        error: error instanceof Error ? error.message : 'Unknown error'
-                    };
+                const chunkResultText = chunkCompletion.choices[0]?.message?.content?.trim() || '';
+                if (!chunkResultText) {
+                    throw new Error('No chunk result text generated');
                 }
-            });
 
-            // 모든 청크 생성 작업 완료 대기
-            const chunkResults = await Promise.all(chunkPromises);
+                // 청크 파싱
+                const parsedChunks = parseChunkResult(chunkResultText, contentId, 'direct', 0);
+                if (parsedChunks.length === 0) {
+                    throw new Error('No chunks parsed from result text');
+                }
 
-            // 청크 생성 결과 확인
-            const successfulChunks = chunkResults.filter(result => result.success);
+                console.log(`[Main][${contentId}] Parsed ${parsedChunks.length} chunks`);
 
-            if (successfulChunks.length === 0) {
-                console.error(`[Main][${contentId}] All chunk generation failed`);
+                // 청크 삽입
+                const chunksToInsert = parsedChunks.map((chunk, index) => ({
+                    group_id: insertedGroup.id,
+                    summary: chunk.front,
+                    masked_text: chunk.back,
+                    position: index // position 필드 사용 (order 대신)
+                }));
+
+                const { error: chunksInsertError } = await supabase
+                    .from('content_chunks')
+                    .insert(chunksToInsert);
+
+                if (chunksInsertError) {
+                    throw new Error(`Failed to insert chunks: ${chunksInsertError.message}`);
+                }
+
+                console.log(`[Main][${contentId}] Successfully inserted ${chunksToInsert.length} chunks`);
+            } catch (chunkError) {
+                console.error(`[Main][${contentId}] Error generating chunks:`, chunkError);
                 await updateContentStatus(supabase, contentId, 'failed');
-                return res.status(500).send('Failed to generate chunks for all groups');
+                return res.status(500).send(`Failed to generate chunks: ${chunkError instanceof Error ? chunkError.message : 'Unknown error'}`);
             }
 
             // 최종 상태 업데이트
@@ -491,8 +456,8 @@ export const processTextPipeline = functions.http('processTextPipeline', async (
             return res.status(200).send({
                 success: true,
                 contentId,
-                groupsCount: insertedGroups.length,
-                chunksCount: successfulChunks.length
+                groupsCount: 1, // 항상 1개의 그룹
+                chunksCount: 0 // 실제 청크 수는 계산하지 않음 (간소화)
             });
         } else {
             return res.status(400).send(`Invalid processType: ${processType}. Must be 'markdown' or 'groups'`);
@@ -515,50 +480,7 @@ export const processTextPipeline = functions.http('processTextPipeline', async (
     }
 });
 
-// === 전체 텍스트에서 직접 그룹 생성하는 함수 ===
-async function generateGroupsFromFullText(openai: OpenAI, fullText: string, additionalMemory?: string): Promise<{ groups: ParsedGroup[], error?: string }> {
-    try {
-        const groupsPrompt = generateGroupsPrompt(additionalMemory);
-
-        // OpenAI API 호출하여 그룹 생성
-        const groupCompletion = await openai.chat.completions.create({
-            model: "gpt-4.1-nano-2025-04-14",
-            messages: [
-                { role: "system", content: groupsPrompt },
-                { role: "user", content: fullText }
-            ],
-            temperature: 0,
-            max_tokens: 10000,
-        });
-
-        const groupResultText = groupCompletion.choices[0]?.message?.content?.trim() || '';
-
-        if (!groupResultText) {
-            return { groups: [], error: 'No group result text generated' };
-        }
-
-        // 그룹 파싱
-        const parsedGroups = parseGroupResult(groupResultText, 'direct', 'direct');
-        if (parsedGroups.length === 0) {
-            return { groups: [], error: 'No groups parsed from result text' };
-        }
-
-        // 생성된 그룹 이름 로그 출력
-        console.log('[Groups] Generated group titles:');
-        parsedGroups.forEach((group, index) => {
-            console.log(`[Groups] Group ${index + 1}: ${group.title}`);
-        });
-
-        return { groups: parsedGroups };
-    } catch (error) {
-        return {
-            groups: [],
-            error: `Error generating groups: ${error instanceof Error ? error.message : 'Unknown error'}`
-        };
-    }
-}
-
-// contents 테이블 상태 업데이트 함수
+// === contents 테이블 상태 업데이트 함수 ===
 async function updateContentStatus(supabase: SupabaseClient, contentId: string, status: 'received' | 'title_generated' | 'groups_generating' | 'groups_generated' | 'chunks_generating' | 'completed' | 'failed') {
     console.log(`[DB][${contentId}] Updating contents.processing_status to: ${status}`);
     const { error } = await supabase
