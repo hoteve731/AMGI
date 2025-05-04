@@ -146,6 +146,8 @@ export default function ContentList({ contents: externalContents, showTabs = fal
     // 처리 중인 콘텐츠의 상태 확인
     const checkContentStatus = useCallback(async () => {
         let needsRefresh = false;
+        let updatedContents = false;
+        const contentsCopy = [...processedContents];
 
         for (const contentId of processingContentIds) {
             try {
@@ -158,9 +160,35 @@ export default function ContentList({ contents: externalContents, showTabs = fal
                 try {
                     const data = await response.json();
 
-                    // processing_status가 completed인지 확인
-                    if (data.processing_status === 'completed') {
-                        needsRefresh = true;
+                    // 현재 콘텐츠 찾기
+                    const contentIndex = contentsCopy.findIndex(c => c.id === contentId);
+                    if (contentIndex === -1) continue;
+
+                    // 상태가 변경되었는지 확인
+                    const currentStatus = contentsCopy[contentIndex].processing_status;
+                    const newStatus = data.processing_status;
+
+                    if (currentStatus !== newStatus) {
+                        console.log(`[ContentList] Status changed for ${contentId}: ${currentStatus} -> ${newStatus}`);
+
+                        // 상태 업데이트
+                        contentsCopy[contentIndex].processing_status = newStatus;
+
+                        // 처리 중 상태 업데이트
+                        const isProcessing =
+                            newStatus === 'pending' ||
+                            newStatus === 'title_generated' ||
+                            newStatus === 'groups_generating' ||
+                            newStatus === 'groups_generated' ||
+                            newStatus === 'chunks_generating';
+
+                        contentsCopy[contentIndex].isProcessing = isProcessing;
+                        updatedContents = true;
+
+                        // processing_status가 completed인지 확인
+                        if (newStatus === 'completed') {
+                            needsRefresh = true;
+                        }
                     }
                 } catch (jsonError) {
                     console.error('콘텐츠 상태 JSON 파싱 오류:', jsonError);
@@ -169,6 +197,18 @@ export default function ContentList({ contents: externalContents, showTabs = fal
             } catch (error) {
                 console.error('콘텐츠 상태 확인 중 오류:', error);
             }
+        }
+
+        // 콘텐츠 상태가 업데이트되었으면 상태 업데이트
+        if (updatedContents) {
+            setProcessedContents(contentsCopy);
+
+            // 처리 중인 콘텐츠 ID 필터링
+            const newProcessingIds = contentsCopy
+                .filter(c => c.isProcessing)
+                .map(c => c.id);
+
+            setProcessingContentIds(newProcessingIds);
         }
 
         // 상태 변경이 감지되면 콘텐츠 목록 새로고침
@@ -181,7 +221,7 @@ export default function ContentList({ contents: externalContents, showTabs = fal
                 localMutate('/api/contents');
             }
         }
-    }, [processingContentIds, externalMutate, mutate, localMutate]);
+    }, [processingContentIds, processedContents, externalMutate, mutate, localMutate]);
 
     useEffect(() => {
         if (processingContentIds.length === 0) return;
@@ -189,16 +229,16 @@ export default function ContentList({ contents: externalContents, showTabs = fal
         // 최초 실행
         checkContentStatus();
 
-        // 3초 후 다시 확인
+        // 1.5초 후 다시 확인 (기존 3초에서 단축)
         const intervalId = setInterval(() => {
             checkContentStatus();
-        }, 3000);
+        }, 1500);
 
         // 클린업 함수
         return () => {
             clearInterval(intervalId);
         };
-    }, [processingContentIds.length, checkContentStatus]);
+    }, [processingContentIds, checkContentStatus]);
 
     const handleContentClick = async (contentId: string) => {
         setIsLoading(true)
