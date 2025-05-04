@@ -129,16 +129,16 @@ export default function LoadingScreen({ progress, status, previewTitle, processe
             },
             {
                 id: 2,
-                label: 'Group generation',
-                description: 'Generating groups...',
+                label: 'Preparing generation',
+                description: 'Preparing generation...',
                 status: status === 'title' ? 'progress' :
                     (status === 'content' || status === 'group') ? 'progress' :
                         status === 'chunk' || status === 'complete' ? 'completed' : 'pending'
             },
             {
                 id: 3,
-                label: 'Memory card generation',
-                description: 'Generating memory cards...',
+                label: 'Card generation',
+                description: 'Generating cards...',
                 status: status === 'chunk' ? 'progress' :
                     status === 'complete' ? 'completed' : 'pending'
             },

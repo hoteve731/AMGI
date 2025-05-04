@@ -686,9 +686,9 @@ export default function GroupDetail({
 
     if (!currentGroup) {
         return (
-            <main className="flex min-h-screen flex-col bg-[#F8F4EF]">
+            <main className="flex min-h-screen flex-col bg-white">
                 {isNavigating && <LoadingOverlay />}
-                <div className="sticky top-0 bg-[#F8F4EF] border-b border-[#D4C4B7] h-12 z-50">
+                <div className="sticky top-0 bg-white border-b border-[#D4C4B7] h-12 z-50">
                     <button
                         onClick={() => router.push('/')}
                         className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-800"

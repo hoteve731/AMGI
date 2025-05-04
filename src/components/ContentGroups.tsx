@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { useSWRConfig } from 'swr'
 import LoadingOverlay from './LoadingOverlay'
 import LoadingScreen from './LoadingScreen'
@@ -48,7 +49,7 @@ type ContentWithGroups = Content & {
 }
 
 export default function ContentGroups({ content }: { content: ContentWithGroups }) {
-    const [activeTab, setActiveTab] = useState<'notes' | 'cards' | 'flashcards' | 'text'>('notes');
+    const [activeTab, setActiveTab] = useState<'notes' | 'flashcards' | 'text'>('notes');
     const [showOriginalText, setShowOriginalText] = useState(false);
     const [showAdditionalMemory, setShowAdditionalMemory] = useState(false);
     const [editingChunkId, setEditingChunkId] = useState<string | null>(null);
@@ -67,6 +68,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
     const [isMounted, setIsMounted] = useState(false);
     const [isGeneratingCards, setIsGeneratingCards] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
+    const [showEditCardsModal, setShowEditCardsModal] = useState(false);
     const [generationError, setGenerationError] = useState<string | null>(null);
     const [generationStatus, setGenerationStatus] = useState<'title' | 'content' | 'group' | 'chunk' | 'complete'>('title');
     const [generationProgress, setGenerationProgress] = useState<number>(0);
@@ -629,7 +631,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                             // 완료 후 모달 닫기 및 페이지 새로고침
                             setTimeout(() => {
                                 setIsGeneratingCards(false);
-                                localStorage.setItem(`content-${content.id}-activeTab`, 'cards');
+                                localStorage.setItem(`content-${content.id}-activeTab`, 'flashcards');
                                 setTimeout(() => {
                                     router.refresh();
                                 }, 100);
@@ -753,7 +755,6 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                         <div className="relative flex w-full justify-between bg-white/70 backdrop-blur-xl rounded-full p-1 [box-shadow:0_1px_4px_rgba(0,0,0,0.05)] ring-1 ring-gray-200/70 ring-inset">
                             {[
                                 { id: 'notes', label: 'Notes' },
-                                { id: 'cards', label: 'Cards' },
                                 { id: 'flashcards', label: 'Flashcards' },
                                 { id: 'text', label: 'Transcript' }
                             ].map((tab) => {
@@ -773,7 +774,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                                         )}
                                         <button
                                             onClick={() => {
-                                                setActiveTab(tab.id as 'notes' | 'cards' | 'flashcards' | 'text');
+                                                setActiveTab(tab.id as 'notes' | 'flashcards' | 'text');
                                                 localStorage.setItem(`content-${content.id}-activeTab`, tab.id);
                                             }}
                                             className={`
@@ -860,110 +861,6 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                                     )}
                                 </div>
                             </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-
-                <AnimatePresence mode="wait">
-                    {activeTab === 'cards' && (
-                        <motion.div
-                            key="cards"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            transition={{ duration: 0.2, ease: "easeInOut" }}
-                            className="space-y-8"
-                        >
-                            {content.groups.length > 0 && content.groups.some(group =>
-                                group.chunks && group.chunks.length > 0
-                            ) ? (
-                                content.groups.map((group) => {
-                                    const cardCount = group.chunks?.filter(c => c.group_id === group.id).length || 0;
-                                    console.log(`Rendering group ${group.id} (${group.title}) with count: ${cardCount}`);
-
-                                    return (
-                                        <div key={group.id} className="space-y-4">
-                                            <h3 className="text-xl font-bold text-gray-800 mb-2">{group.title}</h3>
-
-                                            <GroupDetail
-                                                content={content}
-                                                group={{
-                                                    ...group,
-                                                    chunks: group.chunks?.filter(chunk => chunk.group_id === group.id) || []
-                                                }}
-                                                hideHeader={true}
-                                                hideCardCount={true}
-                                                key={group.id}
-                                                onChunkUpdate={handleChunkUpdate}
-                                            />
-                                        </div>
-                                    );
-                                })
-                            ) : (
-                                <div className="flex flex-col items-center justify-center py-12 px-6 text-center bg-white/60 backdrop-blur-sm rounded-xl border border-white/20 shadow-sm">
-                                    <img
-                                        src="/images/doneloopa.png"
-                                        alt="기억 카드"
-                                        className="w-20 h-20 mb-4 opacity-80"
-                                    />
-                                    <div className="text-gray-600 font-semibold text-lg">
-                                        No memory cards yet
-                                    </div>
-                                    <div className="text-gray-500 mb-6 text-sm max-w-md">
-                                        Create memory cards to study effectively!
-                                    </div>
-
-                                    {content.markdown_text ? (
-                                        <button
-                                            disabled={isGeneratingCards}
-                                            onClick={handleGenerateMemoryCards}
-                                            className={`
-                                                px-6 py-2.5 rounded-full text-white font-medium flex items-center
-                                                shadow-sm transform transition-all duration-200
-                                                ${isGeneratingCards
-                                                    ? 'bg-gray-400 cursor-not-allowed'
-                                                    : 'bg-[#5F4BB6] hover:bg-[#4F3B96] hover:shadow-md active:scale-95'}
-                                            `}
-                                        >
-                                            {isGeneratingCards ? (
-                                                <div className="flex items-center">
-                                                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                                    </svg>
-                                                    Creating memory cards...
-                                                </div>
-                                            ) : (
-                                                <>
-                                                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                                                    </svg>
-                                                    Create memory cards
-                                                </>
-                                            )}
-                                        </button>
-                                    ) : (
-                                        <button
-                                            disabled={true}
-                                            className="px-6 py-2.5 bg-gray-400 text-white rounded-full font-medium cursor-not-allowed shadow-sm flex items-center"
-                                        >
-                                            <svg className="w-5 h-5 mr-2 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                            </svg>
-                                            Create notes first
-                                        </button>
-                                    )}
-
-                                    {generationError && (
-                                        <div className="mt-4 text-red-500 text-sm p-2 bg-red-50 rounded-lg">
-                                            <svg className="w-4 h-4 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-                                            </svg>
-                                            {generationError}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
                         </motion.div>
                     )}
                 </AnimatePresence>
@@ -1074,10 +971,83 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                                             )}
                                         </div>
                                     </div>
+
+                                    {/* Edit Cards 버튼 추가 */}
+                                    <div className="mt-8 w-full max-w-md">
+                                        <button
+                                            onClick={() => setShowEditCardsModal(true)}
+                                            className="w-full flex items-center justify-center p-3 rounded-xl bg-white/80 backdrop-blur-sm shadow-sm hover:bg-white transition-colors"
+                                        >
+                                            <svg className="w-5 h-5 mr-2 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                            </svg>
+                                            <span className="font-medium text-gray-600">Edit Cards</span>
+                                        </button>
+                                    </div>
                                 </div>
                             ) : (
-                                <div className="p-4 bg-white/80 backdrop-blur-md rounded-xl border border-white/20">
-                                    <p className="text-gray-500 text-center">이 콘텐츠에는 아직 기억카드가 없습니다.</p>
+                                <div className="flex flex-col items-center justify-center py-12 px-6 text-center bg-white/60 backdrop-blur-sm rounded-xl border border-white/20 shadow-sm">
+                                    <img
+                                        src="/images/doneloopa.png"
+                                        alt="기억 카드"
+                                        className="w-20 h-20 mb-4 opacity-80"
+                                    />
+                                    <div className="text-gray-600 font-semibold text-lg">
+                                        No memory cards yet
+                                    </div>
+                                    <div className="text-gray-500 mb-6 text-sm max-w-md">
+                                        Create memory cards to study effectively!
+                                    </div>
+
+                                    {content.markdown_text ? (
+                                        <button
+                                            disabled={isGeneratingCards}
+                                            onClick={handleGenerateMemoryCards}
+                                            className={`
+                                                px-6 py-2.5 rounded-full text-white font-medium flex items-center
+                                                shadow-sm transform transition-all duration-200
+                                                ${isGeneratingCards
+                                                    ? 'bg-gray-400 cursor-not-allowed'
+                                                    : 'bg-[#5F4BB6] hover:bg-[#4F3B96] hover:shadow-md active:scale-95'}
+                                            `}
+                                        >
+                                            {isGeneratingCards ? (
+                                                <div className="flex items-center">
+                                                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                    </svg>
+                                                    Creating memory cards...
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                                    </svg>
+                                                    Create memory cards
+                                                </>
+                                            )}
+                                        </button>
+                                    ) : (
+                                        <button
+                                            disabled={true}
+                                            className="px-6 py-2.5 bg-gray-400 text-white rounded-full font-medium cursor-not-allowed shadow-sm flex items-center"
+                                        >
+                                            <svg className="w-5 h-5 mr-2 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                            </svg>
+                                            Create notes first
+                                        </button>
+                                    )}
+
+                                    {generationError && (
+                                        <div className="mt-4 text-red-500 text-sm p-2 bg-red-50 rounded-lg">
+                                            <svg className="w-4 h-4 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                                            </svg>
+                                            {generationError}
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </motion.div>
@@ -1158,6 +1128,74 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                     router.refresh();
                 }}
             />
+
+            {/* Edit Cards Modal */}
+            {isMounted && createPortal(
+                <AnimatePresence mode="wait">
+                    {showEditCardsModal && (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 overflow-y-auto"
+                            onClick={() => setShowEditCardsModal(false)}
+                        >
+                            <motion.div
+                                initial={{ scale: 0.9, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                exit={{ scale: 0.9, opacity: 0 }}
+                                transition={{
+                                    type: "spring",
+                                    damping: 25,
+                                    stiffness: 300
+                                }}
+                                className="bg-[#f8f4ef] backdrop-blur-md rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                {/* Modal Header */}
+                                <div className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-gray-200 bg-[#f8f4ef] backdrop-blur-md">
+                                    <h2 className="text-lg font-bold text-gray-800">Edit Flashcards</h2>
+                                    <button
+                                        onClick={() => setShowEditCardsModal(false)}
+                                        className="p-2 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-100 transition-colors"
+                                    >
+                                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
+
+                                {/* Modal Content */}
+                                <div className="p-6 space-y-8">
+                                    {content.groups.map((group) => {
+                                        const cardCount = group.chunks?.filter(c => c.group_id === group.id).length || 0;
+
+                                        return (
+                                            <div key={group.id} className="space-y-4">
+                                                <h3 className="text-lg font-bold text-gray-800 mb-2">{group.title}</h3>
+
+                                                <GroupDetail
+                                                    content={content}
+                                                    group={{
+                                                        ...group,
+                                                        chunks: group.chunks?.filter(chunk => chunk.group_id === group.id) || []
+                                                    }}
+                                                    hideHeader={true}
+                                                    hideCardCount={true}
+                                                    key={group.id}
+                                                    onChunkUpdate={handleChunkUpdate}
+                                                />
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </motion.div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>,
+                document.body
+            )}
         </main>
     );
 
