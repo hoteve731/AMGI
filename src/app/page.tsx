@@ -1,11 +1,11 @@
 import { redirect } from 'next/navigation'
-import LogoutButton from '@/components/LogoutButton'
 import { createClient } from '@/utils/supabase/server'
 import ReviewDashboard from '@/components/ReviewDashboard'
 import MenuButton from '@/components/MenuButton'
 import ContentList from '@/components/ContentList'
 import BottomSheet from '@/components/BottomSheet'
 import BetaBanner from '@/components/BetaBanner'
+import UnlimitedNotesButton from '@/components/UnlimitedNotesButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,7 +25,7 @@ export default async function Home() {
           <MenuButton />
           <h1 className="text-2xl font-bold text-[#7969F7]">LOOPA</h1>
         </div>
-        <LogoutButton />
+        <UnlimitedNotesButton />
       </header>
 
       {/* 베타 공지 배너 */}
