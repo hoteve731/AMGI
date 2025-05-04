@@ -69,6 +69,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
     const [isGeneratingCards, setIsGeneratingCards] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
     const [showEditCardsModal, setShowEditCardsModal] = useState(false);
+    const [showFullTranscriptModal, setShowFullTranscriptModal] = useState(false);
     const [generationError, setGenerationError] = useState<string | null>(null);
     const [generationStatus, setGenerationStatus] = useState<'title' | 'content' | 'group' | 'chunk' | 'complete'>('title');
     const [generationProgress, setGenerationProgress] = useState<number>(0);
@@ -755,8 +756,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                         <div className="relative flex w-full justify-between bg-white/70 backdrop-blur-xl rounded-full p-1 [box-shadow:0_1px_4px_rgba(0,0,0,0.05)] ring-1 ring-gray-200/70 ring-inset">
                             {[
                                 { id: 'notes', label: 'Notes' },
-                                { id: 'flashcards', label: 'Flashcards' },
-                                { id: 'text', label: 'Transcript' }
+                                { id: 'flashcards', label: 'Flashcards' }
                             ].map((tab) => {
                                 const isActive = activeTab === tab.id;
                                 return (
@@ -774,7 +774,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                                         )}
                                         <button
                                             onClick={() => {
-                                                setActiveTab(tab.id as 'notes' | 'flashcards' | 'text');
+                                                setActiveTab(tab.id as 'notes' | 'flashcards');
                                                 localStorage.setItem(`content-${content.id}-activeTab`, tab.id);
                                             }}
                                             className={`
@@ -860,6 +860,18 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                                         </div>
                                     )}
                                 </div>
+                            </div>
+                            {/* Full Transcript 버튼 추가 */}
+                            <div className="mt-8 w-full">
+                                <button
+                                    onClick={() => setShowFullTranscriptModal(true)}
+                                    className="w-full flex items-center justify-center p-3 rounded-xl bg-white/80 backdrop-blur-sm shadow-sm hover:bg-white transition-colors"
+                                >
+                                    <svg className="w-5 h-5 mr-2 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                    <span className="font-medium text-gray-600">Full Transcript</span>
+                                </button>
                             </div>
                         </motion.div>
                     )}
@@ -993,10 +1005,10 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                                         className="w-20 h-20 mb-4 opacity-80"
                                     />
                                     <div className="text-gray-600 font-semibold text-lg">
-                                        No memory cards yet
+                                        No Flashcards yet
                                     </div>
                                     <div className="text-gray-500 mb-6 text-sm max-w-md">
-                                        Create memory cards to study effectively!
+                                        Create Flashcards to study effectively!
                                     </div>
 
                                     {content.markdown_text ? (
@@ -1024,7 +1036,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                                                     <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                                                     </svg>
-                                                    Create memory cards
+                                                    Create
                                                 </>
                                             )}
                                         </button>
@@ -1050,24 +1062,6 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                                     )}
                                 </div>
                             )}
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-
-                <AnimatePresence mode="wait">
-                    {activeTab === 'text' && (
-                        <motion.div
-                            key="text"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            transition={{ duration: 0.2, ease: "easeInOut" }}
-                        >
-                            <div className="p-6 bg-white/80 backdrop-blur-md rounded-xl border border-white/20">
-                                <div className="w-full">
-                                    <p className="whitespace-pre-wrap text-gray-700">{content.original_text}</p>
-                                </div>
-                            </div>
                         </motion.div>
                     )}
                 </AnimatePresence>
@@ -1189,6 +1183,54 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                                             </div>
                                         );
                                     })}
+                                </div>
+                            </motion.div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>,
+                document.body
+            )}
+
+            {/* Full Transcript Modal */}
+            {isMounted && createPortal(
+                <AnimatePresence mode="wait">
+                    {showFullTranscriptModal && (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 overflow-y-auto"
+                            onClick={() => setShowFullTranscriptModal(false)}
+                        >
+                            <motion.div
+                                initial={{ scale: 0.9, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                exit={{ scale: 0.9, opacity: 0 }}
+                                transition={{
+                                    type: "spring",
+                                    damping: 25,
+                                    stiffness: 300
+                                }}
+                                className="bg-[#f8f4ef] backdrop-blur-md rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                {/* Modal Header */}
+                                <div className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-gray-200 bg-[#f8f4ef] backdrop-blur-md">
+                                    <h2 className="text-lg font-bold text-gray-800">Full Transcript</h2>
+                                    <button
+                                        onClick={() => setShowFullTranscriptModal(false)}
+                                        className="p-2 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-100 transition-colors"
+                                    >
+                                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
+
+                                {/* Modal Content */}
+                                <div className="p-6">
+                                    <p className="whitespace-pre-wrap text-gray-700">{content.original_text}</p>
                                 </div>
                             </motion.div>
                         </motion.div>
