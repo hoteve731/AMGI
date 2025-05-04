@@ -568,11 +568,15 @@ export default function BottomSheet() {
 
         let retryCount = 0;
         const maxRetries = 30; // 최대 시도 횟수
-        const pollInterval = 2000; // 2초마다 체크
+        const pollInterval = 1500; // 1.5초마다 체크 (기존 2초에서 단축)
+
+        // 응답 순서 추적을 위한 변수
+        let lastResponseTimestamp = 0;
+        let lastProcessingStatus = '';
 
         // 데이터 완전성 확인 카운터
         let dataConsistencyCounter = 0;
-        const requiredConsistentChecks = 3; // 연속 3번 동일한 완료 상태 확인 필요
+        const requiredConsistentChecks = 2; // 연속 2번 동일한 완료 상태 확인 필요 (기존 3번에서 단축)
 
         // API 오류 카운터
         let consecutiveErrorCount = 0;
@@ -583,6 +587,7 @@ export default function BottomSheet() {
                 retryCount++;
                 console.log(`[데이터 확인] ${retryCount}번째 시도...`);
 
+                const startTime = Date.now();
                 const checkResponse = await fetch(`/api/check-content?id=${contentId}`);
                 if (!checkResponse.ok) {
                     // API 응답 오류 카운터 증가
@@ -604,6 +609,43 @@ export default function BottomSheet() {
 
                 const checkData = await checkResponse.json();
                 console.log('[데이터 확인 결과]:', checkData);
+
+                // 응답에 타임스탬프가 있는지 확인
+                const responseTimestamp = checkData.timestamp || Date.now();
+
+                // 이전 응답보다 오래된 응답은 무시 (네트워크 지연으로 인한 순서 꼬임 방지)
+                if (responseTimestamp < lastResponseTimestamp) {
+                    console.log('[오래된 응답 무시]', responseTimestamp, '<', lastResponseTimestamp);
+                    setTimeout(checkReadyStatus, pollInterval);
+                    return;
+                }
+
+                // 응답 타임스탬프 업데이트
+                lastResponseTimestamp = responseTimestamp;
+
+                // 처리 상태 확인 - 상태가 이전 상태보다 뒤로 가는 경우 무시
+                const processingStatus = checkData.processingStatus || 'pending';
+                const statusOrder: Record<string, number> = {
+                    'pending': 0,
+                    'received': 1,
+                    'title_generated': 2,
+                    'groups_generating': 3,
+                    'groups_generated': 4,
+                    'chunks_generating': 5,
+                    'completed': 6,
+                    'failed': -1
+                };
+
+                // 상태가 뒤로 가는 경우 무시 (예: completed -> chunks_generating)
+                if (lastProcessingStatus &&
+                    statusOrder[processingStatus] < statusOrder[lastProcessingStatus]) {
+                    console.log('[상태 역행 무시]', processingStatus, '<', lastProcessingStatus);
+                    setTimeout(checkReadyStatus, pollInterval);
+                    return;
+                }
+
+                // 현재 처리 상태 업데이트
+                lastProcessingStatus = processingStatus;
 
                 // 백엔드 상태에 따른 UI 업데이트
                 if (checkData.processingStatus) {
@@ -651,9 +693,6 @@ export default function BottomSheet() {
 
                             // 그룹 정보 가져오기 (있는 경우)
                             await loadGroupsInfo(contentId);
-
-                            // 그룹 정보 로드 후 약간의 지연 추가 (타이핑 효과를 볼 수 있도록)
-                            await new Promise(resolve => setTimeout(resolve, 2000));
                             break;
 
                         case 'chunks_generating':
@@ -681,13 +720,14 @@ export default function BottomSheet() {
                             setLoadingStatusMessage('처리 중 오류가 발생했습니다. 홈으로 이동합니다...');
                             setTimeout(() => {
                                 window.location.href = '/';
-                            }, 3000);
+                            }, 2000);
                             return;
                     }
                 }
 
-                // 완료 상태 확인
-                if (checkData.processingStatus === 'completed' && checkData.groupsCount > 0 && checkData.chunksExist) {
+                // 완료 상태 확인 - 단순화된 조건
+                // 프로세싱 상태가 'completed'이면 완료로 간주
+                if (checkData.processingStatus === 'completed') {
                     // 데이터 일관성 확인 카운터 증가
                     dataConsistencyCounter++;
                     console.log(`[완료 확인] 데이터 일관성 체크: ${dataConsistencyCounter}/${requiredConsistentChecks}`);
@@ -696,10 +736,10 @@ export default function BottomSheet() {
                     if (dataConsistencyCounter >= requiredConsistentChecks) {
                         console.log('[데이터 준비 완료] 리다이렉트 준비');
 
-                        // 완료 상태에서 추가 지연 (완료 메시지를 볼 수 있도록)
-                        await new Promise(resolve => setTimeout(resolve, 3000));
-
-                        handleRedirect(contentId);
+                        // 완료 UI 표시 후 짧은 지연 후 리다이렉트
+                        setTimeout(() => {
+                            handleRedirect(contentId);
+                        }, 1500);
                         return;
                     }
                 } else {
@@ -714,8 +754,12 @@ export default function BottomSheet() {
                     return;
                 }
 
+                // 응답 시간에 따른 적응형 폴링 간격 계산
+                const responseTime = Date.now() - startTime;
+                const adaptiveInterval = Math.max(1000, Math.min(pollInterval, 3000 - responseTime));
+
                 // 계속 폴링
-                setTimeout(checkReadyStatus, pollInterval);
+                setTimeout(checkReadyStatus, adaptiveInterval);
             } catch (error) {
                 console.error('[데이터 확인 오류]', error);
 

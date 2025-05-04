@@ -26,9 +26,13 @@ export async function GET(request: Request) {
     try {
         const { searchParams } = new URL(request.url);
         const contentId = searchParams.get('id');
+        const timestamp = Date.now(); // 현재 타임스탬프 생성
 
         if (!contentId) {
-            return NextResponse.json({ error: 'Content ID is required' }, { status: 400 });
+            return NextResponse.json({
+                error: 'Content ID is required',
+                timestamp
+            }, { status: 400 });
         }
 
         // 인증 확인
@@ -37,7 +41,10 @@ export async function GET(request: Request) {
 
         if (userError || !user) {
             console.error('Authentication error:', userError?.message);
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return NextResponse.json({
+                error: 'Unauthorized',
+                timestamp
+            }, { status: 401 });
         }
 
         // 콘텐츠 데이터 조회 (처리 상태 포함)
@@ -49,7 +56,11 @@ export async function GET(request: Request) {
 
         if (contentError) {
             console.error('Error fetching content:', contentError);
-            return NextResponse.json({ isReady: false, error: contentError.message }, { status: 404 });
+            return NextResponse.json({
+                isReady: false,
+                error: contentError.message,
+                timestamp
+            }, { status: 404 });
         }
 
         // 콘텐츠 처리 상태 확인
@@ -64,7 +75,11 @@ export async function GET(request: Request) {
 
         if (groupsError) {
             console.error('Error fetching groups:', groupsError);
-            return NextResponse.json({ isReady: false, error: groupsError.message }, { status: 404 });
+            return NextResponse.json({
+                isReady: false,
+                error: groupsError.message,
+                timestamp
+            }, { status: 404 });
         }
 
         // 그룹이 있는지만 간단히 확인 (속도 향상을 위해)
@@ -78,7 +93,8 @@ export async function GET(request: Request) {
                 currentStage: determineCurrentStage(content, [], false),
                 title: content?.title || null,
                 isProcessingComplete,
-                reason: 'Groups not created yet'
+                reason: 'Groups not created yet',
+                timestamp
             });
         }
 
@@ -96,7 +112,8 @@ export async function GET(request: Request) {
         const chunksExist = count && count > 0;
 
         // 준비 상태: 콘텐츠가 있고, 그룹이 있으며, 청크가 존재하고, 처리가 완료되었는지
-        const isReady = !!content && groups.length > 0 && chunksExist && isProcessingComplete;
+        // 단순화된 준비 상태 확인 - 처리 상태가 completed이면 준비 완료로 간주
+        const isReady = !!content && isProcessingComplete;
 
         // 모든 그룹의 청크 수 계산 (선택적)
         let totalChunksCount = 0;
@@ -125,6 +142,7 @@ export async function GET(request: Request) {
             isProcessingComplete,
             chunksExist,
             contentCreatedAt: content?.created_at,
+            timestamp, // 타임스탬프 추가
             reason: !isReady ? (
                 !content ? 'Content missing' :
                     groups.length === 0 ? 'No groups' :
@@ -138,7 +156,8 @@ export async function GET(request: Request) {
         return NextResponse.json({
             isReady: false,
             error: 'Internal server error',
-            details: error instanceof Error ? error.message : String(error)
+            details: error instanceof Error ? error.message : String(error),
+            timestamp: Date.now() // 오류 응답에도 타임스탬프 추가
         }, { status: 500 });
     }
 }
