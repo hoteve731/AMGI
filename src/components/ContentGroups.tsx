@@ -48,12 +48,16 @@ type ContentWithGroups = Content & {
 }
 
 export default function ContentGroups({ content }: { content: ContentWithGroups }) {
-    const [activeTab, setActiveTab] = useState<'notes' | 'cards' | 'groups' | 'text'>('notes');
+    const [activeTab, setActiveTab] = useState<'notes' | 'cards' | 'flashcards' | 'text'>('notes');
     const [showOriginalText, setShowOriginalText] = useState(false);
     const [showAdditionalMemory, setShowAdditionalMemory] = useState(false);
     const [editingChunkId, setEditingChunkId] = useState<string | null>(null);
     const [isDeletingChunk, setIsDeletingChunk] = useState<string | null>(null);
     const [groupOriginalTextVisibility, setGroupOriginalTextVisibility] = useState<Record<string, boolean>>({});
+    const [currentFlashcardIndex, setCurrentFlashcardIndex] = useState(0);
+    const [isFlashcardFlipped, setIsFlashcardFlipped] = useState(false);
+    const [slideDirection, setSlideDirection] = useState<'right-to-left' | 'flip'>('flip');
+    const [allChunks, setAllChunks] = useState<Chunk[]>([]);
     const router = useRouter();
     const { mutate } = useSWRConfig();
     const [isLoading, setIsLoading] = useState(false);
@@ -86,20 +90,18 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
         }
 
         setGroupOriginalTextVisibility(loadedVisibility);
+
+        // 모든 그룹의 청크를 하나의 배열로 합치기
+        const chunks: Chunk[] = [];
+        if (content?.groups) {
+            content.groups.forEach(group => {
+                if (group.chunks && Array.isArray(group.chunks)) {
+                    chunks.push(...group.chunks.filter(chunk => chunk.status !== 'inactive'));
+                }
+            });
+        }
+        setAllChunks(chunks);
     }, [content?.groups]);
-
-    const toggleGroupOriginalText = (groupId: string) => {
-        if (typeof window === 'undefined') return;
-
-        const newState = !groupOriginalTextVisibility[groupId];
-
-        localStorage.setItem(`show_original_${groupId}`, newState.toString());
-
-        setGroupOriginalTextVisibility(prev => ({
-            ...prev,
-            [groupId]: newState
-        }));
-    };
 
     // Helper function to format text with double asterisks (**) as bold text, single asterisks (*) as bold text, and handle links
     const formatBoldText = (text: string) => {
@@ -658,6 +660,41 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
         }
     };
 
+    // 플래시카드 뒤집기 함수
+    const handleFlipFlashcard = () => {
+        setSlideDirection('flip');
+        setIsFlashcardFlipped(!isFlashcardFlipped);
+    };
+
+    // 다음 플래시카드로 이동
+    const handleNextFlashcard = () => {
+        if (currentFlashcardIndex < allChunks.length - 1) {
+            setSlideDirection('right-to-left');
+            setIsFlashcardFlipped(false);
+            setCurrentFlashcardIndex(prev => prev + 1);
+        }
+    };
+
+    // 이전 플래시카드로 이동
+    const handlePrevFlashcard = () => {
+        if (currentFlashcardIndex > 0) {
+            setSlideDirection('right-to-left');
+            setIsFlashcardFlipped(false);
+            setCurrentFlashcardIndex(prev => prev - 1);
+        }
+    };
+
+    // 마스킹된 텍스트 처리
+    const processMaskedText = (text: string) => {
+        if (!text) return '';
+
+        const maskedText = text.replace(/\{\{([^{}]+)\}\}/g,
+            '<span class="inline-block bg-black w-10 h-4 rounded"></span>');
+
+        // 볼드 텍스트 처리
+        return maskedText.replace(/\*\*(.*?)\*\*/g, '<span class="font-bold text-black">$1</span>');
+    };
+
     return (
         <main className="flex min-h-screen flex-col bg-[#F8F4EF] pb-12 p-4">
             {/* 일반 로딩 오버레이 */}
@@ -717,7 +754,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                             {[
                                 { id: 'notes', label: 'Notes' },
                                 { id: 'cards', label: 'Cards' },
-                                { id: 'groups', label: 'Groups' },
+                                { id: 'flashcards', label: 'Flashcards' },
                                 { id: 'text', label: 'Transcript' }
                             ].map((tab) => {
                                 const isActive = activeTab === tab.id;
@@ -736,7 +773,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                                         )}
                                         <button
                                             onClick={() => {
-                                                setActiveTab(tab.id as 'notes' | 'cards' | 'groups' | 'text');
+                                                setActiveTab(tab.id as 'notes' | 'cards' | 'flashcards' | 'text');
                                                 localStorage.setItem(`content-${content.id}-activeTab`, tab.id);
                                             }}
                                             className={`
@@ -890,7 +927,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                                         >
                                             {isGeneratingCards ? (
                                                 <div className="flex items-center">
-                                                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                                     </svg>
@@ -899,7 +936,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                                             ) : (
                                                 <>
                                                     <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                                                     </svg>
                                                     Create memory cards
                                                 </>
@@ -911,7 +948,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                                             className="px-6 py-2.5 bg-gray-400 text-white rounded-full font-medium cursor-not-allowed shadow-sm flex items-center"
                                         >
                                             <svg className="w-5 h-5 mr-2 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                             </svg>
                                             Create notes first
                                         </button>
@@ -920,7 +957,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                                     {generationError && (
                                         <div className="mt-4 text-red-500 text-sm p-2 bg-red-50 rounded-lg">
                                             <svg className="w-4 h-4 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
                                             </svg>
                                             {generationError}
                                         </div>
@@ -932,66 +969,117 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                 </AnimatePresence>
 
                 <AnimatePresence mode="wait">
-                    {activeTab === 'groups' && (
+                    {activeTab === 'flashcards' && (
                         <motion.div
-                            key="groups"
+                            key="flashcards"
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             transition={{ duration: 0.2, ease: "easeInOut" }}
-                            className="grid grid-cols-2 gap-4"
                         >
-                            {content.groups.map((group, index) => (
-                                <div
-                                    key={group.id}
-                                    className="block relative transition-all duration-300 hover:scale-[1.02]"
-                                >
-                                    <div className="
-                                    flex flex-col
-                                    p-4 
-                                    bg-white/60
-                                    backdrop-blur-md 
-                                    rounded-xl
-                                    shadow-lg
-                                    border
-                                    border-white/20
-                                    hover:bg-white/70
-                                    transition-colors
-                                    [-webkit-backdrop-filter:blur(20px)]
-                                    [backdrop-filter:blur(20px)]
-                                ">
-                                        <Link
-                                            href={`/content/${content.id}/groups/${group.id}`}
-                                            className="flex-1 flex flex-col"
-                                            onClick={(e) => {
-                                                setIsLoading(true);
-                                                localStorage.setItem(`content_${content.id}_selected_group`, group.id.toString());
-                                            }}
-                                        >
-                                            <h3 className="text-lg font-medium text-gray-800 mb-2">{group.title}</h3>
-                                        </Link>
-                                        <div className="flex items-center justify-between mt-2">
-                                            <div className="flex items-center gap-1">
-                                                <svg
-                                                    className="w-4 h-4 text-orange-500"
-                                                    fill="none"
-                                                    stroke="currentColor"
-                                                    viewBox="0 0 24 24"
+                            {allChunks.length > 0 ? (
+                                <div className="flex flex-col items-center">
+                                    {/* 카드 진행 상태 */}
+                                    <div className="flex justify-center mb-4">
+                                        <div className="inline-flex items-center justify-center bg-white/80 backdrop-blur-sm rounded-full px-3 py-1 shadow-sm mt-4">
+                                            <span className="text-sm text-gray-800 font-bold">
+                                                {currentFlashcardIndex + 1}/{allChunks.length}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {/* 카드 표시 영역 */}
+                                    <div className="w-full overflow-hidden">
+                                        <AnimatePresence mode="wait" key={`${allChunks[currentFlashcardIndex]?.id}-${isFlashcardFlipped ? 'flipped' : 'front'}`}>
+                                            {allChunks[currentFlashcardIndex] && (
+                                                <motion.div
+                                                    key={`card-${allChunks[currentFlashcardIndex].id}`}
+                                                    initial={slideDirection === 'flip'
+                                                        ? { opacity: 0, rotateY: isFlashcardFlipped ? -90 : 90 }
+                                                        : { opacity: 0, x: 300 }
+                                                    }
+                                                    animate={slideDirection === 'flip'
+                                                        ? { opacity: 1, rotateY: 0 }
+                                                        : { opacity: 1, x: 0 }
+                                                    }
+                                                    exit={slideDirection === 'flip'
+                                                        ? { opacity: 0, rotateY: isFlashcardFlipped ? 90 : -90 }
+                                                        : { opacity: 0, x: -300 }
+                                                    }
+                                                    transition={slideDirection === 'flip'
+                                                        ? {
+                                                            type: "spring",
+                                                            stiffness: 300,
+                                                            damping: 30
+                                                        }
+                                                        : {
+                                                            type: "spring",
+                                                            stiffness: 300,
+                                                            damping: 30,
+                                                            duration: 0.3
+                                                        }
+                                                    }
+                                                    className="w-full max-w-md perspective-1000 mx-auto"
+                                                    onClick={handleFlipFlashcard}
                                                 >
-                                                    <path
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                        strokeWidth={2}
-                                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                                                    />
-                                                </svg>
-                                                <span className="text-gray-600">카드</span>
-                                                <span className="text-gray-700 font-bold">{group.chunks?.filter(c => c.id).length || 0}</span>
-                                            </div>
+                                                    <div className="w-full h-[320px] bg-white/90 backdrop-blur-md rounded-xl shadow-lg p-6 flex flex-col">
+                                                        <div
+                                                            className="text-center text-gray-800 text-lg flex-1 overflow-auto p-6"
+                                                            style={{ wordBreak: 'keep-all', overflowWrap: 'break-word', whiteSpace: 'pre-line' }}
+                                                            dangerouslySetInnerHTML={{
+                                                                __html: processMaskedText(isFlashcardFlipped
+                                                                    ? allChunks[currentFlashcardIndex].masked_text
+                                                                    : allChunks[currentFlashcardIndex].summary)
+                                                            }}
+                                                        />
+
+                                                        {!isFlashcardFlipped && (
+                                                            <div className="text-center font-semibold text-gray-400 text-sm mt-1 mb-4">
+                                                                Press to flip
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
+                                    </div>
+
+                                    {/* 이전/다음 버튼 */}
+                                    <div className="flex w-full max-w-md mt-6">
+                                        <div className="flex-1 flex justify-start">
+                                            {currentFlashcardIndex > 0 && (
+                                                <button
+                                                    onClick={handlePrevFlashcard}
+                                                    className="flex items-center justify-center p-2 rounded-full bg-white/80 backdrop-blur-sm shadow-sm hover:bg-white"
+                                                >
+                                                    <svg className="w-6 h-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                                                    </svg>
+                                                    <span className="ml-1 font-medium pr-2">Previous</span>
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        <div className="flex-1 flex justify-end">
+                                            {currentFlashcardIndex < allChunks.length - 1 && (
+                                                <button
+                                                    onClick={handleNextFlashcard}
+                                                    className="flex items-center justify-center p-2 rounded-full bg-white/80 backdrop-blur-sm shadow-sm hover:bg-white"
+                                                >
+                                                    <span className="mr-1 font-medium pl-2">Next</span>
+                                                    <svg className="w-6 h-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                                    </svg>
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
-                            ))}
+                            ) : (
+                                <div className="p-4 bg-white/80 backdrop-blur-md rounded-xl border border-white/20">
+                                    <p className="text-gray-500 text-center">이 콘텐츠에는 아직 기억카드가 없습니다.</p>
+                                </div>
+                            )}
                         </motion.div>
                     )}
                 </AnimatePresence>
