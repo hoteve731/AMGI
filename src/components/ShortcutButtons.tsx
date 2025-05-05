@@ -55,14 +55,14 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
     <>
       {/* New Note section */}
       <h3 className="text-2xl font-semibold text-black">New Note</h3>
-      <p className="text-base text-gray-600 mb-4">Upload text, pdf, or use a YouTube URL</p>
+      <p className="text-base text-gray-600 mb-4">Master complex topics, one note at a time</p>
 
       {/* Grid layout for shortcut buttons */}
       <div className="grid grid-cols-2 gap-3">
         {/* Upload Text - This one actually opens the bottom sheet */}
         <button
           onClick={handleUploadText}
-          className="flex flex-col items-center justify-center bg-white hover:bg-white/50 border border-gray-200 transition-colors duration-200 rounded-xl p-4"
+          className="flex flex-col items-center justify-center bg-white hover:bg-white/50 transition-colors duration-200 rounded-xl p-4"
         >
           <Image
             src="/images/loopadocs.png"
@@ -77,7 +77,7 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
         {/* Upload PDF - Coming soon */}
         <button
           onClick={() => handleComingSoonFeature('Upload PDF')}
-          className="flex flex-col items-center justify-center bg-white hover:bg-white/50 border border-gray-200 transition-colors duration-200 rounded-xl p-4"
+          className="flex flex-col items-center justify-center bg-white hover:bg-white/50 transition-colors duration-200 rounded-xl p-4"
         >
           <Image
             src="/images/loopapdf.png"
@@ -92,7 +92,7 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
         {/* Web link - Coming soon */}
         <button
           onClick={() => handleComingSoonFeature('Web link')}
-          className="flex flex-col items-center justify-center bg-white hover:bg-white/50 border border-gray-200 transition-colors duration-200 rounded-xl p-4"
+          className="flex flex-col items-center justify-center bg-white hover:bg-white/50 transition-colors duration-200 rounded-xl p-4"
         >
           <Image
             src="/images/loopalink.png"
@@ -107,7 +107,7 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
         {/* Make visual map - Coming soon */}
         <button
           onClick={() => handleComingSoonFeature('Make visual map')}
-          className="flex flex-col items-center justify-center bg-[#5f4bb6]/40 hover:bg-[#5f4bb6]/50 border border-gray-200 transition-colors duration-200 rounded-xl p-4"
+          className="flex flex-col items-center justify-center bg-[#5f4bb6]/40 hover:bg-[#5f4bb6]/50 transition-colors duration-200 rounded-xl p-4"
         >
           <Image
             src="/images/loopamap.png"

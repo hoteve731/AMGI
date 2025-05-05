@@ -217,7 +217,7 @@ const SideMenu: React.FC<SideMenuProps> = ({
             <div className="flex items-center justify-between h-16 px-5 bg-[#F3F5FD]">
               <div className="flex items-center gap-2">
                 <span className="text-xl tracking-tight text-black">
-                  <span className="font-bold">LOOPA</span> <span className="font-light text-gray-600">AI Notes</span>
+                  <span className="font-bold text-[#5F4BB6]">LOOPA</span> <span className="font-light text-gray-600">AI Notes</span>
                 </span>
               </div>
               <button
@@ -506,9 +506,9 @@ const SideMenu: React.FC<SideMenuProps> = ({
               </div>
 
               <div className="p-6 space-y-8 overflow-y-auto">
-                <div className="text-center mb-4">
-                  <p className="text-xl font-semibold text-gray-700 leading-relaxed">
-                    🔥 There's nothing <br></br>you can't understand! 🔥
+                <div className="text-center mb-2">
+                  <p className="text-xl font-semibold text-[#5F4BB6] leading-relaxed">
+                    Master complex topics with ease, one note at a time
                   </p>
                 </div>
 

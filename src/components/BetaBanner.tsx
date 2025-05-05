@@ -9,31 +9,24 @@ export default function BetaBanner() {
   return (
     <>
       {/* 베타 공지 배너 */}
-      <div className="pb-1">
-        <div className="bg-white/90 p-4 backdrop-blur-sm" style={{ minHeight: '80px', borderColor: '#5F4BB6' }}>
-          <div className="flex flex-col h-full">
-            <div className="mb-3">
-              <h3 className="font-semibold text-xl text-gray-800">You're in - Thanks for joining the beta!</h3>
-            </div>
-            <div className="mt-auto">
-              <button 
-                onClick={() => setShowFeedbackModal(true)}
-                className="text-lg text-[#7969F7] font-medium flex items-center hover:text-[#5F4BB6] transition-colors"
-              >
-                💬 Send feedback
-                <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
-            </div>
+      <div className="m-4">
+        <div className="bg-[#9A8DD0]/30 px-6 py-2 backdrop-blur-sm rounded-2xl flex items-center justify-between" style={{ minHeight: '60px' }}>
+          <div>
+            <h3 className="font-medium text-sm text-[#5F4BB6]">Feedback makes loopa better!</h3>
           </div>
+          <button
+            onClick={() => setShowFeedbackModal(true)}
+            className="bg-[#5F4BB6]/80 text-xs text-white px-4 py-2 rounded-xl font-semibold hover:bg-opacity-90 transition-colors"
+          >
+            Send
+          </button>
         </div>
       </div>
 
       {/* Feedback Modal */}
-      <FeedbackModal 
-        isOpen={showFeedbackModal} 
-        onClose={() => setShowFeedbackModal(false)} 
+      <FeedbackModal
+        isOpen={showFeedbackModal}
+        onClose={() => setShowFeedbackModal(false)}
       />
     </>
   )

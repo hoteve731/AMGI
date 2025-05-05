@@ -55,14 +55,14 @@ export const viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL('https://loopa.my'),
   title: "LOOPA - AI notes for busy learners",
-  description: "There’s nothing you can’t understand.",
+  description: "Master complex topics with ease, one note at a time",
   manifest: "/manifest.json",
   openGraph: {
     type: "website",
     locale: "ko_KR",
     url: "https://loopa.my",
     title: "LOOPA - AI notes for busy learners",
-    description: "There’s nothing you can’t understand.",
+    description: "Master complex topics with ease, one note at a time",
     siteName: "LOOPA",
     images: [
       {
@@ -76,7 +76,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "LOOPA - AI notes for busy learners",
-    description: "There’s nothing you can’t understand.",
+    description: "Master complex topics with ease, one note at a time",
     images: [
       {
         url: '/opengraph-image.png',

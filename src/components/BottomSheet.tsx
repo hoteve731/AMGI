@@ -911,7 +911,7 @@ export default function BottomSheet() {
                 <AnimatePresence>
                     {isExpanded && (
                         <motion.div
-                            className="fixed inset-0 bg-black/30 z-40"
+                            className="fixed inset-0 bg-black/30 backdrop-blur-sm z-40"
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
@@ -920,7 +920,7 @@ export default function BottomSheet() {
                     )}
                 </AnimatePresence>
 
-                <div className={`${!isExpanded ? 'bg-[#7969F7]' : 'bg-white'} rounded-t-xl shadow-lg/60 overflow-hidden z-[70] relative pb-[env(safe-area-inset-bottom,16px)]`}>
+                <div className={`${!isExpanded ? 'bg-[#5F4BB6]/80' : 'bg-white'} rounded-t-xl shadow-lg/60 overflow-hidden z-[70] relative pb-[env(safe-area-inset-bottom,16px)]`}>
                     <motion.div
                         initial={{ height: "80px" }}
                         animate={{
@@ -971,7 +971,7 @@ export default function BottomSheet() {
                                         type="button"
                                         onClick={handleSubmit}
                                         disabled={isLoading || (text.trim().length === 0 || !isLengthValid)}
-                                        className="px-4 py-1.5 bg-[#7969F7] text-white rounded-full shadow-lg/60 text-sm font-bold absolute right-4 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="px-4 py-1.5 bg-[#5F4BB6] text-white rounded-full shadow-lg/60 text-sm font-bold absolute right-4 disabled:opacity-50 disabled:cursor-not-allowed"
                                         whileHover={{ scale: (isLoading || (text.trim().length === 0 || !isLengthValid)) ? 1 : 1.05 }}
                                         whileTap={{ scale: (isLoading || (text.trim().length === 0 || !isLengthValid)) ? 1 : 0.95 }}
                                     >
@@ -999,7 +999,7 @@ export default function BottomSheet() {
                                                     id="language-select"
                                                     value={selectedLanguage}
                                                     onChange={handleLanguageChange}
-                                                    className="text-base font-normal border border-gray-400 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[#7969F7]"
+                                                    className="text-base font-normal border border-gray-400 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[#5F4BB6]"
                                                 >
                                                     <option value="English">English</option>
                                                     <option value="Korean">Korean</option>

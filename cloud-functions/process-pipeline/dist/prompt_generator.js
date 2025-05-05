@@ -47,7 +47,7 @@ function generateUnifiedChunksPrompt(language = 'English') {
    - Tractable (적절한 난이도): 너무 쉽거나 어렵지 않은 수준.`;
     const outro = `5. 출력은 반드시 위에서 설명한 **매우 엄격한 형식**("카드 N: 앞면 / 뒷면")만 포함해야 합니다. 각 카드는 반드시 새 줄로 구분하세요. 다른 어떤 종류의 설명, 머리말, 꼬리말도 절대 추가하면 안 됩니다.
 
-결과물은 반드시 ${language}로 출력하세요.`;
+앞면과 뒷면의 텍스트 결과물은 반드시 ${language}로 출력하세요.`;
     return `${intro}\n\n${outro}`;
 }
 /**
