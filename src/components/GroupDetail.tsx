@@ -833,8 +833,8 @@ export default function GroupDetail({
                 )}
 
                 {/* 기억카드 리스트 */}
-                <div className="space-y-4">
-                    <div className="space-y-4">
+                <div className="space-y-6">
+                    <div className="space-y-6">
                         {!hideCardCount && (
                             <div className="flex justify-between items-center">
                                 <div className="flex items-center">
@@ -857,7 +857,7 @@ export default function GroupDetail({
                         )}
 
                         {currentGroup.chunks && currentGroup.chunks.length > 0 ? (
-                            <div className="space-y-4">
+                            <div className="space-y-6">
                                 {currentGroup.chunks.map((chunk: Chunk, index: number) => (
                                     <div
                                         key={chunk.id}
@@ -881,7 +881,7 @@ export default function GroupDetail({
                                             {/* Review status tag - TOP LEFT */}
                                             <div className="flex items-center flex-wrap gap-2">
                                                 {/* Combined Card State and Repetition Count */}
-                                                {chunk.card_state && (
+                                                {/* {chunk.card_state && (
                                                     <div className="inline-flex items-center justify-center bg-white rounded-full px-3 py-1 border border-gray-200">
                                                         <div className="flex items-center">
                                                             <div className={`w-2 h-2 rounded-full mr-2 ${chunk.card_state === 'new' ? 'bg-[#FDFF8C]' :
@@ -901,7 +901,7 @@ export default function GroupDetail({
                                                             </div>
                                                         </div>
                                                     </div>
-                                                )}
+                                                )} */}
 
                                                 {/* Styled Last Result Tag */}
                                                 {chunk.last_result && (

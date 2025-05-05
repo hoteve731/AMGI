@@ -4,12 +4,6 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
 import { createPortal } from 'react-dom'
-import {
-  DocumentTextIcon,
-  DocumentIcon,
-  LinkIcon,
-  MapIcon
-} from '@heroicons/react/24/outline'
 
 interface ShortcutButtonsProps {
   userName?: string
@@ -54,37 +48,61 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
         {/* Upload Text - This one actually opens the bottom sheet */}
         <button
           onClick={handleUploadText}
-          className="flex flex-col items-center justify-center bg-white hover:bg-white/80 transition-colors duration-200 rounded-xl p-4"
+          className="flex flex-col items-center justify-center bg-white hover:bg-white/50 transition-colors duration-200 rounded-xl p-4"
         >
-          <DocumentTextIcon className="w-8 h-8 text-black mb-2" />
-          <span className="text-base font-semibold text-black">Upload text</span>
+          <Image
+            src="/images/loopadocs.png"
+            alt="Upload text"
+            width={80}
+            height={80}
+            className="mb-1"
+          />
+          <span className="text-base font-semibold text-black/70">Upload text</span>
         </button>
 
         {/* Upload PDF - Coming soon */}
         <button
           onClick={() => handleComingSoonFeature('Upload PDF')}
-          className="flex flex-col items-center justify-center bg-white hover:bg-white/80 transition-colors duration-200 rounded-xl p-4"
+          className="flex flex-col items-center justify-center bg-white hover:bg-white/50 border transition-colors duration-200 rounded-xl p-4"
         >
-          <DocumentIcon className="w-8 h-8 text-black mb-2" />
-          <span className="text-base font-semibold text-black">Upload PDF</span>
+          <Image
+            src="/images/loopapdf.png"
+            alt="Upload PDF"
+            width={80}
+            height={80}
+            className="mb-1"
+          />
+          <span className="text-base font-semibold text-black/70">Upload PDF</span>
         </button>
 
         {/* Web link - Coming soon */}
         <button
           onClick={() => handleComingSoonFeature('Web link')}
-          className="flex flex-col items-center justify-center bg-white hover:bg-white/80 transition-colors duration-200 rounded-xl p-4"
+          className="flex flex-col items-center justify-center bg-white hover:bg-white/50 transition-colors duration-200 rounded-xl p-4"
         >
-          <LinkIcon className="w-8 h-8 text-black mb-2" />
-          <span className="text-base font-semibold text-black">Web link</span>
+          <Image
+            src="/images/loopalink.png"
+            alt="Web link"
+            width={80}
+            height={80}
+            className="mb-1"
+          />
+          <span className="text-base font-semibold text-black/70">Web link</span>
         </button>
 
         {/* Make visual map - Coming soon */}
         <button
           onClick={() => handleComingSoonFeature('Make visual map')}
-          className="flex flex-col items-center justify-center bg-[#5f4bb6]/40 hover:bg-[#5f4bb6]/20 transition-colors duration-200 rounded-xl p-4"
+          className="flex flex-col items-center justify-center bg-[#5f4bb6]/40 hover:bg-[#5f4bb6]/50 transition-colors duration-200 rounded-xl p-4"
         >
-          <MapIcon className="w-8 h-8 text-white mb-2" />
-          <span className="text-base font-semibold text-white">Make visual map</span>
+          <Image
+            src="/images/loopamap.png"
+            alt="Make visual map"
+            width={80}
+            height={80}
+            className="mb-1"
+          />
+          <span className="text-base font-semibold text-white/70">Make visual map</span>
         </button>
       </div>
 
@@ -115,11 +133,11 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
                   </div>
                   <h3 className="text-xl font-semibold text-[#5F4BB6] mb-2">Coming Soon!</h3>
                   <p className="text-gray-600 mb-6">
-                    {modalFeature} feature is currently under development and will be available soon. Stay tuned!
+                    {modalFeature} feature is currently under development and will be available very soon.
                   </p>
                   <button
                     onClick={handleCloseModal}
-                    className="w-full py-3 bg-[#5F4BB6] hover:bg-[#4A3A9F]/80 text-white font-medium rounded-xl transition-colors duration-200"
+                    className="w-full py-3 bg-[#5F4BB6] hover:bg-[#4A3A9F]/80 text-white font-semibold rounded-xl transition-colors duration-200"
                   >
                     Got it
                   </button>

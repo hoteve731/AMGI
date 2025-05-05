@@ -132,11 +132,14 @@ export default function BottomSheet() {
     const [selectedLanguage, setSelectedLanguage] = useState<string>('English')
     // 구독 모달 상태 추가
     const [showSubscriptionModal, setShowSubscriptionModal] = useState(false)
+    // 콘텐츠 개수 캐싱을 위한 상태 추가
+    const [cachedContentCount, setCachedContentCount] = useState<number | null>(null)
+    const { mutate } = useSWRConfig();
 
     // 언어 선택 저장을 위한 로컬 스토리지 키
     const LANGUAGE_STORAGE_KEY = 'amgi_selected_language'
 
-    // 컴포넌트 마운트 시 저장된 언어 설정 불러오기
+    // 컴포넌트 마운트 시 저장된 언어 설정 불러오기 및 콘텐츠 개수 확인
     useEffect(() => {
         try {
             const savedLanguage = localStorage.getItem(LANGUAGE_STORAGE_KEY)
@@ -146,7 +149,39 @@ export default function BottomSheet() {
         } catch (error) {
             console.error('언어 설정 불러오기 실패:', error)
         }
+
+        // 콘텐츠 개수 미리 확인
+        fetchContentCount();
     }, [])
+
+    // 바텀시트가 열릴 때 콘텐츠 개수 확인
+    useEffect(() => {
+        const handleBottomSheetOpen = () => {
+            fetchContentCount();
+        };
+
+        window.addEventListener('openBottomSheet', handleBottomSheetOpen);
+        return () => {
+            window.removeEventListener('openBottomSheet', handleBottomSheetOpen);
+        };
+    }, []);
+
+    // 콘텐츠 개수를 가져오는 함수
+    const fetchContentCount = async () => {
+        try {
+            const response = await fetch('/api/contents');
+            if (response.ok) {
+                const data = await response.json();
+                const count = data.contents?.length || 0;
+                setCachedContentCount(count);
+                console.log('콘텐츠 개수 캐싱 완료:', count);
+            }
+        } catch (error) {
+            console.error('콘텐츠 개수 확인 중 오류:', error);
+            // 오류 발생 시 null로 설정하여 handleSubmit에서 재확인하도록 함
+            setCachedContentCount(null);
+        }
+    };
 
     // 언어 변경 시 로컬 스토리지에 저장
     const handleLanguageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -158,11 +193,6 @@ export default function BottomSheet() {
             console.error('언어 설정 저장 실패:', error)
         }
     }
-
-    const textLength = text.length; // 글자 수 계산
-    const isLengthValid = textLength >= MIN_LENGTH && textLength <= MAX_LENGTH;
-    const isLengthUnderMin = textLength > 0 && textLength < MIN_LENGTH; // 0보다 클 때만 미만으로 간주
-    const isLengthOverMax = textLength > MAX_LENGTH;
 
     // 토스트 기능 추가
     const { toast, removeToast, ToastContainer } = useToast();
@@ -422,7 +452,10 @@ export default function BottomSheet() {
         });
     }, [loadingProgress, loadingStatusMessage, loadingUIType, isLoading, showLoadingScreen, isBgProcessing, processingStatus]);
 
-    const { mutate } = useSWRConfig();
+    const textLength = text.length; // 글자 수 계산
+    const isLengthValid = textLength >= MIN_LENGTH && textLength <= MAX_LENGTH;
+    const isLengthUnderMin = textLength > 0 && textLength < MIN_LENGTH; // 0보다 클 때만 미만으로 간주
+    const isLengthOverMax = textLength > MAX_LENGTH;
 
     // 폼 제출 처리
     const handleSubmit = async (e?: React.FormEvent) => {
@@ -433,22 +466,31 @@ export default function BottomSheet() {
             return;
         }
 
-        // 콘텐츠 개수 확인
-        try {
-            const response = await fetch('/api/contents');
-            if (response.ok) {
-                const data = await response.json();
-                const contentCount = data.contents?.length || 0;
+        // 캐싱된 콘텐츠 개수 확인
+        if (cachedContentCount !== null && cachedContentCount >= MAX_FREE_CONTENTS) {
+            setShowSubscriptionModal(true);
+            return;
+        }
 
-                // 무료 콘텐츠 제한 초과 시 구독 모달 표시
-                if (contentCount >= MAX_FREE_CONTENTS) {
-                    setShowSubscriptionModal(true);
-                    return;
+        // 캐싱된 값이 없는 경우에만 API 호출로 확인
+        if (cachedContentCount === null) {
+            try {
+                const response = await fetch('/api/contents');
+                if (response.ok) {
+                    const data = await response.json();
+                    const contentCount = data.contents?.length || 0;
+                    setCachedContentCount(contentCount);
+
+                    // 무료 콘텐츠 제한 초과 시 구독 모달 표시
+                    if (contentCount >= MAX_FREE_CONTENTS) {
+                        setShowSubscriptionModal(true);
+                        return;
+                    }
                 }
+            } catch (error) {
+                console.error('콘텐츠 개수 확인 중 오류:', error);
+                // 오류 발생 시 계속 진행 (제한 체크 실패 시 사용자 경험 방해 방지)
             }
-        } catch (error) {
-            console.error('콘텐츠 개수 확인 중 오류:', error);
-            // 오류 발생 시 계속 진행 (제한 체크 실패 시 사용자 경험 방해 방지)
         }
 
         // 로딩 상태 설정
