@@ -12,7 +12,7 @@ interface InsertedGroup { id: string; title: string; }
 interface ParsedGroup { title: string; originalSource: string; }
 interface ParsedChunk { front: string; back: string; }
 interface SegmentRecord { id: string; content_id: string; segment_text: string; position: number; }
-interface SegmentToProcess extends SegmentRecord { additionalMemory?: string; }
+interface SegmentToProcess extends SegmentRecord { additionalMemory?: string; language?: string; }
 interface SegmentResult { success: boolean; segmentId: string; error?: string; }
 
 // --- 클라이언트 초기화 복원 ---
@@ -49,8 +49,8 @@ try {
 
 // === 단일 세그먼트 처리 함수 ===
 async function processSingleSegment(supabase: SupabaseClient, openai: OpenAI, segment: SegmentToProcess): Promise<SegmentResult> {
-    const { id: segmentId, content_id: contentId, segment_text: segmentText, position: segmentPosition, additionalMemory } = segment;
-    console.log(`[Segment ${segmentPosition}][${segmentId}] Starting processing (simplified).`);
+    const { id: segmentId, content_id: contentId, segment_text: segmentText, position: segmentPosition, additionalMemory, language = 'English' } = segment;
+    console.log(`[Segment ${segmentPosition}][${segmentId}] Starting processing (simplified) with language: ${language}.`);
 
     try {
         // 1. 세그먼트 상태 업데이트: processing_groups
@@ -98,7 +98,7 @@ async function processSingleSegment(supabase: SupabaseClient, openai: OpenAI, se
 
         try {
             // 청크 생성 (여전히 OpenAI API 사용)
-            const chunksPrompt = generateUnifiedChunksPrompt(additionalMemory);
+            const chunksPrompt = generateUnifiedChunksPrompt(language);
             const chunkCompletion = await openai.chat.completions.create({
                 model: "gpt-4.1-nano-2025-04-14",
                 messages: [{ role: "system", content: chunksPrompt }, { role: "user", content: segmentText }],
@@ -235,12 +235,12 @@ function parseChunkResult(resultText: string, contentId: string, segmentId: stri
 }
 
 // === 텍스트를 마크다운으로 변환하는 함수 ===
-async function convertTextToMarkdown(supabase: SupabaseClient, openai: OpenAI, contentId: string, text: string, additionalMemory?: string): Promise<{ success: boolean, error?: string }> {
-    console.log(`[Markdown][${contentId}] Starting markdown conversion...`);
+async function convertTextToMarkdown(supabase: SupabaseClient, openai: OpenAI, contentId: string, text: string, language: string = 'English'): Promise<{ success: boolean, error?: string }> {
+    console.log(`[Markdown][${contentId}] Starting markdown conversion with language: ${language}...`);
 
     try {
         // 1. 마크다운 변환 프롬프트 생성
-        const markdownPrompt = generateMarkdownConversionPrompt(additionalMemory);
+        const markdownPrompt = generateMarkdownConversionPrompt(language);
         console.log(`[Markdown][${contentId}] Generated markdown conversion prompt`);
 
         // 2. OpenAI API 호출
@@ -313,8 +313,10 @@ export const processTextPipeline = functions.http('processTextPipeline', async (
     try {
         console.log("Request body:", JSON.stringify(req.body));
 
-        const { contentId: reqContentId, text, userId, additionalMemory, title: reqTitle, processType = 'markdown' } = req.body;
+        const { contentId: reqContentId, text, userId, additionalMemory, title: reqTitle, processType = 'markdown', language = 'English' } = req.body;
         contentId = reqContentId as string;
+        
+        console.log(`[Main][${contentId}] Language: ${language}`);
 
         // 필수 파라미터 검증
         if (!contentId || !text || !userId) {
@@ -337,7 +339,7 @@ export const processTextPipeline = functions.http('processTextPipeline', async (
             await updateContentStatus(supabase, contentId, 'title_generated');
 
             // 마크다운 변환 실행
-            const markdownResult = await convertTextToMarkdown(supabase, openai, contentId, text, additionalMemory);
+            const markdownResult = await convertTextToMarkdown(supabase, openai, contentId, text, language);
 
             if (!markdownResult.success) {
                 console.error(`[Main][${contentId}] Markdown conversion failed:`, markdownResult.error);
@@ -402,7 +404,7 @@ export const processTextPipeline = functions.http('processTextPipeline', async (
 
             // 단일 그룹에 대한 청크 생성
             try {
-                const chunksPrompt = generateUnifiedChunksPrompt(additionalMemory);
+                const chunksPrompt = generateUnifiedChunksPrompt(language);
                 const chunkCompletion = await openai.chat.completions.create({
                     model: "gpt-4.1-nano-2025-04-14",
                     messages: [

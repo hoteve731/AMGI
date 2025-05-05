@@ -16,15 +16,12 @@
 
 
 /**
- * 통합 형식 (Cloze + 일반) 기억 카드 생성을 위한 시스템 프롬프트
- * @param additionalMemory 사용자가 기억하고 싶은 내용에 대한 선택적 입력
+ * 통합 형식 (일반) 기억 카드 생성을 위한 시스템 프롬프트
+ * @param language 사용자가 선택한 언어 (English 또는 Korean)
  * @returns 시스템 프롬프트 문자열
  */
-export function generateUnifiedChunksPrompt(additionalMemory?: string): string {
-   const intro = `입력 텍스트의 언어를 감지하여 해당 언어로만 답변하세요.
-Detect the input-text language and reply only in that language.
-
-당신은 학습과 기억력 향상을 극대화하는 효과적인 '기억 카드'를 만드는 전문가입니다. 다음 지침을 절대적으로, 예외 없이, 정확하게 따라야 합니다. 특히 카드 형식(3번 항목)을 100% 준수하는 것이 매우 중요합니다.
+export function generateUnifiedChunksPrompt(language: string = 'English'): string {
+   const intro = `당신은 학습과 기억력 향상을 극대화하는 효과적인 '기억 카드'를 만드는 전문가입니다. 다음 지침을 절대적으로, 예외 없이, 정확하게 따라야 합니다. 특히 카드 형식(3번 항목)을 100% 준수하는 것이 매우 중요합니다.
 
 1. 주어진 텍스트 그룹에 대해 가장 중요하고 기억할 만한 내용들을 중심으로 7~14개 내외의'기억 카드'를 생성하세요. 오직 주어진 텍스트 내용만을 활용해야 하며, 외부 정보를 추가하거나 내용을 변경해서는 안 됩니다.
 
@@ -51,24 +48,18 @@ Detect the input-text language and reply only in that language.
 
    const outro = `5. 출력은 반드시 위에서 설명한 **매우 엄격한 형식**("카드 N: 앞면 / 뒷면")만 포함해야 합니다. 각 카드는 반드시 새 줄로 구분하세요. 다른 어떤 종류의 설명, 머리말, 꼬리말도 절대 추가하면 안 됩니다.
 
-${additionalMemory
-         ? `6. 사용자가 특별히 기억하고 싶어하는 내용: "${additionalMemory}"
-   이 내용과 관련된 기억 카드를 최소 1개 이상 반드시 포함시키세요. 해당 내용이 카드에서 명확히 드러나도록 작성해야 합니다.`
-         : ''}`;
+결과물은 반드시 ${language}로 출력하세요.`;
    return `${intro}\n\n${outro}`;
 }
 
 
 /**
  * 텍스트를 마크다운 형식으로 변환하기 위한 시스템 프롬프트
- * @param additionalMemory 사용자가 기억하고 싶은 내용에 대한 선택적 입력
+ * @param language 사용자가 선택한 언어 (English 또는 Korean)
  * @returns 시스템 프롬프트 문자열
  */
-export function generateMarkdownConversionPrompt(additionalMemory?: string): string {
-   return `입력 텍스트의 언어를 감지하여 해당 언어로만 답변하세요.
-Detect the input-text language and reply only in that language.
-
-당신은 텍스트를 시각적으로 매력적이고 구조화된 마크다운 형식으로 변환하는 전문가입니다. 다음 지침을 따라 주어진 텍스트를 마크다운으로 변환하세요:
+export function generateMarkdownConversionPrompt(language: string = 'English'): string {
+   return `당신은 텍스트를 시각적으로 매력적이고 구조화된 마크다운 형식으로 변환하는 전문가입니다. 다음 지침을 따라 주어진 텍스트를 마크다운으로 변환하세요:
 
 1. 텍스트의 주요 내용을 분석하여 논리적인 구조로 재구성하세요:
    - 주요 주제는 # 또는 ## 헤더로, 부제목은 ### 또는 #### 헤더로 표시
@@ -94,12 +85,7 @@ Detect the input-text language and reply only in that language.
    - 비교가 필요한 내용은 표로 정리
    - 긴 텍스트 블록은 피하고 간결한 문단으로 분리
 
-${additionalMemory
-         ? `6. 사용자가 특별히 기억하고 싶어하는 내용: "${additionalMemory}"
-   이 내용과 관련된 부분은 다음과 같이 특별 처리하세요:
-   - ⭐ 이모티콘으로 시작하는 별도 섹션으로 분리
-   - 관련 내용을 표나 구조화된 리스트로 정리하여 한눈에 파악 가능하게 구성`
-         : ''}
+출력은 마크다운 형식의 텍스트만 포함해야 합니다. 설명이나 주석은 포함하지 마세요. 최종 결과물은 시각적으로 매력적이고, 구조가 명확하며, 내용의 계층과 관계가 잘 드러나야 합니다.
 
-출력은 마크다운 형식의 텍스트만 포함해야 합니다. 설명이나 주석은 포함하지 마세요. 최종 결과물은 시각적으로 매력적이고, 구조가 명확하며, 내용의 계층과 관계가 잘 드러나야 합니다.`;
+결과물은 반드시 ${language}로 출력하세요.`;
 }

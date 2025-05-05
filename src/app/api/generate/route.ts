@@ -42,7 +42,7 @@ export async function POST(req: Request) {
             )
         }
 
-        const { text, additionalMemory, processType = 'markdown' } = await req.json()
+        const { text, additionalMemory, processType = 'markdown', language = 'English' } = await req.json()
 
         if (!text || typeof text !== 'string') {
             return NextResponse.json(
@@ -64,7 +64,9 @@ export async function POST(req: Request) {
                         content: `당신은 텍스트를 분석하여 JSON {"title": string, "icon": string} 형태로 반환하세요.
 - title: 30자 이내의 글의 핵심을 나타내는 제목 (설명 없이 순수 제목만)
 - icon: 콘텐츠를 대표하는 이모지 하나
-예시: {"title":"블록체인 기초","icon":"⛓️"}`
+예시: {"title":"블록체인 기초","icon":"⛓️"}
+
+title은 반드시 ${language}로 출력하세요.`
                     },
                     { role: "user", content: text }
                 ],
@@ -133,11 +135,12 @@ export async function POST(req: Request) {
                 userId: session.user.id,
                 additionalMemory: additionalMemory || '',
                 title,
-                processType // 기본값이 'markdown'으로 변경됨
+                processType, // 기본값이 'markdown'으로 변경됨
+                language // 언어 설정 추가
             };
 
-            console.log(`[Generate API] Preparing to trigger GCF for contentId: ${contentId}, processType: ${processType}`);
-            console.log(`[Generate API] Request data: contentId=${contentId}, textLength=${text.length}, userId=${session.user.id}`);
+            console.log(`[Generate API] Preparing to trigger GCF for contentId: ${contentId}, processType: ${processType}, language: ${language}`);
+            console.log(`[Generate API] Request data: contentId=${contentId}, textLength=${text.length}, userId=${session.user.id}, language=${language}`);
 
             // GCF 호출 (fire-and-forget 방식)
             fetch(gcfUrl, {
@@ -195,7 +198,7 @@ export async function POST(req: Request) {
                     });
             });
 
-            console.log(`[Generate API] Triggered GCF processing pipeline for contentId: ${contentId}, processType: ${processType}`);
+            console.log(`[Generate API] Triggered GCF processing pipeline for contentId: ${contentId}, processType: ${processType}, language: ${language}`);
 
         } catch (error) {
             console.error('Content database error:', error)

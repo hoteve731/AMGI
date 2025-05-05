@@ -111,7 +111,6 @@ const MAX_LENGTH = 5000;
 export default function BottomSheet() {
     const router = useRouter()
     const [text, setText] = useState('')
-    const [additionalMemory, setAdditionalMemory] = useState('')
     const [isLoading, setIsLoading] = useState(false)
     const [loadingUIType, setLoadingUIType] = useState<'title' | 'group' | 'chunk' | 'complete'>('title')
     const [processingStatus, setProcessingStatus] = useState<string | null>(null)
@@ -125,9 +124,35 @@ export default function BottomSheet() {
     const [generatedTitle, setGeneratedTitle] = useState<string | null>(null)
     const [bgProcessingToastId, setBgProcessingToastId] = useState<string | null>(null)
     const textareaRef = useRef<HTMLTextAreaElement>(null)
-    const additionalMemoryRef = useRef<HTMLTextAreaElement>(null)
     const [isRedirecting, setIsRedirecting] = useState(false)
     const redirectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+    const [selectedLanguage, setSelectedLanguage] = useState<string>('English')
+
+    // 언어 선택 저장을 위한 로컬 스토리지 키
+    const LANGUAGE_STORAGE_KEY = 'amgi_selected_language'
+
+    // 컴포넌트 마운트 시 저장된 언어 설정 불러오기
+    useEffect(() => {
+        try {
+            const savedLanguage = localStorage.getItem(LANGUAGE_STORAGE_KEY)
+            if (savedLanguage) {
+                setSelectedLanguage(savedLanguage)
+            }
+        } catch (error) {
+            console.error('언어 설정 불러오기 실패:', error)
+        }
+    }, [])
+
+    // 언어 변경 시 로컬 스토리지에 저장
+    const handleLanguageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const newLanguage = e.target.value
+        setSelectedLanguage(newLanguage)
+        try {
+            localStorage.setItem(LANGUAGE_STORAGE_KEY, newLanguage)
+        } catch (error) {
+            console.error('언어 설정 저장 실패:', error)
+        }
+    }
 
     const textLength = text.length; // 글자 수 계산
     const isLengthValid = textLength >= MIN_LENGTH && textLength <= MAX_LENGTH;
@@ -138,7 +163,6 @@ export default function BottomSheet() {
     const { toast, removeToast, ToastContainer } = useToast();
 
     // 전역 상태로 사용할 컨텍스트나 상태 관리 라이브러리로 이동하는 것이 좋을 수 있음
-    const [showAdditionalMemoryInput, setShowAdditionalMemoryInput] = useState(false)
     const [isExpanded, setIsExpanded] = useState(false)
 
     // 그룹 생성과 카드 생성 단계 추적을 위한 상태 추가
@@ -214,8 +238,6 @@ export default function BottomSheet() {
 
     const resetForm = () => {
         setText('')
-        setAdditionalMemory('')
-        setShowAdditionalMemoryInput(false)
         setGeneratedTitle('')
         resetLoadingStates()
     }
@@ -397,107 +419,64 @@ export default function BottomSheet() {
 
     const { mutate } = useSWRConfig();
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+    // 폼 제출 처리
+    const handleSubmit = async (e?: React.FormEvent) => {
+        if (e) e.preventDefault();
 
-        if (!showAdditionalMemoryInput) {
-            setShowAdditionalMemoryInput(true);
-            setTimeout(() => { additionalMemoryRef.current?.focus() }, 300);
+        // 로딩 중이거나 유효하지 않은 텍스트인 경우 처리하지 않음
+        if (isLoading || text.trim().length === 0 || !isLengthValid) {
             return;
         }
 
-        // 즉시 로딩 상태 설정 (검증 전에 UI 먼저 업데이트)
+        // 로딩 상태 설정
         setIsLoading(true);
-
-        // 모달 표시 비활성화
-        // setShowLoadingScreen(true); // 로딩 화면 표시 - 주석 처리
-
-        // 입력 길이 검증
-        const trimmedText = text.trim();
-        if (trimmedText.length < 50) { // 최소 50자 필요
-            // 검증 실패 시 로딩 상태 해제
-            setIsLoading(false);
-            alert('텍스트가 너무 짧습니다. 최소 50자 이상 입력해주세요.');
-            return;
-        }
-
-        // 입력 텍스트 품질 검사 - 의미 없는 반복 문자 검사
-        const repeatedCharsPattern = /(.)\1{15,}/;  // 같은 문자가 15개 이상 연속되는 패턴
-        if (repeatedCharsPattern.test(trimmedText)) {
-            // 검증 실패 시 로딩 상태 해제
-            setIsLoading(false);
-            alert('의미 없는 반복 문자가 포함되어 있습니다. 유효한 텍스트를 입력해주세요.');
-            return;
-        }
-
-        // 의미 없는 문자열 패턴 검사
-        const meaninglessPatterns = [
-            /^[a-zA-Z0-9\s]{100,}$/,  // 랜덤 문자/숫자만 있는 경우
-            /[^\w\s\uAC00-\uD7A3.,?!;:()\-'"\[\]]{20,}/  // 특수문자가 20개 이상 연속되는 경우
-        ];
-
-        for (const pattern of meaninglessPatterns) {
-            if (pattern.test(trimmedText)) {
-                // 검증 실패 시 로딩 상태 해제
-                setIsLoading(false);
-                alert('의미 없는 텍스트 패턴이 감지되었습니다. 유효한 텍스트를 입력해주세요.');
-                return;
-            }
-        }
+        setLoadingUIType('title');
+        setLoadingProgress(5);
+        setLoadingStatusMessage('제목 생성 중...');
 
         try {
-            // 콘텐츠 제한 확인 (비동기 작업이므로 로딩 상태 유지)
-            const isAllowed = await ContentLimitManager.handleBottomSheetOpen();
-            if (!isAllowed) {
-                // 제한에 도달하면 바텀시트를 닫고 구독 모달이 표시됨
-                setIsLoading(false);
-                collapseSheet();
-                return;
-            }
-
-            // 축소된 바텀시트 (사용자 입력 화면)
-            setIsExpanded(false);
-
-            // 임시 콘텐츠 생성 및 로컬 스토리지에 저장 (실시간 표시용)
-            const tempContentId = crypto.randomUUID(); // UUID 형식으로 변경
+            // 임시 콘텐츠 생성 (UI 즉시 업데이트용)
+            const tempContentId = `temp-${Date.now()}`;
             const tempContent = {
                 id: tempContentId,
-                title: 'Generating title...',
+                title: '처리 중...',
+                status: 'paused',
                 created_at: new Date().toISOString(),
-                processing_status: 'pending',
-                isProcessing: true,
-                text_preview: trimmedText.substring(0, 50) + '...'
+                user_id: 'temp',
+                original_text: text.substring(0, 100) + (text.length > 100 ? '...' : ''),
+                content_groups: []
             };
 
-            // 로컬 스토리지에 임시 콘텐츠 저장
+            // 임시 콘텐츠 로컬 스토리지에 저장
             localStorage.setItem('temp_content', JSON.stringify(tempContent));
 
-            // 콘텐츠 생성 요청 전에 SWR 캐시를 업데이트하여 UI에 임시 콘텐츠 표시
-            mutate('/api/contents', async (currentData: any) => {
-                if (!currentData) return { contents: [tempContent] };
-                return {
-                    contents: [tempContent, ...(currentData.contents || [])]
-                };
-            }, false); // 재검증하지 않음
+            // SWR 캐시 업데이트 (UI 즉시 반영)
+            mutate('/api/contents', (data: any) => {
+                if (data && Array.isArray(data.contents)) {
+                    return {
+                        ...data,
+                        contents: [tempContent, ...data.contents]
+                    };
+                }
+                return data;
+            }, false);
 
+            // API 호출
             const generateResponse = await fetch('/api/generate', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text: trimmedText, additionalMemory }),
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    text,
+                    language: selectedLanguage
+                }),
             });
+
+            // 응답 처리
             let generateData;
-            let responseText;
-
             try {
-                responseText = await generateResponse.text();
-
-                // HTML 응답 감지
-                if (responseText.trim().toLowerCase().startsWith('<!doctype html>') ||
-                    responseText.trim().toLowerCase().startsWith('<html')) {
-                    console.error('[Submit] Received HTML instead of JSON:', responseText.substring(0, 100));
-                    throw new Error('서버에서 유효하지 않은 응답 형식이 반환되었습니다.');
-                }
-
+                const responseText = await generateResponse.text();
                 try {
                     generateData = JSON.parse(responseText);
                 } catch (parseError) {
@@ -912,16 +891,16 @@ export default function BottomSheet() {
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                         </svg>
                                     </button>
-                                    <h2 className="text-lg font-semibold text-gray-700 flex-grow text-center">Upload text</h2>
+                                    <h2 className="text-lg font-semibold text-gray-700 flex-grow text-center">Create Note</h2>
                                     <motion.button
                                         type="button"
                                         onClick={handleSubmit}
-                                        disabled={isLoading || (!showAdditionalMemoryInput && (text.trim().length === 0 || !isLengthValid))}
+                                        disabled={isLoading || (text.trim().length === 0 || !isLengthValid)}
                                         className="px-4 py-1.5 bg-[#7969F7] text-white rounded-full shadow-lg/60 text-sm font-bold absolute right-4 disabled:opacity-50 disabled:cursor-not-allowed"
-                                        whileHover={{ scale: (isLoading || (!showAdditionalMemoryInput && (text.trim().length === 0 || !isLengthValid))) ? 1 : 1.05 }}
-                                        whileTap={{ scale: (isLoading || (!showAdditionalMemoryInput && (text.trim().length === 0 || !isLengthValid))) ? 1 : 0.95 }}
+                                        whileHover={{ scale: (isLoading || (text.trim().length === 0 || !isLengthValid)) ? 1 : 1.05 }}
+                                        whileTap={{ scale: (isLoading || (text.trim().length === 0 || !isLengthValid)) ? 1 : 0.95 }}
                                     >
-                                        {showAdditionalMemoryInput ? 'Create' : 'Next'}
+                                        Create
                                     </motion.button>
                                 </div>
 
@@ -937,47 +916,33 @@ export default function BottomSheet() {
                                     </div>
                                 ) : (
                                     <form onSubmit={handleSubmit} className="flex-1 flex flex-col p-4 overflow-y-auto">
-                                        <div className="text-[#7C6FFB] font-medium text-sm mb-2">
-                                            Things that want to remember
+                                        <div className="flex justify-between items-center mt-2 mb-2">
+                                            <div className="flex items-center">
+                                                <label htmlFor="language-select" className="text-lg font-semibold text-gray-700 mr-2">🌐 Note Language</label>
+                                                
+                                                <select
+                                                    id="language-select"
+                                                    value={selectedLanguage}
+                                                    onChange={handleLanguageChange}
+                                                    className="text-base font-normal border border-gray-400 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[#7969F7]"
+                                                >
+                                                    <option value="English">English</option>
+                                                    <option value="Korean">Korean</option>
+                                                </select>
+                                            </div>
                                         </div>
-                                        <AnimatePresence mode="wait" initial={false}>
-                                            {showAdditionalMemoryInput ? (
-                                                <motion.div key="additional-memory-view" className="flex flex-col mb-3">
-                                                    <textarea
-                                                        ref={additionalMemoryRef}
-                                                        value={additionalMemory}
-                                                        onChange={(e) => setAdditionalMemory(e.target.value)}
-                                                        placeholder="(Optional) Special part you want to remember"
-                                                        className="w-full h-20 resize-none rounded-lg p-2 focus:outline-none text-base border border-gray-200 focus:border-[#A99BFF] focus:border-2 mb-2 text-gray-900"
-                                                        disabled={isLoading}
-                                                    />
-                                                    <div
-                                                        className="w-full border border-gray-200 rounded-lg p-3 bg-gray-50 text-base cursor-pointer"
-                                                        style={{ minHeight: "80px" }}
-                                                        onClick={() => setShowAdditionalMemoryInput(false)}
-                                                    >
-                                                        <div className="mb-2 text-xs text-[#7969F7] flex items-center">
-                                                            수정
-                                                        </div>
-                                                        <p className="text-gray-700 whitespace-pre-wrap text-base">{text}</p>
-                                                    </div>
-                                                </motion.div>
-                                            ) : (
-                                                <motion.div key="text-input-view" className="flex-1 flex flex-col">
-                                                    <textarea
-                                                        ref={textareaRef}
-                                                        value={text}
-                                                        onChange={(e) => setText(e.target.value)}
-                                                        placeholder="Type/paste here..."
-                                                        className={`flex-grow w-full p-3 border ${isLengthOverMax ? 'border-red-300' : 'border-gray-200'} rounded-lg resize-none focus:outline-none focus:ring-2 ${isLengthOverMax ? 'focus:ring-red-500/50' : 'focus:ring-[#9488f7]/50'} focus:border-transparent transition-shadow duration-150 text-base leading-relaxed text-gray-900`}
-                                                        disabled={isLoading}
-                                                    />
-                                                    <div className={`text-right text-xs mt-1.5 ${getCounterColor()}`}>
-                                                        {getCounterText()}
-                                                    </div>
-                                                </motion.div>
-                                            )}
-                                        </AnimatePresence>
+                                        <span className="text-sm font-normal text-gray-500 mb-4">Note will generated in this language.</span>
+                                        <textarea
+                                            ref={textareaRef}
+                                            value={text}
+                                            onChange={(e) => setText(e.target.value)}
+                                            placeholder="Type/paste here..."
+                                            className={`flex-grow w-full p-3 border ${isLengthOverMax ? 'border-red-300' : 'border-gray-200'} rounded-lg resize-none focus:outline-none focus:ring-2 ${isLengthOverMax ? 'focus:ring-red-500/50' : 'focus:ring-[#9488f7]/50'} focus:border-transparent transition-shadow duration-150 text-base leading-relaxed text-gray-900`}
+                                            disabled={isLoading}
+                                        />
+                                        <div className={`text-right text-xs mt-1.5 ${getCounterColor()}`}>
+                                            {getCounterText()}
+                                        </div>
                                     </form>
                                 )}
                             </div>
