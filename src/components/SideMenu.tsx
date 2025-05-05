@@ -121,7 +121,7 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
       await supabase.auth.signOut({ scope: 'global' });
 
       // 세션 API 호출하여 서버 측 세션도 정리
-      await fetch('/api/auth/session/logout', {
+      await fetch('/auth/session/logout', {
         method: 'POST',
         credentials: 'include',
       });
@@ -154,8 +154,9 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
             {/* Header */}
             <div className="flex items-center justify-between h-16 px-5 bg-[#F3F5FD]">
               <div className="flex items-center gap-2">
-                <Image src="/icons/translogo.png" alt="LOOPA Logo" width={32} height={32} />
-                <span className="font-semibold text-xl tracking-tight text-[#7969F7]">LOOPA</span>
+                <span className="text-xl tracking-tight text-black">
+                  <span className="font-bold">LOOPA</span> <span className="font-light text-gray-600">AI Notes</span>
+                </span>
               </div>
               <button
                 aria-label="메뉴 닫기"
@@ -415,33 +416,31 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
               </div>
 
               <div className="p-6 space-y-8 overflow-y-auto">
-                <div className="text-center mb-2">
+                <div className="text-center mb-4">
                   <p className="text-xl font-semibold text-gray-700 leading-relaxed">
-                    ✨ Review cards at optimal intervals to strengthen your memory ✨
+                  🔥 There's nothing <br></br>you can't understand! 🔥
                   </p>
                 </div>
 
                 <div>
                   <h4 className="font-bold text-gray-700 mb-3 flex items-center">
-                    <span className="mr-2">📊</span> Card Status
+                    <span className="mr-2">📝</span> Create AI Notes
                   </h4>
-                  <div className="text-sm text-gray-600 space-y-1 ml-6">
-                    <p>• New: First-time cards</p>
-                    <p>• Learning: Short interval cards</p>
-                    <p>• Review: Long interval cards</p>
-                    <p>• Due: Today's cards</p>
+                  <div className="text-sm text-gray-600 space-y-2 ml-6">
+                    <p>• Input text, PDFs, or web links to create clean note</p>
+                    <p>• Loopa extracts key information and organizes it by topic</p>
+                    <p>• Get perfectly formatted note with just one click</p>
                   </div>
                 </div>
 
                 <div>
                   <h4 className="font-bold text-gray-700 mb-3 flex items-center">
-                    <span className="mr-2">🧠</span> Memory Algorithm
+                    <span className="mr-2">💾</span> Multiple Formats
                   </h4>
-                  <div className="text-sm text-gray-600 space-y-1 ml-6">
-                    <p>• ❌ Forgotten: Reset learning</p>
-                    <p>• 😐 Recalled partially: Shorter interval</p>
-                    <p>• 😄 Recalled with effort: Standard interval</p>
-                    <p>• 👑 Immediately: Longer interval</p>
+                  <div className="text-sm text-gray-600 space-y-2 ml-6">
+                    <p>• <b>Markdown Notes</b>: Clean, organized summaries</p>
+                    <p>• <b>Flash Cards</b>: Convert notes to memory cards</p>
+                    <p>• <b>Visual Maps (Coming soon)</b>: See connections between concepts</p>
                   </div>
                 </div>
               </div>

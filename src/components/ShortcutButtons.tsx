@@ -14,6 +14,20 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
   const [modalFeature, setModalFeature] = useState('')
   const [mounted, setMounted] = useState(false)
 
+  // Function to get the image path based on the feature name
+  const getFeatureImagePath = (featureName: string): string => {
+    switch (featureName) {
+      case 'Upload PDF':
+        return '/images/loopapdf.png'
+      case 'Web link':
+        return '/images/loopalink.png'
+      case 'Make visual map':
+        return '/images/loopamap.png'
+      default:
+        return '/images/loopadocs.png'
+    }
+  }
+
   // Set mounted state to true when component mounts
   useEffect(() => {
     setMounted(true)
@@ -48,7 +62,7 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
         {/* Upload Text - This one actually opens the bottom sheet */}
         <button
           onClick={handleUploadText}
-          className="flex flex-col items-center justify-center bg-white hover:bg-white/50 transition-colors duration-200 rounded-xl p-4"
+          className="flex flex-col items-center justify-center bg-white hover:bg-white/50 border border-gray-200 transition-colors duration-200 rounded-xl p-4"
         >
           <Image
             src="/images/loopadocs.png"
@@ -63,7 +77,7 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
         {/* Upload PDF - Coming soon */}
         <button
           onClick={() => handleComingSoonFeature('Upload PDF')}
-          className="flex flex-col items-center justify-center bg-white hover:bg-white/50 border transition-colors duration-200 rounded-xl p-4"
+          className="flex flex-col items-center justify-center bg-white hover:bg-white/50 border border-gray-200 transition-colors duration-200 rounded-xl p-4"
         >
           <Image
             src="/images/loopapdf.png"
@@ -78,7 +92,7 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
         {/* Web link - Coming soon */}
         <button
           onClick={() => handleComingSoonFeature('Web link')}
-          className="flex flex-col items-center justify-center bg-white hover:bg-white/50 transition-colors duration-200 rounded-xl p-4"
+          className="flex flex-col items-center justify-center bg-white hover:bg-white/50 border border-gray-200 transition-colors duration-200 rounded-xl p-4"
         >
           <Image
             src="/images/loopalink.png"
@@ -93,7 +107,7 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
         {/* Make visual map - Coming soon */}
         <button
           onClick={() => handleComingSoonFeature('Make visual map')}
-          className="flex flex-col items-center justify-center bg-[#5f4bb6]/40 hover:bg-[#5f4bb6]/50 transition-colors duration-200 rounded-xl p-4"
+          className="flex flex-col items-center justify-center bg-[#5f4bb6]/40 hover:bg-[#5f4bb6]/50 border border-gray-200 transition-colors duration-200 rounded-xl p-4"
         >
           <Image
             src="/images/loopamap.png"
@@ -128,8 +142,13 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="text-center">
-                  <div className="w-16 h-16 bg-[#B4B6E4] rounded-full flex items-center justify-center mx-auto mb-4">
-                    <span className="text-white text-2xl">🚀</span>
+                  <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Image
+                      src={getFeatureImagePath(modalFeature)}
+                      alt={modalFeature}
+                      width={80}
+                      height={80}
+                    />
                   </div>
                   <h3 className="text-xl font-semibold text-[#5F4BB6] mb-2">Coming Soon!</h3>
                   <p className="text-gray-600 mb-6">

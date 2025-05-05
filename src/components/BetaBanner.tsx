@@ -13,9 +13,9 @@ export default function BetaBanner() {
         <div className="bg-white/90 p-4 backdrop-blur-sm" style={{ minHeight: '80px', borderColor: '#5F4BB6' }}>
           <div className="flex flex-col h-full">
             <div className="mb-3">
-              <h3 className="font-bold text-xl text-gray-800">Welcome to Loopa [Beta]</h3>
+              <h3 className="font-bold text-xl text-gray-800">You're in - Thanks for joining the beta!</h3>
               <p className="text-base text-gray-500 mt-2">
-              If you encounter any issues or have any feedback, please feel free to share it with us!
+              We value your every feedback and are committed to making Loopa the best possible tool for you.
               </p>
             </div>
             <div className="mt-auto">

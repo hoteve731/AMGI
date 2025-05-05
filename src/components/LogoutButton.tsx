@@ -16,7 +16,7 @@ export default function LogoutButton() {
             await supabase.auth.signOut({ scope: 'global' });
 
             // 세션 API 호출하여 서버 측 세션도 정리
-            await fetch('/api/auth/session/logout', {
+            await fetch('/auth/session/logout', {
                 method: 'POST',
                 credentials: 'include',
             });

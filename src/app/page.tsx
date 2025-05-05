@@ -23,7 +23,9 @@ export default async function Home() {
       <header className="flex justify-between items-center py-3 px-4 border-b border-[#D4C4B7] bg-[#F3F5FD]">
         <div className="flex items-center gap-3">
           <MenuButton />
-          <h1 className="text-2xl font-bold text-[#7969F7]">LOOPA</h1>
+          <h1 className="text-2xl text-black">
+            <span className="font-bold">LOOPA</span> <span className="font-light text-gray-500">AI Notes</span>
+          </h1>
         </div>
         <UnlimitedNotesButton />
       </header>

@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import LoginButton from './login-button'
 import Image from 'next/image'
 import { createClient } from '@/utils/supabase/server'
+import { Sparkles, BookOpen, Brain, Repeat, CheckCircle2 } from 'lucide-react'
 
 export default async function AuthPage() {
     const supabase = await createClient()
@@ -13,26 +14,29 @@ export default async function AuthPage() {
     }
 
     return (
-        <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-[#F3F5FD] to-[#E8D9C5] px-4">
-            <div className="text-center space-y-6 max-w-md w-full">
-                <div className="flex justify-center">
+        <div className="min-h-screen flex flex-col items-center justify-center bg-[#F3F5FD] px-4">
+            {/* 최상단 서비스명 */}
+            <div className="text-center mb-12">
+                <div className="flex justify-center mb-4">
                     <Image
-                        src="/icons/translogo.png"
+                        src="/images/loopaauth.png"
                         alt="LOOPA"
-                        width={80}
-                        height={80}
+                        width={300}
+                        height={300}
                         className="rounded-2xl"
                     />
                 </div>
-                <h1 className="text-4xl font-bold text-[#7969F7]">
-                    LOOPA
+                <h1 className="text-4xl text-black">
+                    <span className="font-bold">LOOPA</span> <span className="font-light text-gray-600">AI Notes</span>
                 </h1>
-                <p className="text-xl mb-8 font-light text-gray-600">
-                    AI notes for busy learners
+                <p className="text-xl text-gray-600 mt-2">
+                There’s nothing you can’t understand. 
                 </p>
             </div>
 
-            <div className="mt-16 max-w-md w-full">
+
+            {/* 로그인 버튼 */}
+            <div className="w-full max-w-md">
                 <LoginButton />
             </div>
         </div>
