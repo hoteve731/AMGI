@@ -13,7 +13,7 @@ export default async function AuthPage() {
     }
 
     return (
-        <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-[#F8F4EF] to-[#E8D9C5] px-4">
+        <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-[#F3F5FD] to-[#E8D9C5] px-4">
             <div className="text-center space-y-6 max-w-md w-full">
                 <div className="flex justify-center">
                     <Image

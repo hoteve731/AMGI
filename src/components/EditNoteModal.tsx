@@ -143,7 +143,7 @@ export default function EditNoteModal({
                                     maxLength={2}
                                 />
                                 <div className="mt-2 flex items-center">
-                                    <div className="w-12 h-12 rounded-full bg-[#F8F4F0] flex items-center justify-center text-2xl mr-3">
+                                    <div className="w-12 h-12 rounded-full bg-[#F3F5FD] flex items-center justify-center text-2xl mr-3">
                                         {icon || '📄'}
                                     </div>
                                     <span className="text-sm text-gray-500">Preview</span>

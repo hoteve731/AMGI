@@ -45,7 +45,7 @@ const firebaseConfigScript = `
 `;
 
 export const viewport = {
-  themeColor: "#F8F4EF",
+  themeColor: "#F3F5FD",
   width: "device-width",
   initialScale: 1,
   minimumScale: 1,

@@ -85,8 +85,8 @@ export default function ContentDetail({
     }
 
     return (
-        <main className="flex min-h-screen flex-col bg-gradient-to-b from-[#F8F4EF] to-[#E8D9C5]">
-            <div className="sticky top-0 bg-[#F8F4EF] border-b border-[#D4C4B7] h-12">
+        <main className="flex min-h-screen flex-col bg-gradient-to-b from-[#F3F5FD] to-[#E8D9C5]">
+            <div className="sticky top-0 bg-[#F3F5FD] border-b border-[#D4C4B7] h-12">
                 <button
                     onClick={() => router.back()}
                     className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-800"

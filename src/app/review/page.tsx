@@ -287,7 +287,7 @@ export default function ReviewPage() {
 
     if (isLoading) {
         return (
-            <div className="flex min-h-screen flex-col items-center justify-center bg-[#F8F4EF]">
+            <div className="flex min-h-screen flex-col items-center justify-center bg-[#F3F5FD]">
                 <LoadingOverlay />
             </div>
         )
@@ -295,7 +295,7 @@ export default function ReviewPage() {
 
     if (!cards || cards.length === 0) {
         return (
-            <div className="flex min-h-screen flex-col items-center justify-center bg-[#F8F4EF] p-4">
+            <div className="flex min-h-screen flex-col items-center justify-center bg-[#F3F5FD] p-4">
                 <div className="bg-white/90 backdrop-blur-md rounded-xl shadow-lg p-6 max-w-md w-full">
                     <h1 className="text-2xl font-bold text-center mb-4">복습 완료!</h1>
                     <p className="text-gray-600 text-center mb-6">
@@ -313,10 +313,10 @@ export default function ReviewPage() {
     }
 
     return (
-        <main className="flex h-screen overflow-hidden flex-col bg-[#F8F4EF] touch-none">
+        <main className="flex h-screen overflow-hidden flex-col bg-[#F3F5FD] touch-none">
             {isNavigatingBack && <LoadingOverlay />}
             {/* 헤더 */}
-            <div className="sticky top-0 bg-[#F8F4EF] border-b border-[#D4C4B7] h-12 z-50">
+            <div className="sticky top-0 bg-[#F3F5FD] border-b border-[#D4C4B7] h-12 z-50">
                 <button
                     onClick={handleGoHome}
                     className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center text-gray-600 hover:text-gray-900 transition-all duration-200 group"

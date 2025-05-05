@@ -699,7 +699,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
     };
 
     return (
-        <main className="flex min-h-screen flex-col bg-[#F8F4EF] pb-12 p-4">
+        <main className="flex min-h-screen flex-col bg-[#F3F5FD] pb-12 p-4">
             {/* 일반 로딩 오버레이 */}
             {(isLoading || isDeleting || isDeletingContent || isNavigating) && <LoadingOverlay />}
 
@@ -713,7 +713,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                 // Removed onClose prop to prevent closing the modal
                 />
             )}
-            {!isGeneratingCards && <div className="sticky top-0 bg-[#F8F4EF] border-b border-[#D4C4B7] h-12 z-50">
+            {!isGeneratingCards && <div className="sticky top-0 bg-[#F3F5FD] border-b border-[#D4C4B7] h-12 z-50">
                 <button
                     onClick={handleGoBack}
                     className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center text-gray-600 hover:text-gray-900 transition-all duration-200 group"
@@ -1144,11 +1144,11 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                                     damping: 25,
                                     stiffness: 300
                                 }}
-                                className="bg-[#f8f4ef] backdrop-blur-md rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto"
+                                className="bg-[#F3F5FD] backdrop-blur-md rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto"
                                 onClick={(e) => e.stopPropagation()}
                             >
                                 {/* Modal Header */}
-                                <div className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-gray-200 bg-[#f8f4ef] backdrop-blur-md">
+                                <div className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-gray-200 bg-[#F3F5FD] backdrop-blur-md">
                                     <h2 className="text-lg font-bold text-gray-800">Edit Flashcards</h2>
                                     <button
                                         onClick={() => setShowEditCardsModal(false)}
@@ -1212,11 +1212,11 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                                     damping: 25,
                                     stiffness: 300
                                 }}
-                                className="bg-[#f8f4ef] backdrop-blur-md rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto"
+                                className="bg-[#F3F5FD] backdrop-blur-md rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto"
                                 onClick={(e) => e.stopPropagation()}
                             >
                                 {/* Modal Header */}
-                                <div className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-gray-200 bg-[#f8f4ef] backdrop-blur-md">
+                                <div className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-gray-200 bg-[#F3F5FD] backdrop-blur-md">
                                     <h2 className="text-lg font-bold text-gray-800">Full Transcript</h2>
                                     <button
                                         onClick={() => setShowFullTranscriptModal(false)}

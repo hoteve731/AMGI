@@ -50,8 +50,8 @@ export default function MigratePage() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-[#F8F4EF] to-[#E8D9C5] flex flex-col">
-            <header className="bg-[#F8F4EF] border-b border-[#D4C4B7] p-4">
+        <div className="min-h-screen bg-gradient-to-b from-[#F3F5FD] to-[#E8D9C5] flex flex-col">
+            <header className="bg-[#F3F5FD] border-b border-[#D4C4B7] p-4">
                 <div className="flex items-center justify-between max-w-4xl mx-auto">
                     <h1 className="text-xl font-bold text-[#7969F7]">관리자 - 데이터베이스 마이그레이션</h1>
                     <button

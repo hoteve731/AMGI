@@ -19,8 +19,8 @@ export default async function Home() {
   const user = session?.user
 
   return (
-    <main className="flex min-h-screen flex-col bg-[#F8F4EF]">
-      <header className="flex justify-between items-center py-3 px-4 border-b border-[#D4C4B7] bg-[#F8F4EF]">
+    <main className="flex min-h-screen flex-col bg-[#F3F5FD]">
+      <header className="flex justify-between items-center py-3 px-4 border-b border-[#D4C4B7] bg-[#F3F5FD]">
         <div className="flex items-center gap-3">
           <MenuButton />
           <h1 className="text-2xl font-bold text-[#7969F7]">LOOPA</h1>

@@ -716,10 +716,10 @@ export default function GroupDetail({
     }
 
     return (
-        <main className={`flex flex-col ${!hideHeader ? 'min-h-screen bg-[#F8F4EF]' : 'bg-[#F8F4EF]'}`}>
+        <main className={`flex flex-col ${!hideHeader ? 'min-h-screen bg-[#F3F5FD]' : 'bg-[#F3F5FD]'}`}>
             {isNavigating && <LoadingOverlay />}
             {!hideHeader && (
-                <div className="sticky top-0 bg-[#F8F4EF] border-b border-[#D4C4B7] h-12 z-50">
+                <div className="sticky top-0 bg-[#F3F5FD] border-b border-[#D4C4B7] h-12 z-50">
                     <button
                         onClick={handleGoBack}
                         className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center text-gray-600 hover:text-gray-900 transition-all duration-200 group"

@@ -361,7 +361,7 @@ export default function ContentList({ contents: externalContents, showTabs = fal
                                         </div>
 
                                         {/* Icon with circular background - positioned at vertical center on the left */}
-                                        <div className="absolute left-0 top-1/2 -translate-y-1/2 flex items-center justify-center w-12 h-12 rounded-full bg-[#F8F4F0]">
+                                        <div className="absolute left-0 top-1/2 -translate-y-1/2 flex items-center justify-center w-12 h-12 rounded-full bg-[#F3F5FD]">
                                             <span className="text-xl">{content.icon || '📄'}</span>
                                         </div>
 
