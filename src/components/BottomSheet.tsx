@@ -920,7 +920,7 @@ export default function BottomSheet() {
                     )}
                 </AnimatePresence>
 
-                <div className={`${!isExpanded ? 'bg-[#5F4BB6]/80' : 'bg-white'} rounded-t-xl shadow-lg/60 overflow-hidden z-[70] relative pb-[env(safe-area-inset-bottom,16px)]`}>
+                <div className={`${!isExpanded ? 'bg-[#5F4BB6]/80 backdrop-blur-md' : 'bg-white'} rounded-t-xl shadow-lg/60 overflow-hidden z-[70] relative pb-[env(safe-area-inset-bottom,16px)]`}>
                     <motion.div
                         initial={{ height: "80px" }}
                         animate={{
@@ -943,7 +943,7 @@ export default function BottomSheet() {
                                         Create Note
                                     </div>
                                     <div className="text-white text-base truncate">
-                                        {text ? text : 'Type/paste anything...'}
+                                        {text ? text : 'Upload anything...'}
                                     </div>
                                 </div>
                                 <div className="flex-shrink-0 ml-2">
@@ -1011,7 +1011,7 @@ export default function BottomSheet() {
                                             ref={textareaRef}
                                             value={text}
                                             onChange={(e) => setText(e.target.value)}
-                                            placeholder="Type/paste anything..."
+                                            placeholder="Upload anything..."
                                             className={`flex-grow w-full p-3 border ${isLengthOverMax ? 'border-red-300' : 'border-gray-200'} rounded-lg resize-none focus:outline-none focus:ring-2 ${isLengthOverMax ? 'focus:ring-red-500/50' : 'focus:ring-[#9488f7]/50'} focus:border-transparent transition-shadow duration-150 text-base leading-relaxed text-gray-900`}
                                             disabled={isLoading}
                                         />

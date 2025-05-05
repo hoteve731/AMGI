@@ -107,7 +107,7 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
         {/* Make visual map - Coming soon */}
         <button
           onClick={() => handleComingSoonFeature('Make visual map')}
-          className="flex flex-col items-center justify-center bg-[#5f4bb6]/40 hover:bg-[#5f4bb6]/50 transition-colors duration-200 rounded-xl p-4"
+          className="flex flex-col items-center justify-center bg-[#5f4bb6]/30 hover:bg-[#5f4bb6]/50 transition-colors duration-200 rounded-xl p-4"
         >
           <Image
             src="/images/loopamap.png"
@@ -115,8 +115,9 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
             width={80}
             height={80}
             className="mb-1"
+          
           />
-          <span className="text-base font-semibold text-white/70">Make visual map</span>
+          <span className="text-base font-semibold text-white/50">Make Diagram</span>
         </button>
       </div>
 
