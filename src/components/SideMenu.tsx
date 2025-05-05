@@ -42,7 +42,7 @@ const fetcher = async (url: string) => {
 };
 
 // 최대 콘텐츠 수 상수 정의
-const MAX_FREE_CONTENTS = 5;
+const MAX_FREE_CONTENTS = 3;
 
 const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onClose }) => {
   const router = useRouter();
@@ -149,10 +149,10 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
             animate={{ x: 0 }}
             exit={{ x: "-100%" }}
             transition={{ type: "tween", duration: 0.35 }}
-            className="fixed top-0 left-0 h-full z-[9999] w-3/4 max-w-[340px] bg-[#F8F4EF] shadow-2xl flex flex-col"
+            className="fixed top-0 left-0 h-full z-[9999] w-3/4 max-w-[340px] bg-[#F3F5FD] shadow-2xl flex flex-col"
           >
             {/* Header */}
-            <div className="flex items-center justify-between h-16 px-5 bg-[#F8F4EF]">
+            <div className="flex items-center justify-between h-16 px-5 bg-[#F3F5FD]">
               <div className="flex items-center gap-2">
                 <Image src="/icons/translogo.png" alt="LOOPA Logo" width={32} height={32} />
                 <span className="font-semibold text-xl tracking-tight text-[#7969F7]">LOOPA</span>

@@ -6,6 +6,7 @@ import LoadingScreen from './LoadingScreen'
 import { useRouter } from 'next/navigation'
 import { ContentLimitManager } from '../App'
 import { useSWRConfig } from 'swr';
+import { SparklesIcon } from "@heroicons/react/24/solid";
 
 // 토스트 타입 정의
 type ToastType = 'info' | 'success' | 'error' | 'warning' | 'bg-processing';
@@ -107,6 +108,8 @@ function useToast() {
 
 const MIN_LENGTH = 50;
 const MAX_LENGTH = 5000;
+// 최대 무료 콘텐츠 수 상수 정의
+const MAX_FREE_CONTENTS = 3;
 
 export default function BottomSheet() {
     const router = useRouter()
@@ -127,6 +130,8 @@ export default function BottomSheet() {
     const [isRedirecting, setIsRedirecting] = useState(false)
     const redirectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
     const [selectedLanguage, setSelectedLanguage] = useState<string>('English')
+    // 구독 모달 상태 추가
+    const [showSubscriptionModal, setShowSubscriptionModal] = useState(false)
 
     // 언어 선택 저장을 위한 로컬 스토리지 키
     const LANGUAGE_STORAGE_KEY = 'amgi_selected_language'
@@ -426,6 +431,24 @@ export default function BottomSheet() {
         // 로딩 중이거나 유효하지 않은 텍스트인 경우 처리하지 않음
         if (isLoading || text.trim().length === 0 || !isLengthValid) {
             return;
+        }
+
+        // 콘텐츠 개수 확인
+        try {
+            const response = await fetch('/api/contents');
+            if (response.ok) {
+                const data = await response.json();
+                const contentCount = data.contents?.length || 0;
+                
+                // 무료 콘텐츠 제한 초과 시 구독 모달 표시
+                if (contentCount >= MAX_FREE_CONTENTS) {
+                    setShowSubscriptionModal(true);
+                    return;
+                }
+            }
+        } catch (error) {
+            console.error('콘텐츠 개수 확인 중 오류:', error);
+            // 오류 발생 시 계속 진행 (제한 체크 실패 시 사용자 경험 방해 방지)
         }
 
         // 로딩 상태 설정
@@ -817,6 +840,16 @@ export default function BottomSheet() {
         window.addEventListener('openBottomSheet', handleOpenBottomSheet);
         return () => window.removeEventListener('openBottomSheet', handleOpenBottomSheet);
     }, [isLoading]);
+    
+    // 이메일로 구독 신청 기능 추가
+    const handleSubscriptionEmail = () => {
+        const emailAddress = 'loopa.service@gmail.com';
+        const subject = 'LOOPA Subscription Request';
+        const body = 'Write your subscription request here:\n\n';
+
+        window.location.href = `mailto:${emailAddress}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+        setShowSubscriptionModal(false); // 모달 닫기
+    };
 
     if (false) { // showLoadingScreen 조건을 false로 변경하여 모달이 절대 표시되지 않도록 함
         return <LoadingScreen
@@ -953,6 +986,90 @@ export default function BottomSheet() {
 
             {/* 토스트 컨테이너 표시 */}
             <ToastContainer />
+
+            {/* 구독 모달 */}
+            <AnimatePresence>
+                {showSubscriptionModal && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="fixed inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-[10000]"
+                        onClick={() => setShowSubscriptionModal(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            transition={{ type: "spring", bounce: 0.3, duration: 0.4 }}
+                            className="w-[90%] max-w-md bg-white/95 backdrop-filter backdrop-blur-md rounded-2xl p-6 shadow-2xl z-[10001] overflow-hidden border border-white/20"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="absolute top-3 right-3">
+                                <button
+                                    onClick={() => setShowSubscriptionModal(false)}
+                                    className="p-1.5 rounded-full hover:bg-gray-100 transition-colors"
+                                >
+                                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500"><line x1="4" y1="4" x2="16" y2="16" /><line x1="16" y1="4" x2="4" y2="16" /></svg>
+                                </button>
+                            </div>
+
+                            <div className="text-center mb-6">
+                                <div className="flex justify-center">
+                                    <div className="bg-[#F6F3FF] p-3 rounded-full">
+                                        <SparklesIcon className="w-8 h-8 text-[#7969F7]" />
+                                    </div>
+                                </div>
+                                <h3 className="text-xl font-bold text-gray-900">Get Unlimited notes</h3>
+                            </div>
+
+                            <div className="space-y-4 mb-6">
+                                <div className="flex items-start gap-3">
+                                    <div className="flex-shrink-0 w-6 h-6 bg-[#F6F3FF] rounded-full flex items-center justify-center">
+                                        <svg className="w-4 h-4 text-[#7969F7]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-gray-800">🚀 Unlimited notes</p>
+                                        <p className="text-sm text-gray-600">Create as many notes as you want</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-start gap-3">
+                                    <div className="flex-shrink-0 w-6 h-6 bg-[#F6F3FF] rounded-full flex items-center justify-center">
+                                        <svg className="w-4 h-4 text-[#7969F7]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-gray-800">✏️ Unlimited text characters</p>
+                                        <p className="text-sm text-gray-600">More characters, more details</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-start gap-3">
+                                    <div className="flex-shrink-0 w-6 h-6 bg-[#F6F3FF] rounded-full flex items-center justify-center">
+                                        <svg className="w-4 h-4 text-[#7969F7]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-gray-800">🖼️ Image/PDF upload support</p>
+                                        <p className="text-sm text-gray-600">Upload images and PDF to convert into notes/flashcards</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button
+                                className="w-full py-3 bg-gradient-to-r from-[#7969F7] to-[#9F94F8] text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-200 active:scale-[0.98]"
+                                onClick={handleSubscriptionEmail}
+                            >
+                                Upgrade to Premium
+                            </button>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </>
     )
 }

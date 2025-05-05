@@ -118,7 +118,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko" className="bg-[#E8DED0]">
+    <html lang="ko" className="bg-[#F3F5FD]">
       <head>
         <script dangerouslySetInnerHTML={{ __html: firebaseConfigScript }} />
       </head>

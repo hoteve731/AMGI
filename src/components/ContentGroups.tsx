@@ -713,7 +713,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                 // Removed onClose prop to prevent closing the modal
                 />
             )}
-            {!isGeneratingCards && <div className="sticky top-0 bg-[#F3F5FD] border-b border-[#D4C4B7] h-12 z-50">
+            {!isGeneratingCards && <div className="sticky top-0 bg-[#F3F5FD] border-b border-gray-200 h-12 z-50">
                 <button
                     onClick={handleGoBack}
                     className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center text-gray-600 hover:text-gray-900 transition-all duration-200 group"
