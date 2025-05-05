@@ -65,6 +65,14 @@ export async function GET(request: Request) {
                 } catch (notifyError) {
                     console.error('새 사용자 알림 전송 오류:', notifyError);
                 }
+
+                // 새 사용자에게 기본 콘텐츠 생성
+                try {
+                    await createDefaultContent(supabase, authData.user.id);
+                    console.log('기본 콘텐츠 생성 완료:', authData.user.id);
+                } catch (contentError) {
+                    console.error('기본 콘텐츠 생성 오류:', contentError);
+                }
             } else {
                 console.log('기존 사용자 로그인:', authData.user.id, authData.user.email);
             }
@@ -73,4 +81,82 @@ export async function GET(request: Request) {
 
     // 테스트 모드가 아닌 경우에만 리디렉션
     return NextResponse.redirect(`${requestUrl.origin}/`)
+}
+
+// 기본 콘텐츠 생성 함수
+async function createDefaultContent(supabase: any, userId: string) {
+    // 스티브 잡스 인용문
+    const defaultText = `There's lots of ways to be, as a person. And some people express their deep appreciation in different ways. But one of the ways that I believe people express their appreciation to the rest of humanity is to make something wonderful and put it out there.
+
+And you never meet the people. You never shake their hands. You never hear their story or tell yours. But somehow, in the act of making something with a great deal of care and love, something's transmitted there. And it's a way of expressing to the rest of our species our deep appreciation. So we need to be true to who we are and remember what's really important to us.
+
+—Steve, 2007`;
+
+    // 마크다운 형식의 콘텐츠
+    const markdownText = `# 📚 Expressing Appreciation Through Creation
+
+## Summary
+- People have various ways of expressing their identity and appreciation.
+- Creating something meaningful is a profound way to show gratitude to humanity.
+- This act of creation is often anonymous and intangible but deeply impactful.
+- It serves as a silent message of love and appreciation to others.
+- Authenticity and staying true to oneself are essential in this process.
+
+## Key Concepts
+
+### 1. Diverse Ways of Being
+- Individuals express themselves uniquely.
+- Appreciation can be conveyed in many forms.
+
+### 2. The Power of Creating
+- Making something wonderful is a form of giving.
+- The act involves care and love, transmitting emotion.
+
+### 3. Anonymity and Connection
+- No direct contact or interaction is necessary.
+- The creator and receiver may never meet or communicate.
+- The message is conveyed through the work itself.
+
+### 4. The Unspoken Message
+- The creation acts as a silent expression of gratitude.
+- It reflects our appreciation for the rest of humanity.
+
+### 5. Staying True to Our Values
+- Authenticity is vital.
+- Remembering what truly matters guides meaningful creation.
+
+## Key Takeaways
+| Aspect | Details |
+|---------|---------|
+| **Expression** | Through creating with love and care |
+| **Connection** | No need for direct interaction |
+| **Impact** | Transmits appreciation silently |
+| **Authenticity** | Be true to oneself and values |
+
+## Final Thought
+> "We need to be true to who we are and remember what's really important to us." — Steve, 2007`;
+
+    // 현재 시간 타임스탬프 (사용자의 첫 로그인 시간)
+    const now = new Date().toISOString();
+
+    // 1. 콘텐츠 기본 정보 생성
+    const { data: contentData, error: contentError } = await supabase
+        .from('contents')
+        .insert([{
+            user_id: userId,
+            title: "Expressing Appreciation Through Creation",
+            icon: "🎨",
+            original_text: defaultText,
+            additional_memory: "Remember the importance of creating with care and love",
+            chunks: [],
+            masked_chunks: [],
+            processing_status: 'completed', // 이미 처리 완료 상태로 설정
+            markdown_text: markdownText, // 마크다운 형식의 텍스트
+            created_at: now // 현재 시간으로 설정
+        }])
+        .select('id');
+
+    if (contentError) throw contentError;
+
+    return contentData[0].id;
 }

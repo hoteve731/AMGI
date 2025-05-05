@@ -24,7 +24,7 @@ export default async function Home() {
         <div className="flex items-center gap-3">
           <MenuButton />
           <h1 className="text-2xl text-black">
-            <span className="font-bold">LOOPA</span> <span className="font-light text-gray-500">AI Notes</span>
+            <span className="font-bold">LOOPA</span>
           </h1>
         </div>
         <UnlimitedNotesButton />

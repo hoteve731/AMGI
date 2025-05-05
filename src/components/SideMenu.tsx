@@ -9,7 +9,7 @@ import LoadingOverlay from "./LoadingOverlay";
 import { ChevronLeftIcon, ChevronRightIcon, DocumentTextIcon } from "@heroicons/react/24/outline";
 import { SparklesIcon, ChatBubbleOvalLeftEllipsisIcon, InformationCircleIcon, ArrowRightOnRectangleIcon } from "@heroicons/react/24/solid";
 import FeedbackModal from "./FeedbackModal";
-import { createClient } from '@/utils/supabase/client';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
 // ContentTabs와 동일한 fetcher 함수 사용
 const fetcher = async (url: string) => {
@@ -51,7 +51,8 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [showHowToUseModal, setShowHowToUseModal] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const supabase = createClient();
+  const supabase = createClientComponentClient();
+  const [user, setUser] = useState<{ email?: string; name?: string } | null>(null);
 
   const { data, error, isLoading } = useSWR<{ contents: any[] }>('/api/contents', fetcher, {
     refreshInterval: 0,  // 자동 폴링 없음
@@ -73,6 +74,26 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
       console.log('SideMenu isLoading:', isLoading);
     }
   }, [open, data, error, isLoading]);
+
+  // 사용자 정보 가져오기
+  useEffect(() => {
+    const getUserInfo = async () => {
+      const { data, error } = await supabase.auth.getUser();
+      console.log('supabase.auth.getUser data, error:', data, error);
+      const supaUser = data.user;
+      if (supaUser) {
+        console.log('setting user:', supaUser.email);
+        setUser({
+          email: supaUser.email || '',
+          name: supaUser.user_metadata?.full_name || supaUser.email?.split('@')[0] || ''
+        });
+      }
+    };
+
+    if (open) {
+      getUserInfo();
+    }
+  }, [open, supabase.auth]);
 
   const handleSubscriptionClick = () => {
     setShowSubscriptionModal(true);
@@ -201,49 +222,61 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
                   disabled={isLoggingOut}
                   className="w-full flex items-center justify-between bg-white text-gray-800 py-4 px-4 rounded-xl font-semibold shadow-sm border border-transparent hover:border-gray-300 transition-colors duration-200 active:scale-[0.98] disabled:opacity-70"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
-                      {isLoggingOut ? (
-                        <div className="relative w-5 h-5">
-                          {[0, 1, 2, 3].map((i) => (
-                            <motion.div
-                              key={i}
-                              className="absolute w-1 h-1 bg-gray-600 rounded-full"
-                              style={{
-                                left: '50%',
-                                top: '50%',
-                                transform: 'translate(-50%, -50%)',
-                              }}
-                              animate={{
-                                x: [
-                                  '0px',
-                                  `${Math.cos(i * (2 * Math.PI / 4)) * 6}px`,
-                                  '0px'
-                                ],
-                                y: [
-                                  '0px',
-                                  `${Math.sin(i * (2 * Math.PI / 4)) * 6}px`,
-                                  '0px'
-                                ],
-                              }}
-                              transition={{
-                                duration: 1.2,
-                                repeat: Infinity,
-                                delay: i * 0.1,
-                                ease: [0.4, 0, 0.2, 1],
-                                times: [0, 0.5, 1]
-                              }}
-                            />
-                          ))}
-                        </div>
-                      ) : (
-                        <ArrowRightOnRectangleIcon className="w-5 h-5 text-gray-600" />
-                      )}
+                  <div className="flex flex-col items-start">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
+                        {isLoggingOut ? (
+                          <div className="relative w-5 h-5">
+                            {[0, 1, 2, 3].map((i) => (
+                              <motion.div
+                                key={i}
+                                className="absolute w-1 h-1 bg-gray-600 rounded-full"
+                                style={{
+                                  left: '50%',
+                                  top: '50%',
+                                  transform: 'translate(-50%, -50%)',
+                                }}
+                                animate={{
+                                  x: [
+                                    '0px',
+                                    `${Math.cos(i * (2 * Math.PI / 4)) * 6}px`,
+                                    '0px'
+                                  ],
+                                  y: [
+                                    '0px',
+                                    `${Math.sin(i * (2 * Math.PI / 4)) * 6}px`,
+                                    '0px'
+                                  ],
+                                }}
+                                transition={{
+                                  duration: 1.2,
+                                  repeat: Infinity,
+                                  delay: i * 0.1,
+                                  ease: [0.4, 0, 0.2, 1],
+                                  times: [0, 0.5, 1]
+                                }}
+                              />
+                            ))}
+                          </div>
+                        ) : (
+                          <ArrowRightOnRectangleIcon className="w-5 h-5 text-gray-600" />
+                        )}
+                      </div>
+                      <span className="text-base">{isLoggingOut ? "Signing out..." : "Sign out"}</span>
                     </div>
-                    <span className="text-base">{isLoggingOut ? "Signing out..." : "Sign out"}</span>
+                    {user?.email && (
+                      <span className="text-xs text-gray-500 pl-11 mt-1 truncate">{user.email}</span>
+                    )}
                   </div>
                   {!isLoggingOut && <ChevronRightIcon className="w-5 h-5 text-gray-400" />}
                 </button>
+
+                {/* 사용자 이름 표시 */}
+                {user && (
+                  <div className="text-center mt-2 px-4">
+                    <p className="text-xs text-gray-500 truncate">{user.name}</p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -418,7 +451,7 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
               <div className="p-6 space-y-8 overflow-y-auto">
                 <div className="text-center mb-4">
                   <p className="text-xl font-semibold text-gray-700 leading-relaxed">
-                  🔥 There's nothing <br></br>you can't understand! 🔥
+                    🔥 There's nothing <br></br>you can't understand! 🔥
                   </p>
                 </div>
 
