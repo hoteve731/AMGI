@@ -504,7 +504,7 @@ export default function BottomSheet() {
             const tempContentId = `temp-${Date.now()}`;
             const tempContent = {
                 id: tempContentId,
-                title: '처리 중...',
+                title: 'Processing...',
                 status: 'paused',
                 created_at: new Date().toISOString(),
                 user_id: 'temp',

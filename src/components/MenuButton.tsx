@@ -1,11 +1,14 @@
 "use client";
 
-"use client";
-
 import React, { useState } from 'react';
 import SideMenu from './SideMenu';
 
-const MenuButton: React.FC = () => {
+interface MenuButtonProps {
+  userName?: string;
+  userEmail?: string;
+}
+
+const MenuButton: React.FC<MenuButtonProps> = ({ userName, userEmail }) => {
   const [isOpen, setIsOpen] = useState(false);
 
   const openMenu = () => setIsOpen(true);
@@ -24,10 +27,9 @@ const MenuButton: React.FC = () => {
           <line x1="4" y1="18" x2="20" y2="18" />
         </svg>
       </button>
-      <SideMenu open={isOpen} onClose={closeMenu} />
+      <SideMenu open={isOpen} onClose={closeMenu} userName={userName} userEmail={userEmail} />
     </>
   );
 };
 
 export default MenuButton;
-

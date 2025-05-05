@@ -22,7 +22,10 @@ export default async function Home() {
     <main className="flex min-h-screen flex-col bg-[#F3F5FD]">
       <header className="flex justify-between items-center py-3 px-4 border-b border-[#D4C4B7] bg-[#F3F5FD]">
         <div className="flex items-center gap-3">
-          <MenuButton />
+          <MenuButton
+            userName={user?.user_metadata?.full_name || user?.email?.split('@')[0]}
+            userEmail={user?.email}
+          />
           <h1 className="text-2xl text-black">
             <span className="font-bold">LOOPA</span>
           </h1>

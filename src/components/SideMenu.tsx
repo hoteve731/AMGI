@@ -44,7 +44,19 @@ const fetcher = async (url: string) => {
 // 최대 콘텐츠 수 상수 정의
 const MAX_FREE_CONTENTS = 3;
 
-const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onClose }) => {
+interface SideMenuProps {
+  open: boolean;
+  onClose: () => void;
+  userName?: string;
+  userEmail?: string;
+}
+
+const SideMenu: React.FC<SideMenuProps> = ({
+  open,
+  onClose,
+  userName,
+  userEmail
+}) => {
   const router = useRouter();
   const [isNavigating, setIsNavigating] = useState(false);
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
@@ -52,7 +64,9 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
   const [showHowToUseModal, setShowHowToUseModal] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const supabase = createClientComponentClient();
-  const [user, setUser] = useState<{ email?: string; name?: string } | null>(null);
+  const [user, setUser] = useState<{ email?: string; name?: string } | null>(
+    userName || userEmail ? { name: userName, email: userEmail } : null
+  );
 
   const { data, error, isLoading } = useSWR<{ contents: any[] }>('/api/contents', fetcher, {
     refreshInterval: 0,  // 자동 폴링 없음
@@ -79,21 +93,48 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
   useEffect(() => {
     const getUserInfo = async () => {
       const { data, error } = await supabase.auth.getUser();
-      console.log('supabase.auth.getUser data, error:', data, error);
-      const supaUser = data.user;
+      console.log('supabase.auth.getUser data:', data);
+      console.log('supabase.auth.getUser error:', error);
+
+      const supaUser = data?.user;
+      console.log('supaUser:', supaUser);
+
       if (supaUser) {
-        console.log('setting user:', supaUser.email);
+        const userName = supaUser.user_metadata?.full_name || supaUser.email?.split('@')[0] || '';
+        const userEmail = supaUser.email || '';
+
+        console.log('Setting user with name:', userName);
+        console.log('Setting user with email:', userEmail);
+
         setUser({
-          email: supaUser.email || '',
-          name: supaUser.user_metadata?.full_name || supaUser.email?.split('@')[0] || ''
+          email: userEmail,
+          name: userName
         });
+      } else {
+        console.log('No user found from supabase.auth.getUser');
+        // 세션에서 사용자 정보 가져오기 시도
+        const getSession = async () => {
+          const { data: sessionData } = await supabase.auth.getSession();
+          console.log('Session data:', sessionData);
+          if (sessionData?.session?.user) {
+            const sessionUser = sessionData.session.user;
+            console.log('Found user from session:', sessionUser);
+            const userName = sessionUser.user_metadata?.full_name || sessionUser.email?.split('@')[0] || '';
+            setUser({
+              email: sessionUser.email || '',
+              name: userName
+            });
+          }
+        };
+        getSession();
       }
     };
 
-    if (open) {
+    if (open && !userName && !userEmail) {
+      console.log('SideMenu opened, getting user info');
       getUserInfo();
     }
-  }, [open, supabase.auth]);
+  }, [open, supabase.auth, userName, userEmail]);
 
   const handleSubscriptionClick = () => {
     setShowSubscriptionModal(true);
@@ -188,6 +229,31 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
               </button>
             </div>
 
+            {/* 사용자 정보 영역 */}
+            <div className="px-5 py-4 bg-white/60 border-b border-gray-200/70">
+              {user ? (
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-semibold text-gray-700">
+                      Welcome, {user.name ? `${user.name}` : 'User'}
+                    </span>
+                  </div>
+                  {user.email && (
+                    <span className="text-sm text-gray-500">
+                      {user.email}
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 font-bold">
+                    ?
+                  </div>
+                  <span className="text-gray-500">사용자 정보 로딩 중...</span>
+                </div>
+              )}
+            </div>
+
             {/* 상단 버튼 영역 */}
             <div className="px-4 py-3 border-b border-gray-200/70">
               <div className="flex flex-col gap-3">
@@ -264,19 +330,10 @@ const SideMenu: React.FC<{ open: boolean; onClose: () => void; }> = ({ open, onC
                       </div>
                       <span className="text-base">{isLoggingOut ? "Signing out..." : "Sign out"}</span>
                     </div>
-                    {user?.email && (
-                      <span className="text-xs text-gray-500 pl-11 mt-1 truncate">{user.email}</span>
-                    )}
                   </div>
                   {!isLoggingOut && <ChevronRightIcon className="w-5 h-5 text-gray-400" />}
                 </button>
 
-                {/* 사용자 이름 표시 */}
-                {user && (
-                  <div className="text-center mt-2 px-4">
-                    <p className="text-xs text-gray-500 truncate">{user.name}</p>
-                  </div>
-                )}
               </div>
             </div>
 
