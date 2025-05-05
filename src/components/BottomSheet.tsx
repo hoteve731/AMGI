@@ -439,7 +439,7 @@ export default function BottomSheet() {
             if (response.ok) {
                 const data = await response.json();
                 const contentCount = data.contents?.length || 0;
-                
+
                 // 무료 콘텐츠 제한 초과 시 구독 모달 표시
                 if (contentCount >= MAX_FREE_CONTENTS) {
                     setShowSubscriptionModal(true);
@@ -840,7 +840,7 @@ export default function BottomSheet() {
         window.addEventListener('openBottomSheet', handleOpenBottomSheet);
         return () => window.removeEventListener('openBottomSheet', handleOpenBottomSheet);
     }, [isLoading]);
-    
+
     // 이메일로 구독 신청 기능 추가
     const handleSubscriptionEmail = () => {
         const emailAddress = 'loopa.service@gmail.com';
@@ -878,7 +878,7 @@ export default function BottomSheet() {
                     )}
                 </AnimatePresence>
 
-                <div className="bg-white rounded-t-xl shadow-lg/60 overflow-hidden z-[70] relative pb-[env(safe-area-inset-bottom,16px)]">
+                <div className={`${!isExpanded ? 'bg-[#7969F7]' : 'bg-white'} rounded-t-xl shadow-lg/60 overflow-hidden z-[70] relative pb-[env(safe-area-inset-bottom,16px)]`}>
                     <motion.div
                         initial={{ height: "80px" }}
                         animate={{
@@ -897,15 +897,15 @@ export default function BottomSheet() {
                                 onClick={expandSheet}
                             >
                                 <div className="w-full">
-                                    <div className="text-[#7C6FFB] font-medium text-sm mb-1">
-                                        Things that want to remember
+                                    <div className="text-white/70 font-semibold text-sm mb-1">
+                                        Create Note
                                     </div>
-                                    <div className="text-gray-400 text-base truncate">
-                                        {text ? text : 'Type/paste here...'}
+                                    <div className="text-white text-base truncate">
+                                        {text ? text : 'Type/paste anything...'}
                                     </div>
                                 </div>
                                 <div className="flex-shrink-0 ml-2">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-[#7969F7]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                                     </svg>
                                 </div>
@@ -952,7 +952,7 @@ export default function BottomSheet() {
                                         <div className="flex justify-between items-center mt-2 mb-2">
                                             <div className="flex items-center">
                                                 <label htmlFor="language-select" className="text-lg font-semibold text-gray-700 mr-2">🌐 Note Language</label>
-                                                
+
                                                 <select
                                                     id="language-select"
                                                     value={selectedLanguage}
@@ -969,7 +969,7 @@ export default function BottomSheet() {
                                             ref={textareaRef}
                                             value={text}
                                             onChange={(e) => setText(e.target.value)}
-                                            placeholder="Type/paste here..."
+                                            placeholder="Type/paste anything..."
                                             className={`flex-grow w-full p-3 border ${isLengthOverMax ? 'border-red-300' : 'border-gray-200'} rounded-lg resize-none focus:outline-none focus:ring-2 ${isLengthOverMax ? 'focus:ring-red-500/50' : 'focus:ring-[#9488f7]/50'} focus:border-transparent transition-shadow duration-150 text-base leading-relaxed text-gray-900`}
                                             disabled={isLoading}
                                         />

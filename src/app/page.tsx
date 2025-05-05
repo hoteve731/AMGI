@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/utils/supabase/server'
-import ReviewDashboard from '@/components/ReviewDashboard'
+import ShortcutButtons from '@/components/ShortcutButtons'
 import MenuButton from '@/components/MenuButton'
 import ContentList from '@/components/ContentList'
 import BottomSheet from '@/components/BottomSheet'
@@ -31,9 +31,14 @@ export default async function Home() {
       {/* 베타 공지 배너 */}
       <BetaBanner />
 
-      {/* 리뷰 대시보드 추가 - 헤더 아래, 콘텐츠 위에 */}
+      {/* 리뷰 대시보드 대신 ShortcutButtons 사용 */}
       <div className="pt-4 px-4 pb-0">
-        <ReviewDashboard userName={user?.user_metadata.full_name || user?.email} />
+        <ShortcutButtons userName={user?.user_metadata.full_name || user?.email} />
+      </div>
+
+      {/* My Notes 타이틀 추가 */}
+      <div className="px-5 pt-10">
+        <h3 className="text-2xl font-semibold text-black">My Notes</h3>
       </div>
 
       <div className="flex-1 overflow-hidden">
