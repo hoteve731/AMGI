@@ -38,7 +38,7 @@ export default function ContentDetail({
     const { mutate } = useSWRConfig()
 
     const handleDeleteContent = async () => {
-        if (!confirm('Are you sure you want to delete this content? All groups and memory cards will be deleted and this action cannot be undone.')) {
+        if (!confirm('Are you sure you want to delete this content? This action cannot be undone.')) {
             return
         }
 

@@ -328,10 +328,10 @@ exports.processTextPipeline = functions.http('processTextPipeline', async (req, 
         else if (processType === 'groups') {
             // 그룹 및 청크 생성 처리 로직 (간소화됨)
             console.log(`[Main][${contentId}] Processing type: groups and chunks (simplified)`);
-            // 콘텐츠 마크다운 텍스트 가져오기
+            // 콘텐츠 마크다운 텍스트와 언어 설정 가져오기
             const { data: contentData, error: contentError } = await supabase
                 .from('contents')
-                .select('markdown_text')
+                .select('markdown_text, language')
                 .eq('id', contentId)
                 .single();
             if (contentError || !(contentData === null || contentData === void 0 ? void 0 : contentData.markdown_text)) {
@@ -340,7 +340,9 @@ exports.processTextPipeline = functions.http('processTextPipeline', async (req, 
                 return res.status(500).send('Failed to fetch markdown text');
             }
             const markdownText = contentData.markdown_text;
-            console.log(`[Main][${contentId}] Retrieved markdown text (length: ${markdownText.length})`);
+            // 저장된 language 값을 사용하거나 기본값 사용
+            const contentLanguage = contentData.language || language;
+            console.log(`[Main][${contentId}] Retrieved markdown text (length: ${markdownText.length}), language: ${contentLanguage}`);
             // 단일 그룹 생성 (그룹 분할 없음)
             await updateContentStatus(supabase, contentId, 'groups_generating');
             console.log(`[Main][${contentId}] Creating single group with full markdown text`);
@@ -367,7 +369,7 @@ exports.processTextPipeline = functions.http('processTextPipeline', async (req, 
             console.log(`[Main][${contentId}] Generating chunks for the single group`);
             // 단일 그룹에 대한 청크 생성
             try {
-                const chunksPrompt = (0, prompt_generator_1.generateUnifiedChunksPrompt)(language);
+                const chunksPrompt = (0, prompt_generator_1.generateUnifiedChunksPrompt)(contentLanguage);
                 const chunkCompletion = await openai.chat.completions.create({
                     model: "gpt-4.1-nano-2025-04-14",
                     messages: [

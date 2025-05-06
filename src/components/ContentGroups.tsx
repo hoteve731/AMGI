@@ -208,7 +208,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
 
     const handleDeleteChunk = async (e: React.MouseEvent, chunkId: string) => {
         e.stopPropagation();
-        if (!confirm('Are you sure you want to delete this memory card?')) {
+        if (!confirm('Are you sure you want to delete this card?')) {
             return;
         }
 
@@ -293,7 +293,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
     }
 
     const handleDeleteContent = async () => {
-        if (!confirm('Are you sure you want to delete this content? All groups and memory cards will be deleted and this action cannot be undone.')) {
+        if (!confirm('Are you sure you want to delete this content? This action cannot be undone.')) {
             return
         }
 

@@ -107,7 +107,7 @@ function useToast() {
 }
 
 const MIN_LENGTH = 50;
-const MAX_LENGTH = 5000;
+const MAX_LENGTH = 20000;
 // 최대 무료 콘텐츠 수 상수 정의
 const MAX_FREE_CONTENTS = 3;
 

@@ -315,7 +315,7 @@ export const processTextPipeline = functions.http('processTextPipeline', async (
 
         const { contentId: reqContentId, text, userId, additionalMemory, title: reqTitle, processType = 'markdown', language = 'English' } = req.body;
         contentId = reqContentId as string;
-        
+
         console.log(`[Main][${contentId}] Language: ${language}`);
 
         // 필수 파라미터 검증
@@ -357,10 +357,10 @@ export const processTextPipeline = functions.http('processTextPipeline', async (
             // 그룹 및 청크 생성 처리 로직 (간소화됨)
             console.log(`[Main][${contentId}] Processing type: groups and chunks (simplified)`);
 
-            // 콘텐츠 마크다운 텍스트 가져오기
+            // 콘텐츠 마크다운 텍스트와 언어 설정 가져오기
             const { data: contentData, error: contentError } = await supabase
                 .from('contents')
-                .select('markdown_text')
+                .select('markdown_text, language')
                 .eq('id', contentId)
                 .single();
 
@@ -371,7 +371,9 @@ export const processTextPipeline = functions.http('processTextPipeline', async (
             }
 
             const markdownText = contentData.markdown_text;
-            console.log(`[Main][${contentId}] Retrieved markdown text (length: ${markdownText.length})`);
+            // 저장된 language 값을 사용하거나 기본값 사용
+            const contentLanguage = contentData.language || language;
+            console.log(`[Main][${contentId}] Retrieved markdown text (length: ${markdownText.length}), language: ${contentLanguage}`);
 
             // 단일 그룹 생성 (그룹 분할 없음)
             await updateContentStatus(supabase, contentId, 'groups_generating');
@@ -404,7 +406,7 @@ export const processTextPipeline = functions.http('processTextPipeline', async (
 
             // 단일 그룹에 대한 청크 생성
             try {
-                const chunksPrompt = generateUnifiedChunksPrompt(language);
+                const chunksPrompt = generateUnifiedChunksPrompt(contentLanguage);
                 const chunkCompletion = await openai.chat.completions.create({
                     model: "gpt-4.1-nano-2025-04-14",
                     messages: [

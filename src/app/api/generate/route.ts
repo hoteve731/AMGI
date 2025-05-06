@@ -110,7 +110,8 @@ title은 반드시 ${language}로 출력하세요.`
                     chunks: [],
                     masked_chunks: [],
                     processing_status: 'pending', // 상태 초기값 설정
-                    markdown_text: '' // 새로운 필드 추가
+                    markdown_text: '', // 새로운 필드 추가
+                    language: language // 언어 필드 추가
                 }])
                 .select('id')
 

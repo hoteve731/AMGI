@@ -473,7 +473,7 @@ export default function GroupDetail({
     const [isDeletingContent, setIsDeletingContent] = useState(false)
 
     const handleDeleteContent = async () => {
-        if (!confirm('Are you sure you want to delete this content? All groups and memory cards will be deleted and this action cannot be undone.')) {
+        if (!confirm('Are you sure you want to delete this content? This action cannot be undone.')) {
             return
         }
 
@@ -639,7 +639,7 @@ export default function GroupDetail({
     const deleteChunk = async (e: React.MouseEvent, chunkId: string) => {
         e.stopPropagation() // Prevent card click event
 
-        if (!currentGroup || !currentGroup.chunks || !confirm('Are you sure you want to delete this memory card? This action cannot be undone.')) {
+        if (!currentGroup || !currentGroup.chunks || !confirm('Are you sure you want to delete this card? This action cannot be undone.')) {
             return
         }
 
