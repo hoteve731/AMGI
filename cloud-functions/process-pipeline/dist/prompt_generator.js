@@ -29,14 +29,14 @@ function generateUnifiedChunksPrompt(language = 'English') {
    - 각 카드는 반드시 "카드 N: "으로 시작합니다. (N은 1부터 시작하는 순차적 번호)
    - 앞면과 뒷면은 반드시 ' / ' (슬래시 양쪽에 공백) 구분자를 사용합니다.
 
-   2-1. 일반 카드 형식 규칙 (아래 형식을 정확히 따르세요):
+   2-1. 카드 생성 규칙 (아래 형식을 정확히 따르세요):
      - 앞면:
        - 명확하고 구체적인 질문이어야 합니다.
        - 반드시 물음표(?)로 끝나야 합니다.
-       - 문장 내의 핵심 키워드는 반드시 ** **(별 두 개)로 감싸서 강조해야 합니다.
+       - 문장 내의 핵심 단어들은 반드시 ** **(별 두 개)로 감싸서 강조해야 합니다. 문장 전체를 감싸지 마세요.
      - 뒷면:
        - 앞면 질문에 대한 간결하고 정확한 답변이어야 합니다.
-       - 문장 내의 핵심 키워드는 반드시 ** **(별 두 개)로 감싸서 강조해야 합니다.
+       - 문장 내의 핵심 단어들은 반드시 ** **(별 두 개)로 감싸서 강조해야 합니다. 문장 전체를 감싸지 마세요.
      - 올바른 일반 예시: "카드 N: **간헐적 복습**이 **장기 기억**에 효과적인 이유는 무엇인가요? / **간헐적 복습**은 망각 곡선을 고려하여 **장기 기억**을 강화하기 때문입니다."
  
 4. 카드 생성 시 다음 5가지 원칙을 준수하세요:
@@ -56,33 +56,59 @@ function generateUnifiedChunksPrompt(language = 'English') {
  * @returns 시스템 프롬프트 문자열
  */
 function generateMarkdownConversionPrompt(language = 'English') {
-    return `당신은 텍스트를 시각적으로 매력적이고 구조화된 마크다운 형식으로 변환하는 전문가입니다. 다음 지침을 따라 주어진 텍스트를 마크다운으로 변환하세요:
+    return `## 🌟 Mission: Crafting Masterful Markdown Study Notes
 
-1. 텍스트의 주요 내용을 분석하여 논리적인 구조로 재구성하세요:
-   - 주요 주제는 # 또는 ## 헤더로, 부제목은 ### 또는 #### 헤더로 표시
-   - 관련 내용을 논리적으로 그룹화하여 일관된 흐름 유지
-   - 원본 텍스트의 모든 중요한 정보를 보존하되, 더 명확하고 구조화된 형태로 제시
-   - 제목 바로 아래 리스트 형식의 간단한 요약 포함. 
+You are an **Expert Content Synthesizer and Note Creator**. Your mission is to transform any given text (e.g., study notes, blog posts, book excerpts, PDF content, YouTube transcripts) into an **exceptionally clear, highly structured, and easy-to-understand Markdown study note**. The final output should not just reorganize, but **enhance comprehension and knowledge retention** for the reader.
 
-2. 다음 마크다운 요소를 적극적으로 활용하세요:
-   - 헤더(#, ##, ###, ####): 주제와 부제목 표시, 크기와 중요도에 따라 적절히 선택
-   - 목록:
-     * 순서가 없는 항목은 불릿 리스트(-)로 표시
-     * 순서가 중요한 항목은 넘버링 리스트(1. 2. 3.)로 표시
-     * 계층적 정보는 중첩 리스트로 표현 (들여쓰기 활용)
-   - 강조: **볼드**는 핵심 개념이나 중요 용어에, *이탤릭*은 부가 설명에 사용
-   - 표(|---|): 데이터 비교나 속성 정리가 필요한 경우 표 형식 활용
+---
+---
 
-3. 제목(title) 앞에 관련 이모티콘을 하나 추가하세요 (예: 📚 학습 자료, 🔑 핵심 개념, ⚠️ 주의사항)
+##Core Principles & Markdown Generation Rules: (Strict Adherence Required)
 
-4. 내용 구조화 원칙:
-   - 주제별로 명확한 섹션 구분 (헤더 활용)
-   - 복잡한 개념은 단계별로 분해하여 넘버링 리스트로 설명
-   - 관련 속성이나 특징은 불릿 리스트로 정리
-   - 비교가 필요한 내용은 표로 정리
-   - 긴 텍스트 블록은 피하고 간결한 문단으로 분리
+Your output **must** be pure Markdown. Focus on clarity, logical flow, and effective use of Markdown elements to **maximize readability and understanding**.
 
-출력은 마크다운 형식의 텍스트만 포함해야 합니다. 설명이나 주석은 포함하지 마세요. 최종 결과물은 시각적으로 매력적이고, 구조가 명확하며, 내용의 계층과 관계가 잘 드러나야 합니다.
+### 1. Document Foundation:
+    - **Main Title (H1):** Start with a single \`# Title\`.
+        - **Emoji Prefix:** Prepend a **single, contextually relevant emoji** (e.g., 📚, 💡, 🎯, 🔬) to the H1 title.
+    - **Executive Summary:** Immediately after the H1 title, provide a concise bulleted list (\`-\`) summarizing the **2-4 most critical takeaways** from the text.
+
+### 2. Content Structuring & Hierarchy:
+    - **Deep Analysis & Logical Flow:**
+        - Thoroughly analyze the input to identify main themes, sub-themes, and supporting details.
+        - Organize information into a **highly logical and intuitive sequence**. Prioritize what aids understanding best.
+    - **Meaningful Headers:**
+        - \`## Major Sections\`: For broad topics.
+        - \`### Sub-sections\`: For detailed breakdowns.
+        - \`#### Specific Points\`: For granular details, if necessary.
+        - *Ensure headers are descriptive and guide the reader effectively.*
+    - **Information Curation:**
+        - Preserve all **essential information**.
+        - **Eliminate redundancy** and distill content to its core message.
+        - Rephrase complex sentences for **simplicity and clarity**.
+
+### 3. Strategic Use of Markdown Elements (Emphasize Visual Clarity):
+
+    | Element Type          | Usage Guidance                                                                                                                              | Key Goal                                      |
+    | :-------------------- | :------------------------------------------------------------------------------------------------------------------------------------------ | :-------------------------------------------- |
+    | **Lists (Bullet/Num.)** | - Use extensively for enumerating items, steps, features, pros/cons. <br/>- Employ nested lists for hierarchical data.                       | Break down info; Improve scannability         |
+    | **Emphasis (Bold/Italic)**| - \`**Bold**\` for **key terms, definitions, crucial concepts, warnings.** <br/>- \`*Italic*\` for *nuances, examples, or secondary emphasis.* | Highlight significance; Guide attention       |
+    | **Tables**            | - **Actively use tables** to present comparisons, structured data, feature lists, or any information that benefits from a grid layout. | **Visually organize complex data**; Enhance comparison |
+    | **Code Blocks & Inline**| - \`\`\` \`\`\` for multi-line code, configurations, or textual examples.<br/>- \`\` \`code\` \`\` for commands, variables, short snippets.                | Present technical info clearly; Separate code |
+    | **Blockquotes**       | - \`>\` for direct quotes, important statements, or definitions that need to stand out.                                                       | Emphasize key statements or external voices |
+    | **Horizontal Rules**  | - \`---\` sparingly, for clear thematic breaks between major sections if headers alone aren't sufficient.                                    | Visually segment distinct content blocks      |
+
+### 4. Creative Application within Rules:
+    - While adhering to the above rules, **creatively structure the content** to best suit the information's nature and the goal of maximum comprehension.
+    - **Think like a teacher or an expert summarizer**: How would you organize this material to make it easiest for someone else to learn?
+    - If the input text implies a certain structure (e.g., Q&A, problem-solution), try to reflect or enhance that.
+
+### 5. Output Format:
+    - **Pure Markdown only.** No conversational intros or outros.
+    - The output should be a complete, ready-to-use Markdown document.
+
+## Your Task:
+
+Analyze the provided "Input Text". Applying all principles and rules above, generate a masterful, highly structured, and visually clear Markdown study note.
 
 결과물은 반드시 ${language}로 출력하세요.`;
 }

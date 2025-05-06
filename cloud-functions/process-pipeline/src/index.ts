@@ -250,8 +250,8 @@ async function convertTextToMarkdown(supabase: SupabaseClient, openai: OpenAI, c
                 { role: "system", content: markdownPrompt },
                 { role: "user", content: text }
             ],
-            temperature: 0,
-            max_tokens: 15000,
+            temperature: 0.1,
+            max_tokens: 20000,
         });
 
         const markdownText = markdownCompletion.choices[0]?.message?.content?.trim() || '';

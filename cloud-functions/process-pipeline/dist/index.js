@@ -240,8 +240,8 @@ async function convertTextToMarkdown(supabase, openai, contentId, text, language
                 { role: "system", content: markdownPrompt },
                 { role: "user", content: text }
             ],
-            temperature: 0,
-            max_tokens: 15000,
+            temperature: 0.1,
+            max_tokens: 20000,
         });
         const markdownText = ((_c = (_b = (_a = markdownCompletion.choices[0]) === null || _a === void 0 ? void 0 : _a.message) === null || _b === void 0 ? void 0 : _b.content) === null || _c === void 0 ? void 0 : _c.trim()) || '';
         if (!markdownText) {
