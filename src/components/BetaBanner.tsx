@@ -12,7 +12,7 @@ export default function BetaBanner() {
       <div className="m-4">
         <div className="bg-[#9A8DD0]/30 px-4 py-2 backdrop-blur-sm rounded-2xl flex items-center justify-between" style={{ minHeight: '60px' }}>
           <div>
-            <h3 className="font-medium text-sm text-[#5F4BB6]">Feedback makes loopa better!</h3>
+            <h3 className="font-medium text-base text-[#5F4BB6]">Feedback makes loopa dance!</h3>
           </div>
           <button
             onClick={() => setShowFeedbackModal(true)}

@@ -115,7 +115,7 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
             width={80}
             height={80}
             className="mb-1"
-          
+
           />
           <span className="text-base font-semibold text-white/50">Make Diagram</span>
         </button>

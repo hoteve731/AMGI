@@ -922,9 +922,9 @@ export default function BottomSheet() {
 
                 <div className={`${!isExpanded ? 'bg-[#5F4BB6]/80 backdrop-blur-md' : 'bg-white'} rounded-t-xl shadow-lg/60 overflow-hidden z-[70] relative pb-[env(safe-area-inset-bottom,16px)]`}>
                     <motion.div
-                        initial={{ height: "80px" }}
+                        initial={{ height: "60px" }}
                         animate={{
-                            height: isExpanded ? "calc(80vh - env(safe-area-inset-bottom, 16px))" : "80px",
+                            height: isExpanded ? "calc(80vh - env(safe-area-inset-bottom, 16px))" : "60px",
                             boxShadow: isExpanded ? "0 -10px 30px rgba(0, 0, 0, 0.15)" : "0 -2px 10px rgba(0, 0, 0, 0.05)"
                         }}
                         transition={{
@@ -935,20 +935,15 @@ export default function BottomSheet() {
                     >
                         {!isExpanded && (
                             <div
-                                className="p-4 h-[80px] cursor-pointer flex items-center"
+                                className="p-3 h-[60px] cursor-pointer flex items-center justify-center"
                                 onClick={expandSheet}
                             >
-                                <div className="w-full">
-                                    <div className="text-white/70 font-semibold text-sm mb-1">
-                                        Create Note
+                                <div className="flex items-center justify-center gap-2">
+                                    <div className="font-semibold text-lg bg-gradient-to-r from-white to-[#E0DDFF] text-transparent bg-clip-text">
+                                        New Note
                                     </div>
-                                    <div className="text-white text-base truncate">
-                                        {text ? text : 'Upload anything...'}
-                                    </div>
-                                </div>
-                                <div className="flex-shrink-0 ml-2">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" />
                                     </svg>
                                 </div>
                             </div>
@@ -966,7 +961,7 @@ export default function BottomSheet() {
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                         </svg>
                                     </button>
-                                    <h2 className="text-lg font-semibold text-gray-700 flex-grow text-center">Create Note</h2>
+                                    <h2 className="text-lg font-semibold text-gray-700 flex-grow text-center">New Note</h2>
                                     <motion.button
                                         type="button"
                                         onClick={handleSubmit}

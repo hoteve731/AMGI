@@ -106,8 +106,8 @@ export default function FeedbackModal({
           >
 
             <div className="flex justify-between items-center p-6 border-b border-gray-100 sticky top-0 bg-white z-10">
-              <h3 className="text-lg font-semibold text-black flex items-center gap-1.5">
-                🚀 Send Feedback
+              <h3 className="text-lg font-semibold text-black flex items-center gap-1">
+                Send Feedback
               </h3>
               <button
                 onClick={handleClose}

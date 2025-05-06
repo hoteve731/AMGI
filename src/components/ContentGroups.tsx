@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useSWRConfig } from 'swr'
@@ -49,6 +49,7 @@ type ContentWithGroups = Content & {
 }
 
 export default function ContentGroups({ content }: { content: ContentWithGroups }) {
+    const searchParams = useSearchParams();
     const [activeTab, setActiveTab] = useState<'notes' | 'flashcards' | 'text'>('notes');
     const [showOriginalText, setShowOriginalText] = useState(false);
     const [showAdditionalMemory, setShowAdditionalMemory] = useState(false);
@@ -105,6 +106,14 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
         }
         setAllChunks(chunks);
     }, [content?.groups]);
+
+    // URL 쿼리(tab) 또는 로컬스토리지에 저장된 탭 상태로 초기화
+    useEffect(() => {
+        const tabParam = searchParams.get('tab');
+        const storedTab = typeof window !== 'undefined' ? localStorage.getItem(`content-${content.id}-activeTab`) : null;
+        if (tabParam === 'flashcards') setActiveTab('flashcards');
+        else if (storedTab === 'flashcards') setActiveTab('flashcards');
+    }, [content.id, searchParams]);
 
     // Helper function to format text with double asterisks (**) as bold text, single asterisks (*) as bold text, and handle links
     const formatBoldText = (text: string) => {
@@ -629,14 +638,14 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                             setGenerationProgress(100);
                             isCompleted = true;
 
-                            // 완료 후 모달 닫기 및 페이지 새로고침
+                            // 완료 후 페이지 새로고침 대신 전체 페이지 이동으로 변경
+                            // 이렇게 하면 컴포넌트가 완전히 다시 마운트되어 모든 상태가 초기화됨
+                            localStorage.setItem(`content-${content.id}-activeTab`, 'flashcards');
+
+                            // 전체 페이지 이동 (window.location.href 사용)
                             setTimeout(() => {
-                                setIsGeneratingCards(false);
-                                localStorage.setItem(`content-${content.id}-activeTab`, 'flashcards');
-                                setTimeout(() => {
-                                    router.refresh();
-                                }, 100);
-                            }, 2000); // 완료 메시지를 2초간 보여줌
+                                window.location.href = `/content/${content.id}/groups`;
+                            }, 1000);
 
                             break;
                         }
