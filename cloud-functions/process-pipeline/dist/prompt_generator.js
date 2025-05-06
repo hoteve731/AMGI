@@ -33,11 +33,11 @@ function generateUnifiedChunksPrompt(language = 'English') {
      - 앞면:
        - 명확하고 구체적인 질문이어야 합니다.
        - 반드시 물음표(?)로 끝나야 합니다.
-       - 문장 내의 핵심 단어들은 반드시 ** **(별 두 개)로 감싸서 강조해야 합니다. 문장 전체를 감싸지 마세요.
+       - 문장 내의 핵심 단어를 ** **(별 두 개)로 감싸서 강조하세요. 문장 전체를 감싸지 마세요.
      - 뒷면:
        - 앞면 질문에 대한 간결하고 정확한 답변이어야 합니다.
-       - 문장 내의 핵심 단어들은 반드시 ** **(별 두 개)로 감싸서 강조해야 합니다. 문장 전체를 감싸지 마세요.
-     - 올바른 일반 예시: "카드 N: **간헐적 복습**이 **장기 기억**에 효과적인 이유는 무엇인가요? / **간헐적 복습**은 망각 곡선을 고려하여 **장기 기억**을 강화하기 때문입니다."
+       - 문장 내의 핵심 단어를 ** **(별 두 개)로 감싸서 강조하세요. 문장 전체를 감싸지 마세요.
+     - 올바른 일반 예시: "카드 N: 간헐적 복습이 **장기 기억**에 효과적인 이유는 무엇인가요? / 간헐적 복습은 망각 곡선을 고려하여 **장기 기억**을 강화하기 때문입니다."
  
 4. 카드 생성 시 다음 5가지 원칙을 준수하세요:
    - Focused (집중성): 하나의 명확한 개념/사실에 집중.
@@ -69,7 +69,7 @@ Your output **must** be pure Markdown. Focus on clarity, logical flow, and effec
 
 ### 1. Document Foundation:
     - **Main Title (H1):** Start with a single \`# Title\`.
-        - **Emoji Prefix:** Prepend a **single, contextually relevant emoji** (e.g., 📚, 💡, 🎯, 🔬) to the H1 title.
+        - **Emoji Prefix:** Prepend a **single, contextually relevant emoji** (e.g., 📚, 💡, 🎯, 🔬) to the H1 and H2 title.
     - **Executive Summary:** Immediately after the H1 title, provide a concise bulleted list (\`-\`) summarizing the **2-4 most critical takeaways** from the text.
 
 ### 2. Content Structuring & Hierarchy:

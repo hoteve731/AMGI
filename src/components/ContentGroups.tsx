@@ -12,6 +12,7 @@ import GroupDetail from './GroupDetail'
 import DOMPurify from 'isomorphic-dompurify';
 import EditNoteModal from './EditNoteModal'
 import { PencilIcon } from '@heroicons/react/24/outline'
+import { marked } from 'marked';
 
 type Content = {
     id: string
@@ -115,100 +116,21 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
         else if (storedTab === 'flashcards') setActiveTab('flashcards');
     }, [content.id, searchParams]);
 
-    // Helper function to format text with double asterisks (**) as bold text, single asterisks (*) as bold text, and handle links
-    const formatBoldText = (text: string) => {
-        if (!text) return '';
+    // Helper function to format bold text
+    function formatBoldText(text: string): React.ReactNode {
+        if (!text) return null;
 
-        // First handle the {{masked}} text pattern
-        const maskedPattern = /\{\{([^{}]+)\}\}/g;
-        let processedText = text.replace(maskedPattern,
-            '<span class="bg-black text-white px-1 py-0.5 rounded">$1</span>');
-
-        // Process markdown links [text](url)
-        const markdownLinkRegex = /\[([^\]]+)\]\(([^\)]+)\)/g;
-        const links: { original: string, text: string, url: string }[] = [];
-
-        // Find all markdown links and store them
-        let linkMatch;
-        while ((linkMatch = markdownLinkRegex.exec(processedText)) !== null) {
-            links.push({
-                original: linkMatch[0],  // The entire [text](url) match
-                text: linkMatch[1],      // The display text
-                url: linkMatch[2]        // The URL
-            });
-        }
-
-        // Handle direct URLs that aren't in markdown format
-        const urlRegex = /(https?:\/\/[^\s\)]+)/g;
-        let urlMatch;
-        while ((urlMatch = urlRegex.exec(processedText)) !== null) {
-            // Skip if this URL is already part of a markdown link
-            let isInLink = false;
-            for (const link of links) {
-                if (link.original.includes(urlMatch[0]) || link.url === urlMatch[0]) {
-                    isInLink = true;
-                    break;
-                }
-            }
-
-            if (!isInLink) {
-                links.push({
-                    original: urlMatch[0],
-                    text: urlMatch[0],
-                    url: urlMatch[0]
-                });
-            }
-        }
-
-        // Replace links with unique placeholders
-        links.forEach((link, i) => {
-            const placeholder = `__LINK_${i}__`;
-            processedText = processedText.replace(link.original, placeholder);
-        });
-
-        // Handle bold formatting
-        const parts = processedText.split(/(\*\*[^*]+\*\*)|(\*[^*]+\*)|(<span class="bg-black text-white px-1 py-0.5 rounded">[^<]+<\/span>)|(__LINK_\d+__)/g);
+        // Replace **text** with <strong>text</strong>
+        const parts = text.split(/(\*\*.*?\*\*)/g);
 
         return parts.map((part, index) => {
-            if (!part) return null;
-
-            // Handle masked text spans
-            if (part.startsWith('<span class="bg-black text-white px-1 py-0.5 rounded">')) {
-                return <span key={index} dangerouslySetInnerHTML={{ __html: part }} />;
-            }
-            // Handle bold text with double asterisks
-            else if (part.startsWith('**') && part.endsWith('**')) {
-                const boldText = part.slice(2, -2);
-                return <strong key={index}>{boldText}</strong>;
-            }
-            // Handle bold text with single asterisks
-            else if (part.startsWith('*') && part.endsWith('*')) {
-                const boldText = part.slice(1, -1);
-                return <strong key={index}>{boldText}</strong>;
-            }
-            // Handle link placeholders
-            else if (part.startsWith('__LINK_')) {
-                const linkIndex = parseInt(part.match(/\d+/)?.[0] || '0');
-                const link = links[linkIndex];
-
-                if (link) {
-                    // Standard markdown format: [text](url) - text is displayed, url is the link target
-                    return (
-                        <a
-                            key={index}
-                            href={link.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-purple-600 hover:underline hover:bg-purple-50 px-1 py-0.5 rounded transition-colors"
-                        >
-                            {link.text}
-                        </a>
-                    );
-                }
+            if (part.startsWith('**') && part.endsWith('**')) {
+                const content = part.slice(2, -2);
+                return <strong key={index}>{content}</strong>;
             }
             return part;
         });
-    };
+    }
 
     const handleEditClick = (e: React.MouseEvent, chunk: Chunk) => {
         e.stopPropagation();
@@ -352,181 +274,6 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
             console.error('Error during mutate in handleChunkUpdate:', error);
         }
     };
-
-    // Helper function to render markdown text as HTML
-    function renderMarkdown(markdown: string): React.ReactNode {
-        if (!markdown) return null;
-
-        // Split the text into lines to handle line-based markdown elements
-        const lines = markdown.split('\n');
-
-        // Process table data
-        let tableData: { isHeader: boolean; cells: string[] }[] = [];
-        let collectingTable = false;
-
-        // First pass: collect table data
-        lines.forEach(line => {
-            if (line.trim().startsWith('|') && line.trim().endsWith('|')) {
-                // Skip separator rows (only dashes and pipes)
-                if (line.replace(/\|/g, '').replace(/-/g, '').replace(/:/g, '').trim() === '') {
-                    if (tableData.length > 0) {
-                        // Mark the previous row as header
-                        tableData[tableData.length - 1].isHeader = true;
-                    }
-                    return;
-                }
-
-                // Add row data
-                const cells = line.split('|').filter(cell => cell.trim() !== '').map(cell => cell.trim());
-                tableData.push({ isHeader: false, cells });
-                collectingTable = true;
-            } else if (collectingTable) {
-                // End of table
-                collectingTable = false;
-            }
-        });
-
-        // Reset for second pass
-        collectingTable = false;
-        let currentTableRows: React.ReactNode[] = [];
-        let skipLines: number[] = [];
-
-        return (
-            <div className="markdown-content space-y-4">
-                {lines.map((line, lineIndex) => {
-                    // Skip lines that are part of a processed table
-                    if (skipLines.includes(lineIndex)) {
-                        return null;
-                    }
-
-                    // Handle horizontal divider
-                    if (line.trim() === '---') {
-                        return <hr key={lineIndex} className="my-4 border-t border-gray-300" />;
-                    }
-
-                    // Handle table start
-                    if (line.trim().startsWith('|') && line.trim().endsWith('|') && !collectingTable) {
-                        collectingTable = true;
-
-                        // Find all consecutive table rows
-                        let tableRows: { isHeader: boolean; cells: string[] }[] = [];
-                        let rowIndex = lineIndex;
-
-                        while (rowIndex < lines.length) {
-                            const currentLine = lines[rowIndex];
-
-                            // Skip separator rows
-                            if (currentLine.replace(/\|/g, '').replace(/-/g, '').replace(/:/g, '').trim() === '') {
-                                skipLines.push(rowIndex);
-                                rowIndex++;
-                                continue;
-                            }
-
-                            // Check if this is still a table row
-                            if (currentLine.trim().startsWith('|') && currentLine.trim().endsWith('|')) {
-                                const cells = currentLine.split('|')
-                                    .filter(cell => cell.trim() !== '')
-                                    .map(cell => cell.trim());
-
-                                tableRows.push({
-                                    isHeader: rowIndex === lineIndex, // First row is header
-                                    cells
-                                });
-
-                                skipLines.push(rowIndex);
-                                rowIndex++;
-                            } else {
-                                break;
-                            }
-                        }
-
-                        // Render the complete table
-                        return (
-                            <table key={lineIndex} className="min-w-full my-4 border-collapse">
-                                <thead className="bg-gray-100">
-                                    {tableRows.length > 0 && tableRows[0].isHeader && (
-                                        <tr>
-                                            {tableRows[0].cells.map((cell, cellIndex) => (
-                                                <th key={cellIndex} className="py-2 px-4 border border-gray-300 text-left font-medium">
-                                                    {formatBoldText(cell)}
-                                                </th>
-                                            ))}
-                                        </tr>
-                                    )}
-                                </thead>
-                                <tbody>
-                                    {tableRows
-                                        .filter((row, idx) => idx > 0 || !row.isHeader)
-                                        .map((row, rowIndex) => (
-                                            <tr key={rowIndex}>
-                                                {row.cells.map((cell, cellIndex) => (
-                                                    <td key={cellIndex} className="py-2 px-4 border border-gray-300">
-                                                        {formatBoldText(cell)}
-                                                    </td>
-                                                ))}
-                                            </tr>
-                                        ))}
-                                </tbody>
-                            </table>
-                        );
-                    }
-
-                    // Reset table collection flag if we're not on a table row
-                    if (collectingTable && !(line.trim().startsWith('|') && line.trim().endsWith('|'))) {
-                        collectingTable = false;
-                    }
-
-                    // Handle headers
-                    if (line.startsWith('# ')) {
-                        return (
-                            <h1 key={lineIndex} className="text-2xl font-bold mt-6 mb-4">
-                                {formatBoldText(line.substring(2))}
-                            </h1>
-                        );
-                    } else if (line.startsWith('## ')) {
-                        return (
-                            <h2 key={lineIndex} className="text-xl font-bold mt-5 mb-3">
-                                {formatBoldText(line.substring(3))}
-                            </h2>
-                        );
-                    } else if (line.startsWith('### ')) {
-                        return (
-                            <h3 key={lineIndex} className="text-lg font-bold mt-4 mb-2">
-                                {formatBoldText(line.substring(4))}
-                            </h3>
-                        );
-                    } else if (line.startsWith('#### ')) {
-                        return (
-                            <h4 key={lineIndex} className="mt-3 mb-2">
-                                {formatBoldText(line.substring(5))}
-                            </h4>
-                        );
-                    }
-                    // Handle list items
-                    else if (line.startsWith('* ') || line.startsWith('- ')) {
-                        return (
-                            <div key={lineIndex} className="flex ml-4 mb-2">
-                                <span className="mr-2">•</span>
-                                <div>{formatBoldText(line.substring(2))}</div>
-                            </div>
-                        );
-                    }
-                    // Handle empty lines
-                    else if (line.trim() === '') {
-                        return <div key={lineIndex} className="h-4"></div>;
-                    }
-                    // Handle normal paragraphs
-                    else {
-                        return (
-                            <p key={lineIndex} className="mb-4">
-                                {formatBoldText(line)}
-                            </p>
-                        );
-                    }
-                })}
-            </div>
-        );
-    }
 
     // 기억카드 생성 함수
     const handleGenerateMemoryCards = async () => {
@@ -818,7 +565,12 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                                 <div className="w-full">
                                     {content.markdown_text ? (
                                         <div className="flex-1 overflow-y-auto p-4">
-                                            {renderMarkdown(content.markdown_text)}
+                                            <div
+                                                className="markdown-body"
+                                                dangerouslySetInnerHTML={{
+                                                    __html: DOMPurify.sanitize(marked(content.markdown_text))
+                                                }}
+                                            />
                                         </div>
                                     ) : (
                                         <div className="flex flex-col items-center justify-center py-8">
@@ -1017,7 +769,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                                         No Flashcards yet
                                     </div>
                                     <div className="text-gray-500 mb-6 text-sm max-w-md">
-                                        Create Flashcards to study effectively!
+                                        Generate Flashcards to study effectively!
                                     </div>
 
                                     {content.markdown_text ? (
@@ -1045,7 +797,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                                                     <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                                                     </svg>
-                                                    Create
+                                                    Generate
                                                 </>
                                             )}
                                         </button>

@@ -6,7 +6,6 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import Link from 'next/link'
 import { useSWRConfig } from 'swr'
 import { motion, AnimatePresence } from 'framer-motion'
-import { marked } from 'marked'
 import DOMPurify from 'isomorphic-dompurify'
 
 type ContentGroup = {
@@ -68,21 +67,6 @@ export default function ContentDetail({
             setIsDeleting(false)
         }
     };
-
-    // Helper function to render markdown text as HTML
-    function renderMarkdown(markdown: string): string {
-        if (!markdown) return '';
-
-        // Configure marked with options
-        marked.use({
-            gfm: true, // GitHub Flavored Markdown
-            breaks: true, // Convert \n to <br>
-        });
-
-        // Sanitize the HTML output to prevent XSS attacks
-        const html = marked.parse(markdown);
-        return DOMPurify.sanitize(html);
-    }
 
     return (
         <main className="flex min-h-screen flex-col bg-gradient-to-b from-[#F3F5FD] to-[#E8D9C5]">
@@ -151,33 +135,7 @@ export default function ContentDetail({
                             exit={{ opacity: 0 }}
                             transition={{ duration: 0.2, ease: "easeInOut" }}
                         >
-                            <div className="py-6 px-3 bg-white/80 backdrop-blur-md rounded-xl border border-white/20">
-                                <div className="w-full">
-                                    {content.markdown_text ? (
-                                        <div
-                                            className="markdown-content"
-                                            dangerouslySetInnerHTML={{ __html: renderMarkdown(content.markdown_text) }}
-                                        />
-                                    ) : (
-                                        <div className="flex flex-col items-center justify-center py-8">
-                                            <div className="animate-pulse flex space-x-4">
-                                                <div className="rounded-full bg-slate-200 h-10 w-10"></div>
-                                                <div className="flex-1 space-y-6 py-1">
-                                                    <div className="h-2 bg-slate-200 rounded"></div>
-                                                    <div className="space-y-3">
-                                                        <div className="grid grid-cols-3 gap-4">
-                                                            <div className="h-2 bg-slate-200 rounded col-span-2"></div>
-                                                            <div className="h-2 bg-slate-200 rounded col-span-1"></div>
-                                                        </div>
-                                                        <div className="h-2 bg-slate-200 rounded"></div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <p className="text-gray-500 mt-4">마크다운 노트를 생성 중입니다...</p>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
+                            
                         </motion.div>
                     )}
 
