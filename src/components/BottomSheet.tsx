@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import { ContentLimitManager } from '../App'
 import { useSWRConfig } from 'swr';
 import { SparklesIcon } from "@heroicons/react/24/solid";
+import BottomSheetShortcuts from './BottomSheetShortcuts';
 
 // 토스트 타입 정의
 type ToastType = 'info' | 'success' | 'error' | 'warning' | 'bg-processing';
@@ -920,11 +921,11 @@ export default function BottomSheet() {
                     )}
                 </AnimatePresence>
 
-                <div className={`${!isExpanded ? 'bg-[#5F4BB6]/80 backdrop-blur-md' : 'bg-white'} rounded-t-xl shadow-lg/60 overflow-hidden z-[70] relative pb-[env(safe-area-inset-bottom,16px)]`}>
+                <div className={`${!isExpanded ? 'bg-[#5F4BB6]/80 backdrop-blur-md' : 'bg-white'} rounded-t-xl shadow-lg/60 overflow-hidden z-[70] relative pb-[env(safe-area-inset-bottom,16px)] max-w-[700px] mx-auto w-full`}>
                     <motion.div
                         initial={{ height: "60px" }}
                         animate={{
-                            height: isExpanded ? "calc(80vh - env(safe-area-inset-bottom, 16px))" : "60px",
+                            height: isExpanded ? "calc(50vh - env(safe-area-inset-bottom, 16px))" : "60px",
                             boxShadow: isExpanded ? "0 -10px 30px rgba(0, 0, 0, 0.15)" : "0 -2px 10px rgba(0, 0, 0, 0.05)"
                         }}
                         transition={{
@@ -940,7 +941,7 @@ export default function BottomSheet() {
                             >
                                 <div className="flex items-center justify-center gap-2">
                                     <div className="font-semibold text-lg bg-gradient-to-r from-white to-[#E0DDFF] text-transparent bg-clip-text">
-                                        New Note
+                                        New note
                                     </div>
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" />
@@ -961,17 +962,7 @@ export default function BottomSheet() {
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                         </svg>
                                     </button>
-                                    <h2 className="text-lg font-semibold text-gray-700 flex-grow text-center">New Note</h2>
-                                    <motion.button
-                                        type="button"
-                                        onClick={handleSubmit}
-                                        disabled={isLoading || (text.trim().length === 0 || !isLengthValid)}
-                                        className="px-4 py-1.5 bg-[#5F4BB6] text-white rounded-full shadow-lg/60 text-sm font-bold absolute right-4 disabled:opacity-50 disabled:cursor-not-allowed"
-                                        whileHover={{ scale: (isLoading || (text.trim().length === 0 || !isLengthValid)) ? 1 : 1.05 }}
-                                        whileTap={{ scale: (isLoading || (text.trim().length === 0 || !isLengthValid)) ? 1 : 0.95 }}
-                                    >
-                                        Create
-                                    </motion.button>
+                                    <h2 className="text-lg font-semibold text-gray-700 flex-grow text-center">Get instant notes</h2>
                                 </div>
 
                                 {isLoading ? (
@@ -986,33 +977,7 @@ export default function BottomSheet() {
                                     </div>
                                 ) : (
                                     <form onSubmit={handleSubmit} className="flex-1 flex flex-col p-4 overflow-y-auto">
-                                        <div className="flex justify-between items-center mt-2 mb-2">
-                                            <div className="flex items-center">
-                                                <label htmlFor="language-select" className="text-lg font-semibold text-gray-700 mr-2">🌐 Note Language</label>
-
-                                                <select
-                                                    id="language-select"
-                                                    value={selectedLanguage}
-                                                    onChange={handleLanguageChange}
-                                                    className="text-base font-normal border border-gray-400 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[#5F4BB6]"
-                                                >
-                                                    <option value="English">English</option>
-                                                    <option value="Korean">Korean</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                        <span className="text-sm font-normal text-gray-500 mb-4">Note will generated in this language.</span>
-                                        <textarea
-                                            ref={textareaRef}
-                                            value={text}
-                                            onChange={(e) => setText(e.target.value)}
-                                            placeholder="Upload anything..."
-                                            className={`flex-grow w-full p-3 border ${isLengthOverMax ? 'border-red-300' : 'border-gray-200'} rounded-lg resize-none focus:outline-none focus:ring-2 ${isLengthOverMax ? 'focus:ring-red-500/50' : 'focus:ring-[#9488f7]/50'} focus:border-transparent transition-shadow duration-150 text-base leading-relaxed text-gray-900`}
-                                            disabled={isLoading}
-                                        />
-                                        <div className={`text-right text-xs mt-1.5 ${getCounterColor()}`}>
-                                            {getCounterText()}
-                                        </div>
+                                        <BottomSheetShortcuts onClose={collapseSheet} />
                                     </form>
                                 )}
                             </div>

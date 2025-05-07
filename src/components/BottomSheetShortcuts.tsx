@@ -8,11 +8,11 @@ import WebLinkModal from './WebLinkModal'
 import UploadTextModal from './UploadTextModal'
 import SubscriptionModal from './SubscriptionModal'
 
-interface ShortcutButtonsProps {
-  userName?: string
+interface BottomSheetShortcutsProps {
+  onClose?: () => void
 }
 
-export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
+export default function BottomSheetShortcuts({ onClose }: BottomSheetShortcutsProps) {
   const [showComingSoonModal, setShowComingSoonModal] = useState(false)
   const [modalFeature, setModalFeature] = useState('')
   const [mounted, setMounted] = useState(false)
@@ -20,12 +20,12 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
   const [showUploadTextModal, setShowUploadTextModal] = useState(false)
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false)
   const [contentCount, setContentCount] = useState(0)
-  
+
   // Fetch content count when component mounts
   useEffect(() => {
     fetchContentCount()
   }, [])
-  
+
   // Function to fetch content count
   const fetchContentCount = async () => {
     try {
@@ -34,7 +34,7 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
         const data = await response.json()
         const count = data.contents?.length || 0
         setContentCount(count)
-        console.log('Content count:', count)
+        console.log('Content count in BottomSheetShortcuts:', count)
       }
     } catch (error) {
       console.error('Error fetching content count:', error)
@@ -94,72 +94,74 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
 
   return (
     <>
-      {/* New Note section */}
-      <h3 className="text-2xl font-semibold text-black mt-2">New Note</h3>
-      <p className="text-base text-gray-600 mb-4">Upload anything to understand complex topics</p>
-
-      {/* Grid layout for shortcut buttons */}
-      <div className="grid grid-cols-2 gap-3">
-        {/* Upload Text - This one actually opens the bottom sheet */}
-        <button
+      <div className="grid grid-cols-1 gap-3 w-full p-1">
+        {/* Upload Text */}
+        <motion.button
+          whileHover={{ scale: 1.01 }}
+          whileTap={{ scale: 0.99 }}
           onClick={handleUploadText}
-          className="flex flex-col items-center justify-center bg-white hover:bg-white/50 transition-colors duration-200 rounded-xl p-4"
+          className="flex items-center gap-4 w-full bg-[#F3F5FD] rounded-xl p-6"
         >
           <Image
             src="/images/loopadocs.png"
             alt="Upload text"
-            width={80}
-            height={80}
-            className="mb-1"
+            width={40}
+            height={40}
+            className="flex-shrink-0"
           />
-          <span className="text-base font-semibold text-black/70">Upload text</span>
-        </button>
+          <span className="text-xl font-semibold text-black/80">Upload text</span>
+        </motion.button>
 
-        {/* Upload PDF - Coming soon */}
-        <button
+        {/* Upload PDF */}
+        <motion.button
+          whileHover={{ scale: 1.01 }}
+          whileTap={{ scale: 0.99 }}
           onClick={() => handleComingSoonFeature('Upload PDF')}
-          className="flex flex-col items-center justify-center bg-white hover:bg-white/50 transition-colors duration-200 rounded-xl p-4"
+          className="flex items-center gap-4 w-full bg-[#F3F5FD] rounded-xl p-6"
         >
           <Image
             src="/images/loopapdf.png"
             alt="Upload PDF"
-            width={80}
-            height={80}
-            className="mb-1"
+            width={40}
+            height={40}
+            className="flex-shrink-0"
           />
-          <span className="text-base font-semibold text-black/70">Upload PDF</span>
-        </button>
+          <span className="text-xl font-semibold text-black">Upload PDF</span>
+        </motion.button>
 
-        {/* Web link - Now active */}
-        <button
+        {/* Web link */}
+        <motion.button
+          whileHover={{ scale: 1.01 }}
+          whileTap={{ scale: 0.99 }}
           onClick={handleWebLinkClick}
-          className="flex flex-col items-center justify-center bg-white hover:bg-white/50 transition-colors duration-200 rounded-xl p-4"
+          className="flex items-center gap-4 w-full bg-[#F3F5FD] rounded-xl p-6"
         >
           <Image
             src="/images/loopalink.png"
             alt="Web link"
-            width={80}
-            height={80}
-            className="mb-1"
+            width={40}
+            height={40}
+            className="flex-shrink-0"
           />
-          <span className="text-base font-semibold text-black/70">Web link</span>
-        </button>
+          <span className="text-xl font-semibold text-black">Web link</span>
+        </motion.button>
 
-        {/* Make visual map - Coming soon */}
-        <button
+        {/* Make visual map */}
+        <motion.button
+          whileHover={{ scale: 1.01 }}
+          whileTap={{ scale: 0.99 }}
           onClick={() => handleComingSoonFeature('Make visual map')}
-          className="flex flex-col items-center justify-center bg-[#5f4bb6]/30 hover:bg-[#5f4bb6]/50 transition-colors duration-200 rounded-xl p-4"
+          className="flex items-center gap-4 w-full bg-[#F3F5FD] rounded-xl p-6"
         >
           <Image
             src="/images/loopamap.png"
             alt="Make visual map"
-            width={80}
-            height={80}
-            className="mb-1"
-
+            width={40}
+            height={40}
+            className="flex-shrink-0"
           />
-          <span className="text-base font-semibold text-white/50">Make Diagram</span>
-        </button>
+          <span className="text-xl font-semibold text-black">Make Diagram</span>
+        </motion.button>
       </div>
 
       {/* Coming Soon Modal - Using Portal */}
@@ -172,7 +174,10 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.3 }}
               className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999]"
-              onClick={handleCloseModal}
+              onClick={() => {
+                handleCloseModal();
+                onClose?.(); // Close the bottom sheet when the modal is closed
+              }}
               style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
             >
               <motion.div
@@ -197,7 +202,10 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
                     {modalFeature} feature is currently under development and will be available very soon.
                   </p>
                   <button
-                    onClick={handleCloseModal}
+                    onClick={() => {
+                      handleCloseModal();
+                      onClose?.(); // Close the bottom sheet when the modal is closed
+                    }}
                     className="w-full py-3 bg-[#5F4BB6] hover:bg-[#4A3A9F]/80 text-white font-semibold rounded-xl transition-colors duration-200"
                   >
                     Got it
@@ -211,22 +219,40 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
       )}
 
       {/* Web Link Modal */}
-      <WebLinkModal
-        isOpen={showWebLinkModal}
-        onClose={() => setShowWebLinkModal(false)}
-      />
+      {mounted && createPortal(
+        <WebLinkModal
+          isOpen={showWebLinkModal}
+          onClose={() => {
+            setShowWebLinkModal(false);
+            onClose?.(); // Close the bottom sheet when the modal is closed
+          }}
+        />,
+        document.body
+      )}
 
       {/* Upload Text Modal */}
-      <UploadTextModal
-        isOpen={showUploadTextModal}
-        onClose={() => setShowUploadTextModal(false)}
-      />
-      
+      {mounted && createPortal(
+        <UploadTextModal
+          isOpen={showUploadTextModal}
+          onClose={() => {
+            setShowUploadTextModal(false);
+            onClose?.(); // Close the bottom sheet when the modal is closed
+          }}
+        />,
+        document.body
+      )}
+
       {/* Subscription Modal */}
-      <SubscriptionModal
-        isOpen={showSubscriptionModal}
-        onClose={() => setShowSubscriptionModal(false)}
-      />
+      {mounted && createPortal(
+        <SubscriptionModal
+          isOpen={showSubscriptionModal}
+          onClose={() => {
+            setShowSubscriptionModal(false);
+            onClose?.(); // Close the bottom sheet when the modal is closed
+          }}
+        />,
+        document.body
+      )}
     </>
   )
 }
