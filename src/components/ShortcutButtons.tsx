@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
 import { createPortal } from 'react-dom'
 import WebLinkModal from './WebLinkModal'
+import UploadTextModal from './UploadTextModal'
 
 interface ShortcutButtonsProps {
   userName?: string
@@ -15,6 +16,7 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
   const [modalFeature, setModalFeature] = useState('')
   const [mounted, setMounted] = useState(false)
   const [showWebLinkModal, setShowWebLinkModal] = useState(false)
+  const [showUploadTextModal, setShowUploadTextModal] = useState(false)
 
   // Function to get the image path based on the feature name
   const getFeatureImagePath = (featureName: string): string => {
@@ -36,10 +38,9 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
     return () => setMounted(false)
   }, [])
 
-  // Function to trigger the bottom sheet (same as in ReviewDashboard)
+  // Function to open the Upload Text modal
   const handleUploadText = () => {
-    const event = new CustomEvent('openBottomSheet')
-    window.dispatchEvent(event)
+    setShowUploadTextModal(true)
   }
 
   // Function to show the "Coming Soon" modal
@@ -180,6 +181,12 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
       <WebLinkModal
         isOpen={showWebLinkModal}
         onClose={() => setShowWebLinkModal(false)}
+      />
+
+      {/* Upload Text Modal */}
+      <UploadTextModal
+        isOpen={showUploadTextModal}
+        onClose={() => setShowUploadTextModal(false)}
       />
     </>
   )
