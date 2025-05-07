@@ -168,7 +168,7 @@ export async function POST(req: Request) {
         const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.';
 
         return NextResponse.json(
-            { error: `콘텐츠 추출 중 오류: ${errorMessage}` },
+            { error: `Not a valid URL: ${errorMessage}` },
             { status: 500 }
         );
     }

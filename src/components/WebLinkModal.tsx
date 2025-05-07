@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { useSWRConfig } from 'swr';
 
 interface WebLinkModalProps {
     isOpen: boolean;
@@ -21,6 +22,7 @@ export default function WebLinkModal({ isOpen, onClose }: WebLinkModalProps) {
     const [selectedLanguage, setSelectedLanguage] = useState<string>('English');
     const router = useRouter();
     const inputRef = useRef<HTMLInputElement>(null);
+    const { mutate } = useSWRConfig();
 
     // Language storage key - same as BottomSheet
     const LANGUAGE_STORAGE_KEY = 'amgi_selected_language';
@@ -131,6 +133,33 @@ export default function WebLinkModal({ isOpen, onClose }: WebLinkModalProps) {
         setProcessingStep('processing');
 
         try {
+            // 임시 콘텐츠 생성 (UI 즉시 업데이트용)
+            const tempContentId = `temp-${Date.now()}`;
+            const tempContent = {
+                id: tempContentId,
+                title: 'Processing...',
+                status: 'paused',
+                created_at: new Date().toISOString(),
+                user_id: 'temp',
+                original_text: extractedText.substring(0, 100) + (extractedText.length > 100 ? '...' : ''),
+                content_groups: []
+            };
+
+            // 임시 콘텐츠 로컬 스토리지에 저장
+            localStorage.setItem('temp_content', JSON.stringify(tempContent));
+
+            // SWR 캐시 업데이트 (UI 즉시 반영)
+            mutate('/api/contents', (data: any) => {
+                if (data && Array.isArray(data.contents)) {
+                    return {
+                        ...data,
+                        contents: [tempContent, ...data.contents]
+                    };
+                }
+                return data;
+            }, false);
+
+            // API 호출
             const response = await fetch('/api/generate', {
                 method: 'POST',
                 headers: {
@@ -142,19 +171,58 @@ export default function WebLinkModal({ isOpen, onClose }: WebLinkModalProps) {
                 }),
             });
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || '마크다운 변환에 실패했습니다.');
+            // 응답 처리
+            let generateData;
+            try {
+                const responseText = await response.text();
+                try {
+                    generateData = JSON.parse(responseText);
+                } catch (parseError) {
+                    console.error('JSON 파싱 오류:', parseError, '응답:', responseText.substring(0, 100));
+                    throw new Error(`응답 파싱 오류: ${responseText.substring(0, 100)}...`);
+                }
+            } catch (textError) {
+                console.error('응답 읽기 오류:', textError);
+                // 에러 처리 - contentId는 아직 없음
+                setIsProcessing(false);
+                setProcessingStep(null);
+
+                // 임시 콘텐츠 제거
+                localStorage.removeItem('temp_content');
+                mutate('/api/contents'); // 데이터 다시 가져오기
+
+                onClose();
+                router.push('/');
+                return;
             }
 
-            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(generateData.error || '콘텐츠 생성 요청 실패');
+            }
 
-            // Close modal and redirect to home page instead of content page
+            const contentId = generateData.content_id;
+            if (!contentId) {
+                throw new Error('생성된 콘텐츠 ID가 없습니다.');
+            }
+
+            console.log('콘텐츠 생성 완료, 홈으로 리디렉션:', contentId);
+
+            // 임시 콘텐츠 ID와 실제 콘텐츠 ID 매핑 저장
+            localStorage.setItem('real_content_id', contentId);
+
+            // 데이터 다시 가져오기 - 임시 콘텐츠를 실제 콘텐츠로 대체
+            mutate('/api/contents');
+
+            // 모달 닫기 및 홈으로 리디렉션
             onClose();
             router.push('/');
         } catch (error) {
             console.error('마크다운 변환 오류:', error);
             setError(error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.');
+
+            // 임시 콘텐츠 제거
+            localStorage.removeItem('temp_content');
+            mutate('/api/contents'); // 데이터 다시 가져오기
         } finally {
             setIsProcessing(false);
             setProcessingStep(null);
