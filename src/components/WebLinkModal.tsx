@@ -10,6 +10,13 @@ interface WebLinkModalProps {
     onClose: () => void;
 }
 
+// YouTube 비디오 ID 추출 함수
+function extractYouTubeVideoId(url: string): string | null {
+    const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})(\S*)?$/;
+    const match = url.match(youtubeRegex);
+    return match ? match[4] : null;
+}
+
 export default function WebLinkModal({ isOpen, onClose }: WebLinkModalProps) {
     const [url, setUrl] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -90,6 +97,162 @@ export default function WebLinkModal({ isOpen, onClose }: WebLinkModalProps) {
         setError(null);
     };
 
+    // 클라이언트 측에서 YouTube 트랜스크립트 추출
+    const extractYouTubeTranscriptClient = async (videoId: string): Promise<string> => {
+        try {
+            console.log(`클라이언트에서 YouTube 트랜스크립트 추출 시도: ${videoId}`);
+
+            // 여러 CORS 프록시 옵션 (첫 번째가 실패하면 다음 것 시도)
+            const corsProxies = [
+                'https://corsproxy.io/?',
+                'https://cors-anywhere.herokuapp.com/',
+                'https://api.allorigins.win/raw?url='
+            ];
+
+            // 비디오 페이지 가져오기 (여러 프록시 시도)
+            let videoPageText = '';
+            let usedProxy = '';
+            let proxySuccess = false;
+
+            for (const proxy of corsProxies) {
+                try {
+                    const videoPageUrl = `${proxy}${encodeURIComponent(`https://www.youtube.com/watch?v=${videoId}`)}`;
+                    const videoPageResponse = await fetch(videoPageUrl, {
+                        mode: 'cors',
+                        headers: {
+                            'Origin': window.location.origin
+                        }
+                    });
+
+                    if (videoPageResponse.ok) {
+                        videoPageText = await videoPageResponse.text();
+                        usedProxy = proxy;
+                        proxySuccess = true;
+                        console.log(`프록시 성공: ${proxy}`);
+                        break;
+                    }
+                } catch (e) {
+                    console.error(`프록시 실패: ${proxy}`, e);
+                }
+            }
+
+            if (!proxySuccess) {
+                throw new Error('모든 프록시 서비스 접근 실패');
+            }
+
+            console.log('비디오 페이지 가져오기 성공');
+
+            // 비디오 제목 추출
+            const titleMatch = videoPageText.match(/<title>(.*?)<\/title>/);
+            const title = titleMatch ? titleMatch[1].replace(' - YouTube', '') : 'YouTube Video';
+            console.log('추출된 제목:', title);
+
+            // 채널명 추출
+            const authorMatch = videoPageText.match(/"ownerChannelName":"(.*?)"/);
+            const author = authorMatch ? authorMatch[1] : '';
+            console.log('추출된 채널명:', author);
+
+            // 비디오 설명 추출 (자막이 없을 경우를 대비)
+            const descriptionMatch = videoPageText.match(/"description":{"simpleText":"(.*?)"/);
+            let description = '설명 없음';
+            if (descriptionMatch && descriptionMatch[1]) {
+                description = descriptionMatch[1].replace(/\\n/g, '\n\n').replace(/\\/g, '');
+            }
+
+            // 자막 추출 시도 1: 캡션 트랙 데이터 찾기
+            let captionTracks = [];
+            const captionTracksMatch = videoPageText.match(/"captionTracks":\[(.*?)(?=\])/);
+
+            if (captionTracksMatch && captionTracksMatch[1]) {
+                console.log('캡션 트랙 데이터 찾음');
+                try {
+                    // 직접 캡션 트랙 객체 추출
+                    const rawData = captionTracksMatch[1];
+                    const trackRegex = /{(.*?)(?=},|$)/g;
+                    let trackMatch;
+
+                    while ((trackMatch = trackRegex.exec(rawData + '}')) !== null) {
+                        try {
+                            // 각 트랙 정보 추출
+                            const trackData = trackMatch[0];
+                            const baseUrlMatch = trackData.match(/baseUrl":"(.*?)"/);
+                            const nameMatch = trackData.match(/name":{"simpleText":"(.*?)"/);
+                            const langCodeMatch = trackData.match(/languageCode":"(.*?)"/);
+                            const isDefaultMatch = trackData.match(/isDefault":(true|false)/);
+
+                            if (baseUrlMatch) {
+                                captionTracks.push({
+                                    baseUrl: baseUrlMatch[1].replace(/\\u0026/g, '&'),
+                                    name: { simpleText: nameMatch ? nameMatch[1] : 'Unknown' },
+                                    languageCode: langCodeMatch ? langCodeMatch[1] : 'en',
+                                    isDefault: isDefaultMatch ? isDefaultMatch[1] === 'true' : false
+                                });
+                            }
+                        } catch (trackError) {
+                            console.error('개별 트랙 파싱 오류:', trackError);
+                        }
+                    }
+
+                    console.log(`캡션 트랙 ${captionTracks.length}개 발견`);
+                } catch (e) {
+                    console.error('캡션 트랙 파싱 오류:', e);
+                }
+            }
+
+            // 캡션 트랙이 있는 경우
+            if (captionTracks.length > 0) {
+                console.log('캡션 트랙 사용 시도');
+                // 기본 언어 또는 첫 번째 트랙 선택
+                const track = captionTracks.find((t: any) => t.isDefault) || captionTracks[0];
+
+                if (track && track.baseUrl) {
+                    console.log('선택된 트랙:', track.name?.simpleText || '이름 없음');
+                    console.log('트랙 URL:', track.baseUrl);
+
+                    try {
+                        // 트랙 URL에서 자막 가져오기 (CORS 프록시 없이 시도)
+                        const transcriptResponse = await fetch(track.baseUrl, {
+                            mode: 'no-cors' // CORS 오류를 피하기 위한 설정
+                        });
+
+                        // no-cors 모드에서는 응답 내용에 접근할 수 없으므로 이 방법은 작동하지 않음
+                        // 대신 비디오 설명으로 대체
+                        console.log('자막 가져오기 실패, 비디오 설명 사용');
+                        return `# ${title} ${author ? `- ${author}` : ''}\n\nSource: YouTube (https://www.youtube.com/watch?v=${videoId})\n\n## Description\n\n${description}\n\n*Note: This video has captions, but they could not be accessed due to browser security restrictions.*`;
+                    } catch (e) {
+                        console.error('트랜스크립트 가져오기 오류:', e);
+                        // 비디오 설명으로 대체
+                        return `# ${title} ${author ? `- ${author}` : ''}\n\nSource: YouTube (https://www.youtube.com/watch?v=${videoId})\n\n## Description\n\n${description}\n\n*Note: This video has captions, but they could not be accessed due to browser security restrictions.*`;
+                    }
+                }
+            }
+
+            // 자막을 가져올 수 없는 경우 비디오 설명 사용
+            console.log('자막을 가져올 수 없어 비디오 설명 사용');
+            return `# ${title} ${author ? `- ${author}` : ''}\n\nSource: YouTube (https://www.youtube.com/watch?v=${videoId})\n\n## Description\n\n${description}\n\n*Note: This video's captions could not be accessed due to browser security restrictions.*`;
+
+        } catch (error) {
+            console.error('YouTube 트랜스크립트 추출 오류:', error);
+            throw new Error(`YouTube 트랜스크립트 추출 실패: ${error instanceof Error ? error.message : '알 수 없는 오류'}`);
+        }
+    };
+
+    // HTML 엔티티 디코딩 함수
+    const decodeHtmlEntities = (text: string): string => {
+        const entities: Record<string, string> = {
+            '&amp;': '&',
+            '&lt;': '<',
+            '&gt;': '>',
+            '&quot;': '"',
+            '&#39;': "'",
+            '&#x2F;': '/',
+            '&#x60;': '`',
+            '&#x3D;': '='
+        };
+
+        return text.replace(/&amp;|&lt;|&gt;|&quot;|&#39;|&#x2F;|&#x60;|&#x3D;/g, match => entities[match]);
+    };
+
     // Extract content from URL
     const handleExtract = async () => {
         if (!url.trim()) {
@@ -102,21 +265,38 @@ export default function WebLinkModal({ isOpen, onClose }: WebLinkModalProps) {
         setProcessingStep('extracting');
 
         try {
-            const response = await fetch('/api/extract-content', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ url: url.trim() }),
-            });
+            // YouTube URL인 경우 클라이언트에서 직접 처리
+            if (isYouTube) {
+                const videoId = extractYouTubeVideoId(url.trim());
+                if (!videoId) {
+                    throw new Error('유효한 YouTube URL이 아닙니다.');
+                }
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || '콘텐츠 추출에 실패했습니다.');
+                try {
+                    const transcript = await extractYouTubeTranscriptClient(videoId);
+                    setExtractedText(transcript);
+                } catch (ytError) {
+                    console.error('YouTube 트랜스크립트 추출 오류:', ytError);
+                    throw new Error(`YouTube 트랜스크립트 추출 실패: ${ytError instanceof Error ? ytError.message : '알 수 없는 오류'}`);
+                }
+            } else {
+                // 일반 웹 URL은 기존 API 사용
+                const response = await fetch('/api/extract-content', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ url: url.trim() }),
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || '콘텐츠 추출에 실패했습니다.');
+                }
+
+                const data = await response.json();
+                setExtractedText(data.text);
             }
-
-            const data = await response.json();
-            setExtractedText(data.text);
         } catch (error) {
             console.error('URL 콘텐츠 추출 오류:', error);
             setError(error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.');

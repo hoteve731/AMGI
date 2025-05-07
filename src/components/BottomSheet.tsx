@@ -925,7 +925,7 @@ export default function BottomSheet() {
                     <motion.div
                         initial={{ height: "60px" }}
                         animate={{
-                            height: isExpanded ? "calc(50vh - env(safe-area-inset-bottom, 16px))" : "60px",
+                            height: isExpanded ? "calc(60vh - env(safe-area-inset-bottom, 16px))" : "60px",
                             boxShadow: isExpanded ? "0 -10px 30px rgba(0, 0, 0, 0.15)" : "0 -2px 10px rgba(0, 0, 0, 0.05)"
                         }}
                         transition={{
@@ -936,7 +936,7 @@ export default function BottomSheet() {
                     >
                         {!isExpanded && (
                             <div
-                                className="p-3 h-[60px] cursor-pointer flex items-center justify-center"
+                                className="h-[60px] cursor-pointer flex items-center justify-center px-4"
                                 onClick={expandSheet}
                             >
                                 <div className="flex items-center justify-center gap-2">
@@ -951,7 +951,7 @@ export default function BottomSheet() {
                         )}
 
                         {isExpanded && (
-                            <div className="h-full flex flex-col">
+                            <div className="min-h-[50vh] flex flex-col">
                                 <div className="flex items-center p-4 border-b border-gray-100 relative">
                                     <button
                                         onClick={collapseSheet}
@@ -976,7 +976,7 @@ export default function BottomSheet() {
                                         <p className="mt-4 text-sm text-gray-500">{loadingStatusMessage}</p>
                                     </div>
                                 ) : (
-                                    <form onSubmit={handleSubmit} className="flex-1 flex flex-col p-4 overflow-y-auto">
+                                    <form onSubmit={handleSubmit} className="flex-1 flex flex-col p-4 overflow-y-auto max-h-[calc(90vh-120px)]">
                                         <BottomSheetShortcuts onClose={collapseSheet} />
                                     </form>
                                 )}
