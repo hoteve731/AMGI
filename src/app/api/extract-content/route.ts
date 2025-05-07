@@ -322,7 +322,7 @@ export async function POST(req: Request) {
             } catch (webError) {
                 console.error('Web content extraction error:', webError);
                 return NextResponse.json(
-                    { error: `웹 콘텐츠 추출 실패: ${webError instanceof Error ? webError.message : '알 수 없는 오류'}` },
+                    { error: `failed to extract content: ${webError instanceof Error ? webError.message : '알 수 없는 오류'}` },
                     { status: 500 }
                 );
             }
@@ -334,7 +334,7 @@ export async function POST(req: Request) {
         const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.';
 
         return NextResponse.json(
-            { error: `URL 처리 오류: ${errorMessage}` },
+            { error: `URL error: ${errorMessage}` },
             { status: 500 }
         );
     }

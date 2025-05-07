@@ -17,6 +17,7 @@
     "@supabase/ssr": "^0.6.1",
     "@supabase/supabase-js": "^2.49.3",
     "@vercel/functions": "^2.0.0",
+    "cheerio": "^1.0.0-rc.12",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "firebase": "^11.6.0",
@@ -37,6 +38,7 @@
     "tailwind-merge": "^3.0.2",
     "web-push": "^3.6.7",
     "youtube-transcript": "^1.2.1",
+    "youtube-transcript-api": "^1.1.2",
     "zustand": "^5.0.3"
   },
   "devDependencies": {
