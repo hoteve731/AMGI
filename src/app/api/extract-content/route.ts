@@ -72,21 +72,144 @@ async function extractWebContent(url: string): Promise<string> {
 
 // Extract transcript from a YouTube video
 async function extractYouTubeTranscript(videoId: string): Promise<string> {
+    // Try multiple approaches to get the transcript
+    // This is necessary because YouTube may block requests from server environments
+
+    // First, log the attempt for debugging
+    console.log(`Attempting to extract transcript for video ID: ${videoId}`);
+
     try {
-        // Fetch the transcript
-        const transcript = await YoutubeTranscript.fetchTranscript(videoId);
+        // Approach 1: Try with the youtube-transcript package directly
+        console.log('Approach 1: Using youtube-transcript package directly');
+        try {
+            const transcript = await YoutubeTranscript.fetchTranscript(videoId);
+            return await formatTranscript(transcript, videoId);
+        } catch (directError) {
+            console.error('Direct transcript fetch failed:', JSON.stringify(directError));
+            // Continue to next approach
+        }
 
-        // Fetch video details using oEmbed (doesn't require API key)
-        const oEmbedUrl = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`;
-        const response = await fetch(oEmbedUrl);
+        // Approach 2: Try with custom fetch with browser-like headers
+        console.log('Approach 2: Using custom fetch with browser headers');
+        try {
+            // The package internally uses fetch, so we'll implement a similar approach manually
+            // First get the transcript list URL
+            const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+            const response = await fetch(videoUrl, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36',
+                    'Accept-Language': 'en-US,en;q=0.9',
+                    'Referer': 'https://www.youtube.com/',
+                }
+            });
 
-        let title = 'YouTube Video Transcript';
-        let author = '';
+            // Check if we can access the page
+            if (!response.ok) {
+                console.error(`YouTube page fetch failed with status: ${response.status}`);
+                throw new Error(`Failed to access YouTube video page: ${response.status}`);
+            }
 
-        if (response.ok) {
-            const data = await response.json();
-            title = data.title || title;
-            author = data.author_name ? `by ${data.author_name}` : '';
+            // If we got here, we can try the transcript API directly
+            // This is a simplified version - in reality, we'd need to parse the page to get the proper parameters
+            const transcriptListUrl = `https://www.youtube.com/api/timedtext?v=${videoId}&type=list`;
+            const transcriptListResponse = await fetch(transcriptListUrl, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36',
+                }
+            });
+
+            if (!transcriptListResponse.ok) {
+                console.error(`Transcript list fetch failed with status: ${transcriptListResponse.status}`);
+                throw new Error('Failed to fetch transcript list');
+            }
+
+            // This is a simplified implementation - we'd need to parse the XML response
+            // and then fetch the actual transcript
+            throw new Error('Manual transcript extraction not fully implemented');
+        } catch (customFetchError) {
+            console.error('Custom fetch approach failed:', customFetchError);
+            // Continue to next approach
+        }
+
+        // Approach 3: Use a proxy service (you would need to set this up)
+        console.log('Approach 3: Using proxy service');
+        try {
+            // Replace with your actual proxy endpoint
+            // This could be a Cloudflare Worker or another service that proxies requests to YouTube
+            const proxyUrl = process.env.YOUTUBE_PROXY_URL;
+
+            if (!proxyUrl) {
+                throw new Error('Proxy URL not configured');
+            }
+
+            const proxyResponse = await fetch(`${proxyUrl}?videoId=${videoId}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+
+            if (!proxyResponse.ok) {
+                throw new Error(`Proxy request failed with status: ${proxyResponse.status}`);
+            }
+
+            const proxyData = await proxyResponse.json();
+
+            if (!proxyData.transcript || !Array.isArray(proxyData.transcript)) {
+                throw new Error('Invalid transcript data from proxy');
+            }
+
+            return await formatTranscript(proxyData.transcript, videoId, proxyData.title, proxyData.author);
+        } catch (proxyError) {
+            console.error('Proxy approach failed:', proxyError);
+            // All approaches failed, throw a comprehensive error
+            throw new Error('All transcript extraction methods failed');
+        }
+    } catch (error) {
+        console.error('Error extracting YouTube transcript:', error);
+        throw new Error('Failed to extract transcript from the YouTube video. The video might not have captions available, or YouTube may be blocking server-side requests.');
+    }
+}
+
+// Helper function to format transcript data consistently
+async function formatTranscript(
+    transcript: Array<{ text: string, offset: number }>,
+    videoId: string,
+    title: string = 'YouTube Video Transcript',
+    author: string = ''
+): Promise<string> {
+    // Fetch video details using oEmbed if not provided
+    return await fetchVideoDetailsAndFormat(transcript, videoId, title, author);
+}
+
+// Fetch video details and format the transcript
+async function fetchVideoDetailsAndFormat(
+    transcript: Array<{ text: string, offset: number }>,
+    videoId: string,
+    providedTitle?: string,
+    providedAuthor?: string
+): Promise<string> {
+    let title = providedTitle || 'YouTube Video Transcript';
+    let author = providedAuthor || '';
+
+    try {
+        // Only fetch details if not provided
+        if (!providedTitle || !providedAuthor) {
+            // Fetch video details using oEmbed (doesn't require API key)
+            const oEmbedUrl = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`;
+            const response = await fetch(oEmbedUrl, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36',
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                title = data.title || title;
+                author = data.author_name ? `by ${data.author_name}` : '';
+            } else {
+                console.warn(`Failed to fetch video details: ${response.status}`);
+            }
         }
 
         // Combine transcript segments into a single text
@@ -118,8 +241,11 @@ async function extractYouTubeTranscript(videoId: string): Promise<string> {
 
         return `# ${title} ${author}\n\nSource: YouTube (https://www.youtube.com/watch?v=${videoId})\n\n## Transcript\n\n${formattedTranscript}`;
     } catch (error) {
-        console.error('Error extracting YouTube transcript:', error);
-        throw new Error('Failed to extract transcript from the YouTube video. The video might not have captions available.');
+        console.error('Error formatting transcript:', error);
+
+        // If formatting fails, return a basic format with the raw transcript
+        const rawText = transcript.map(item => item.text).join(' ');
+        return `# YouTube Video (${videoId})\n\nSource: YouTube (https://www.youtube.com/watch?v=${videoId})\n\n## Transcript\n\n${rawText}`;
     }
 }
 
