@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
 import { createPortal } from 'react-dom'
+import WebLinkModal from './WebLinkModal'
 
 interface ShortcutButtonsProps {
   userName?: string
@@ -13,6 +14,7 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
   const [showComingSoonModal, setShowComingSoonModal] = useState(false)
   const [modalFeature, setModalFeature] = useState('')
   const [mounted, setMounted] = useState(false)
+  const [showWebLinkModal, setShowWebLinkModal] = useState(false)
 
   // Function to get the image path based on the feature name
   const getFeatureImagePath = (featureName: string): string => {
@@ -51,10 +53,15 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
     setShowComingSoonModal(false)
   }
 
+  // Function to open the Web Link modal
+  const handleWebLinkClick = () => {
+    setShowWebLinkModal(true)
+  }
+
   return (
     <>
       {/* New Note section */}
-      <h3 className="text-2xl font-semibold text-black">New Note</h3>
+      <h3 className="text-2xl font-semibold text-black mt-2">New Note</h3>
       <p className="text-base text-gray-600 mb-4">Upload anything to understand complex topics</p>
 
       {/* Grid layout for shortcut buttons */}
@@ -89,9 +96,9 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
           <span className="text-base font-semibold text-black/70">Upload PDF</span>
         </button>
 
-        {/* Web link - Coming soon */}
+        {/* Web link - Now active */}
         <button
-          onClick={() => handleComingSoonFeature('Web link')}
+          onClick={handleWebLinkClick}
           className="flex flex-col items-center justify-center bg-white hover:bg-white/50 transition-colors duration-200 rounded-xl p-4"
         >
           <Image
@@ -168,6 +175,12 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
         </AnimatePresence>,
         document.body
       )}
+
+      {/* Web Link Modal */}
+      <WebLinkModal
+        isOpen={showWebLinkModal}
+        onClose={() => setShowWebLinkModal(false)}
+      />
     </>
   )
 }

@@ -37,8 +37,7 @@ export default async function Home() {
         <UnlimitedNotesButton />
       </header>
 
-      {/* 베타 공지 배너 */}
-      <BetaBanner />
+      {/* <BetaBanner /> */}
 
       {/* 리뷰 대시보드 대신 ShortcutButtons 사용 */}
       <div className="pt-4 px-4 pb-0">
