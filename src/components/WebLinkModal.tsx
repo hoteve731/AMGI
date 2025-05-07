@@ -18,13 +18,29 @@ export default function WebLinkModal({ isOpen, onClose }: WebLinkModalProps) {
     const [isYouTube, setIsYouTube] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
     const [processingStep, setProcessingStep] = useState<'extracting' | 'processing' | null>(null);
+    const [selectedLanguage, setSelectedLanguage] = useState<string>('English');
     const router = useRouter();
     const inputRef = useRef<HTMLInputElement>(null);
+
+    // Language storage key - same as BottomSheet
+    const LANGUAGE_STORAGE_KEY = 'amgi_selected_language';
 
     // Set mounted state to true when component mounts
     useEffect(() => {
         setMounted(true);
         return () => setMounted(false);
+    }, []);
+
+    // Load saved language from localStorage
+    useEffect(() => {
+        try {
+            const savedLanguage = localStorage.getItem(LANGUAGE_STORAGE_KEY);
+            if (savedLanguage) {
+                setSelectedLanguage(savedLanguage);
+            }
+        } catch (error) {
+            console.error('언어 설정 불러오기 실패:', error);
+        }
     }, []);
 
     // Focus input when modal opens
@@ -46,6 +62,17 @@ export default function WebLinkModal({ isOpen, onClose }: WebLinkModalProps) {
             setProcessingStep(null);
         }
     }, [isOpen]);
+
+    // Handle language change
+    const handleLanguageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const newLanguage = e.target.value;
+        setSelectedLanguage(newLanguage);
+        try {
+            localStorage.setItem(LANGUAGE_STORAGE_KEY, newLanguage);
+        } catch (error) {
+            console.error('언어 설정 저장 실패:', error);
+        }
+    };
 
     // Detect if URL is from YouTube
     const detectYouTube = (inputUrl: string) => {
@@ -111,7 +138,7 @@ export default function WebLinkModal({ isOpen, onClose }: WebLinkModalProps) {
                 },
                 body: JSON.stringify({
                     text: extractedText,
-                    language: 'Korean', // Default to Korean, could be made configurable
+                    language: selectedLanguage,
                 }),
             });
 
@@ -122,9 +149,9 @@ export default function WebLinkModal({ isOpen, onClose }: WebLinkModalProps) {
 
             const data = await response.json();
 
-            // Close modal and redirect to the new content
+            // Close modal and redirect to home page instead of content page
             onClose();
-            router.push(`/content/${data.content_id}/groups`);
+            router.push('/');
         } catch (error) {
             console.error('마크다운 변환 오류:', error);
             setError(error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.');
@@ -177,7 +204,7 @@ export default function WebLinkModal({ isOpen, onClose }: WebLinkModalProps) {
                                     className="mr-3"
                                 />
                                 <h3 className="text-xl font-semibold text-gray-800">
-                                    {extractedText ? '추출된 콘텐츠' : 'Web Link 추출'}
+                                    {extractedText ? 'Extracted Content' : 'Web Link'}
                                 </h3>
                             </div>
                             <button
@@ -194,8 +221,8 @@ export default function WebLinkModal({ isOpen, onClose }: WebLinkModalProps) {
                         {!extractedText ? (
                             <>
                                 <div className="mb-4">
-                                    <p className="text-gray-600 mb-4">
-                                        웹사이트 URL 또는 YouTube 영상 링크를 입력하여 콘텐츠를 추출하세요.
+                                    <p className="text-gray-700 mb-4">
+                                        Paste URL or YouTube link to generate AI notes.
                                     </p>
                                     <div className="relative">
                                         <input
@@ -204,7 +231,7 @@ export default function WebLinkModal({ isOpen, onClose }: WebLinkModalProps) {
                                             value={url}
                                             onChange={handleUrlChange}
                                             onKeyDown={handleKeyDown}
-                                            placeholder="https://example.com 또는 https://youtube.com/watch?v=..."
+                                            placeholder="https://example.com"
                                             className="w-full p-3 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7969F7] focus:border-transparent"
                                             disabled={isLoading}
                                         />
@@ -226,17 +253,17 @@ export default function WebLinkModal({ isOpen, onClose }: WebLinkModalProps) {
                                         onClick={handleExtract}
                                         disabled={isLoading || !url.trim()}
                                         className={`px-4 py-2 rounded-lg font-medium ${isLoading || !url.trim()
-                                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                                : 'bg-[#7969F7] text-white hover:bg-[#6858e6]'
+                                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                            : 'bg-[#7969F7] text-white hover:bg-[#6858e6]'
                                             } transition-colors`}
                                     >
                                         {isLoading ? (
                                             <div className="flex items-center">
                                                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                                                콘텐츠 추출 중...
+                                                Extracting...
                                             </div>
                                         ) : (
-                                            '콘텐츠 추출하기'
+                                            'Extract Content'
                                         )}
                                     </button>
                                 </div>
@@ -253,6 +280,22 @@ export default function WebLinkModal({ isOpen, onClose }: WebLinkModalProps) {
                                     <p className="text-red-500 text-sm mb-4">{error}</p>
                                 )}
 
+                                <div className="mb-8 mt-4">
+                                    <div className="flex items-center">
+                                        <label htmlFor="language-select" className="text-base font-semibold text-gray-700 mr-2">🌐 Note Language</label>
+                                        <select
+                                            id="language-select"
+                                            value={selectedLanguage}
+                                            onChange={handleLanguageChange}
+                                            className="text-base font-normal border border-gray-400 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[#5F4BB6]"
+                                        >
+                                            <option value="English">English</option>
+                                            <option value="Korean">Korean</option>
+                                        </select>
+                                    </div>
+                                    <span className="text-sm font-normal text-gray-500">Note will be generated in this language.</span>
+                                </div>
+
                                 <div className="flex justify-between">
                                     <button
                                         onClick={() => {
@@ -261,65 +304,27 @@ export default function WebLinkModal({ isOpen, onClose }: WebLinkModalProps) {
                                         }}
                                         className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
                                     >
-                                        다시 입력하기
+                                        Cancel
                                     </button>
                                     <button
                                         onClick={handleProcess}
                                         disabled={isProcessing}
                                         className={`px-4 py-2 rounded-lg font-medium ${isProcessing
-                                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                                : 'bg-[#7969F7] text-white hover:bg-[#6858e6]'
+                                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                            : 'bg-[#7969F7] text-white hover:bg-[#6858e6]'
                                             } transition-colors`}
                                     >
                                         {isProcessing ? (
                                             <div className="flex items-center">
                                                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                                                처리 중...
+                                                Processing...
                                             </div>
                                         ) : (
-                                            '마크다운으로 변환하기'
+                                            'Generate Note'
                                         )}
                                     </button>
                                 </div>
                             </>
-                        )}
-
-                        {/* Processing steps indicator */}
-                        {processingStep && (
-                            <div className="mt-4 pt-4 border-t border-gray-200">
-                                <div className="flex items-center">
-                                    <div className="relative flex items-center justify-center">
-                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${processingStep === 'extracting' ? 'bg-[#7969F7] text-white' : 'bg-gray-200 text-gray-500'
-                                            }`}>
-                                            1
-                                        </div>
-                                        {processingStep === 'extracting' && (
-                                            <div className="absolute -top-1 -right-1 w-3 h-3">
-                                                <div className="animate-ping absolute w-full h-full rounded-full bg-[#7969F7] opacity-75"></div>
-                                                <div className="relative w-full h-full rounded-full bg-[#7969F7]"></div>
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div className={`h-1 w-10 ${processingStep === 'processing' ? 'bg-[#7969F7]' : 'bg-gray-200'}`}></div>
-                                    <div className="relative flex items-center justify-center">
-                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${processingStep === 'processing' ? 'bg-[#7969F7] text-white' : 'bg-gray-200 text-gray-500'
-                                            }`}>
-                                            2
-                                        </div>
-                                        {processingStep === 'processing' && (
-                                            <div className="absolute -top-1 -right-1 w-3 h-3">
-                                                <div className="animate-ping absolute w-full h-full rounded-full bg-[#7969F7] opacity-75"></div>
-                                                <div className="relative w-full h-full rounded-full bg-[#7969F7]"></div>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                                <div className="flex text-xs text-gray-500 mt-1">
-                                    <div className="w-8 text-center">추출</div>
-                                    <div className="w-10"></div>
-                                    <div className="w-8 text-center">변환</div>
-                                </div>
-                            </div>
                         )}
                     </motion.div>
                 </motion.div>
