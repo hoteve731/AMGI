@@ -139,10 +139,19 @@ async function extractYouTubeTranscript(videoId: string): Promise<string> {
             const proxyUrl = process.env.YOUTUBE_PROXY_URL;
 
             if (!proxyUrl) {
+                console.error('YOUTUBE_PROXY_URL environment variable is not configured');
                 throw new Error('Proxy URL not configured');
             }
 
-            const proxyResponse = await fetch(`${proxyUrl}?videoId=${videoId}`, {
+            console.log(`Using proxy URL: ${proxyUrl} for video ID: ${videoId}`);
+
+            // URL 인코딩을 확실히 적용하여 파라미터 전달
+            const encodedVideoId = encodeURIComponent(videoId);
+            const fullProxyUrl = `${proxyUrl}?videoId=${encodedVideoId}`;
+
+            console.log(`Making request to: ${fullProxyUrl}`);
+
+            const proxyResponse = await fetch(fullProxyUrl, {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
@@ -150,12 +159,22 @@ async function extractYouTubeTranscript(videoId: string): Promise<string> {
             });
 
             if (!proxyResponse.ok) {
-                throw new Error(`Proxy request failed with status: ${proxyResponse.status}`);
+                const errorText = await proxyResponse.text();
+                console.error(`Proxy request failed with status: ${proxyResponse.status}`, errorText);
+                throw new Error(`Proxy request failed with status: ${proxyResponse.status}. Response: ${errorText}`);
             }
 
             const proxyData = await proxyResponse.json();
+            console.log('Received proxy data:', JSON.stringify({
+                success: true,
+                hasTranscript: !!proxyData.transcript,
+                transcriptLength: proxyData.transcript?.length || 0,
+                title: proxyData.title,
+                author: proxyData.author
+            }));
 
             if (!proxyData.transcript || !Array.isArray(proxyData.transcript)) {
+                console.error('Invalid transcript data from proxy:', JSON.stringify(proxyData));
                 throw new Error('Invalid transcript data from proxy');
             }
 
