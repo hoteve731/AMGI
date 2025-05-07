@@ -6,10 +6,10 @@ const SUPADATA_API_KEY = process.env.SUPADATA_API_KEY || '';
 // 비디오 메타데이터를 가져오는 함수
 async function getVideoMetadata(videoId: string) {
     try {
-        console.log(`비디오 메타데이터 가져오기 시작: ${videoId}`);
+        console.log(`Starting to fetch video metadata: ${videoId}`);
 
         // API 문서에 맞게 호출 형식 확인
-        console.log(`메타데이터 API 호출 URL: https://api.supadata.ai/v1/youtube/video?id=${videoId}`);
+        console.log(`Metadata API call URL: https://api.supadata.ai/v1/youtube/video?id=${videoId}`);
 
         const response = await fetch(`https://api.supadata.ai/v1/youtube/video?id=${videoId}`, {
             headers: {
@@ -18,35 +18,31 @@ async function getVideoMetadata(videoId: string) {
         });
 
         if (!response.ok) {
-            console.error(`메타데이터 API 응답 오류: ${response.status}`);
-            console.error(`응답 텍스트: ${await response.text()}`);
+            console.error(`Metadata API response error: ${response.status}`);
+            console.error(`Response text: ${await response.text()}`);
             return {
                 title: 'YouTube Video',
-                description: '',
-                channel: { name: '' },
-                tags: []
+                channel: { name: '' }
             };
         }
 
         const data = await response.json();
-        console.log('메타데이터 응답 데이터:', JSON.stringify(data, null, 2));
+        console.log('Metadata response data:', JSON.stringify(data, null, 2));
 
         // API 응답 구조 확인
         if (data.id && data.title) {
-            console.log('정상적인 메타데이터 응답 형식');
+            console.log('Valid metadata response format');
             return {
                 title: data.title || 'YouTube Video',
-                description: data.description || '',
                 channel: {
                     name: data.channel?.name || ''
-                },
-                tags: data.tags || []
+                }
             };
         } else {
-            console.error('비정상적인 메타데이터 응답 형식:', data);
+            console.error('Invalid metadata response format:', data);
 
             // 다른 형식으로 시도 (전체 URL 사용)
-            console.log('전체 URL로 다시 시도');
+            console.log('Trying with full URL');
             const fullUrlResponse = await fetch(`https://api.supadata.ai/v1/youtube/video?id=https://www.youtube.com/watch?v=${videoId}`, {
                 headers: {
                     'x-api-key': SUPADATA_API_KEY
@@ -55,33 +51,27 @@ async function getVideoMetadata(videoId: string) {
 
             if (fullUrlResponse.ok) {
                 const fullUrlData = await fullUrlResponse.json();
-                console.log('전체 URL 메타데이터 응답:', JSON.stringify(fullUrlData, null, 2));
+                console.log('Full URL metadata response:', JSON.stringify(fullUrlData, null, 2));
 
                 return {
                     title: fullUrlData.title || 'YouTube Video',
-                    description: fullUrlData.description || '',
                     channel: {
                         name: fullUrlData.channel?.name || ''
-                    },
-                    tags: fullUrlData.tags || []
+                    }
                 };
             } else {
-                console.error(`전체 URL 메타데이터 API 응답 오류: ${fullUrlResponse.status}`);
+                console.error(`Full URL metadata API response error: ${fullUrlResponse.status}`);
                 return {
                     title: 'YouTube Video',
-                    description: '',
-                    channel: { name: '' },
-                    tags: []
+                    channel: { name: '' }
                 };
             }
         }
     } catch (error) {
-        console.error('비디오 메타데이터 가져오기 실패:', error);
+        console.error('Failed to fetch video metadata:', error);
         return {
             title: 'YouTube Video',
-            description: '',
-            channel: { name: '' },
-            tags: []
+            channel: { name: '' }
         };
     }
 }
@@ -89,7 +79,7 @@ async function getVideoMetadata(videoId: string) {
 // 트랜스크립트를 가져오는 함수
 async function getTranscript(videoId: string) {
     try {
-        console.log(`트랜스크립트 가져오기 시작: ${videoId}`);
+        console.log(`Starting to fetch transcript: ${videoId}`);
 
         // 메타데이터에서 사용 가능한 언어 확인
         let availableLanguages = [];
@@ -104,11 +94,11 @@ async function getTranscript(videoId: string) {
                 const metadataData = await metadataResponse.json();
                 if (metadataData.transcriptLanguages && Array.isArray(metadataData.transcriptLanguages)) {
                     availableLanguages = metadataData.transcriptLanguages;
-                    console.log('사용 가능한 트랜스크립트 언어:', availableLanguages);
+                    console.log('Available transcript languages:', availableLanguages);
                 }
             }
         } catch (metadataError) {
-            console.error('트랜스크립트 언어 목록 가져오기 실패:', metadataError);
+            console.error('Failed to fetch transcript language list:', metadataError);
         }
 
         // 429 오류 방지를 위한 지연 함수
@@ -116,7 +106,7 @@ async function getTranscript(videoId: string) {
 
         // 영어 트랜스크립트 먼저 시도
         if (availableLanguages.includes('en')) {
-            console.log('영어 트랜스크립트 시도');
+            console.log('Trying English transcript');
             await delay(500); // API 요청 사이에 지연 추가
 
             const enResponse = await fetch(`https://api.supadata.ai/v1/youtube/transcript?url=https://www.youtube.com/watch?v=${videoId}&text=true&lang=en`, {
@@ -128,14 +118,14 @@ async function getTranscript(videoId: string) {
             // 영어 트랜스크립트 응답 확인
             if (enResponse.ok) {
                 const enData = await enResponse.json();
-                console.log('영어 트랜스크립트 응답 데이터:', JSON.stringify(enData, null, 2));
+                console.log('English transcript response data:', JSON.stringify(enData, null, 2));
 
                 if (enData.content) {
-                    console.log('영어 트랜스크립트 가져오기 성공');
+                    console.log('Successfully fetched English transcript');
                     return enData.content;
                 }
             } else if (enResponse.status === 429) {
-                console.error('영어 트랜스크립트 API 요청 제한 도달 (429)');
+                console.error('English transcript API rate limit reached (429)');
                 // 더 긴 지연 후 다음 언어 시도
                 await delay(2000);
             }
@@ -143,7 +133,7 @@ async function getTranscript(videoId: string) {
 
         // 한국어 트랜스크립트 시도
         if (availableLanguages.includes('ko')) {
-            console.log('한국어 트랜스크립트 시도');
+            console.log('Trying Korean transcript');
             await delay(500); // API 요청 사이에 지연 추가
 
             const koResponse = await fetch(`https://api.supadata.ai/v1/youtube/transcript?url=https://www.youtube.com/watch?v=${videoId}&text=true&lang=ko`, {
@@ -155,14 +145,14 @@ async function getTranscript(videoId: string) {
             // 한국어 트랜스크립트 응답 확인
             if (koResponse.ok) {
                 const koData = await koResponse.json();
-                console.log('한국어 트랜스크립트 응답 데이터:', JSON.stringify(koData, null, 2));
+                console.log('Korean transcript response data:', JSON.stringify(koData, null, 2));
 
                 if (koData.content) {
-                    console.log('한국어 트랜스크립트 가져오기 성공');
+                    console.log('Successfully fetched Korean transcript');
                     return koData.content;
                 }
             } else if (koResponse.status === 429) {
-                console.error('한국어 트랜스크립트 API 요청 제한 도달 (429)');
+                console.error('Korean transcript API rate limit reached (429)');
                 // 더 긴 지연 후 다음 언어 시도
                 await delay(2000);
             }
@@ -171,7 +161,7 @@ async function getTranscript(videoId: string) {
         // 사용 가능한 첫 번째 언어 시도 (en, ko가 아닌 경우)
         for (const lang of availableLanguages) {
             if (lang !== 'en' && lang !== 'ko') {
-                console.log(`${lang} 트랜스크립트 시도`);
+                console.log(`Trying ${lang} transcript`);
                 await delay(500); // API 요청 사이에 지연 추가
 
                 const langResponse = await fetch(`https://api.supadata.ai/v1/youtube/transcript?url=https://www.youtube.com/watch?v=${videoId}&text=true&lang=${lang}`, {
@@ -182,21 +172,21 @@ async function getTranscript(videoId: string) {
 
                 if (langResponse.ok) {
                     const langData = await langResponse.json();
-                    console.log(`${lang} 트랜스크립트 응답 데이터:`, JSON.stringify(langData, null, 2));
+                    console.log(`${lang} transcript response data:`, JSON.stringify(langData, null, 2));
 
                     if (langData.content) {
-                        console.log(`${lang} 트랜스크립트 가져오기 성공`);
+                        console.log(`Successfully fetched ${lang} transcript`);
                         return langData.content;
                     }
                 } else if (langResponse.status === 429) {
-                    console.error(`${lang} 트랜스크립트 API 요청 제한 도달 (429)`);
+                    console.error(`${lang} transcript API rate limit reached (429)`);
                     await delay(2000);
                 }
             }
         }
 
         // 언어 지정 없이 기본 트랜스크립트 시도
-        console.log('언어 지정 없이 기본 트랜스크립트 시도');
+        console.log('Trying default transcript without language specification');
         await delay(500); // API 요청 사이에 지연 추가
 
         const response = await fetch(`https://api.supadata.ai/v1/youtube/transcript?url=https://www.youtube.com/watch?v=${videoId}&text=true`, {
@@ -207,25 +197,25 @@ async function getTranscript(videoId: string) {
 
         if (!response.ok) {
             if (response.status === 429) {
-                console.error('트랜스크립트 API 요청 제한 도달 (429)');
-                throw new Error('API 요청 제한에 도달했습니다. 잠시 후 다시 시도해주세요.');
+                console.error('Transcript API rate limit reached (429)');
+                throw new Error('Too many requests! Please try again in 5 seconds.');
             } else {
-                console.error(`트랜스크립트 API 응답 오류: ${response.status}`);
-                throw new Error(`트랜스크립트 API 응답 오류: ${response.status}`);
+                console.error(`Transcript API response error: ${response.status}`);
+                throw new Error(`Transcript API response error: ${response.status}`);
             }
         }
 
         const data = await response.json();
-        console.log('기본 트랜스크립트 응답 데이터:', JSON.stringify(data, null, 2));
+        console.log('Default transcript response data:', JSON.stringify(data, null, 2));
 
         if (!data.content) {
-            throw new Error('트랜스크립트 내용이 없습니다');
+            throw new Error('No transcript content available');
         }
 
-        console.log('트랜스크립트 가져오기 성공');
+        console.log('Successfully fetched transcript');
         return data.content;
     } catch (error) {
-        console.error('트랜스크립트 가져오기 실패:', error);
+        console.error('Failed to fetch transcript:', error);
         throw error;
     }
 }
@@ -237,53 +227,49 @@ export async function GET(request: Request) {
 
     if (!videoId) {
         return NextResponse.json(
-            { error: 'videoId 파라미터가 필요합니다' },
+            { error: 'videoId parameter is required' },
             { status: 400 }
         );
     }
 
     try {
-        console.log(`YouTube 트랜스크립트 추출 시작: ${videoId}`);
+        console.log(`Starting YouTube transcript extraction: ${videoId}`);
 
         // 메타데이터 먼저 가져오기
         const metadata = await getVideoMetadata(videoId);
-        console.log('메타데이터 가져오기 완료');
+        console.log('Metadata fetching completed');
 
         // 메타데이터 가져오기 성공 후 트랜스크립트 가져오기 (순차적으로)
         try {
             const transcriptContent = await getTranscript(videoId);
-            console.log('트랜스크립트 가져오기 완료');
+            console.log('Transcript fetching completed');
 
-            console.log('최종 메타데이터:', JSON.stringify(metadata, null, 2));
-            console.log('최종 트랜스크립트 길이:', transcriptContent?.length || 0);
+            console.log('Final metadata:', JSON.stringify(metadata, null, 2));
+            console.log('Final transcript length:', transcriptContent?.length || 0);
 
             return NextResponse.json({
                 title: metadata.title,
                 author: metadata.channel.name,
-                description: metadata.description,
-                tags: metadata.tags,
                 transcript: transcriptContent
             });
         } catch (transcriptError) {
-            console.error('트랜스크립트 가져오기 실패:', transcriptError);
+            console.error('Failed to fetch transcript:', transcriptError);
 
             // 트랜스크립트 없이 메타데이터만 반환
             return NextResponse.json({
                 title: metadata.title,
                 author: metadata.channel.name,
-                description: metadata.description,
-                tags: metadata.tags,
-                transcript: `# ${metadata.title}\n\n## Description\n\n${metadata.description}\n\n*트랜스크립트를 가져올 수 없습니다: API 요청 제한에 도달했거나 트랜스크립트가 없습니다.*`
+                transcript: `# ${metadata.title}\n\n*No transcript available: API rate limit reached or no transcript exists for this video. Please try again in 5 seconds.*`
             });
         }
     } catch (error) {
-        console.error('YouTube 트랜스크립트 추출 오류:', error);
+        console.error('YouTube transcript extraction error:', error);
 
         // 오류 메시지 추출
-        let errorMessage = '트랜스크립트 추출 중 오류가 발생했습니다';
+        let errorMessage = 'An error occurred while extracting transcript';
         if (error instanceof Error) {
             errorMessage = error.message;
-            console.error('오류 세부 정보:', error.stack);
+            console.error('Error details:', error.stack);
         }
 
         return NextResponse.json(

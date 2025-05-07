@@ -53,7 +53,7 @@ export default async function Home() {
         <ContentList />
       </div>
 
-      <BottomSheet />
+      {/* <BottomSheet /> */}
     </main>
   )
 }
