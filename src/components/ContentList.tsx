@@ -9,6 +9,7 @@ import LoadingOverlay from './LoadingOverlay'
 import { motion } from 'framer-motion'
 import useSWR from 'swr'
 import { ChevronRightIcon } from '@heroicons/react/24/outline'
+import Image from 'next/image'
 
 type Content = {
     id: string
@@ -253,6 +254,12 @@ export default function ContentList({ contents: externalContents, showTabs = fal
 
     const displayContents = processedContents.length > 0 ? processedContents : contentsToProcess;
 
+    // Function to open the bottom sheet
+    const openBottomSheet = () => {
+        const event = new CustomEvent('openBottomSheet');
+        window.dispatchEvent(event);
+    };
+
     return (
         <div className="flex-1 overflow-y-auto p-4 pt-5 pb-[120px] relative">
             {isLoading && <LoadingOverlay />}
@@ -301,6 +308,28 @@ export default function ContentList({ contents: externalContents, showTabs = fal
                     >
                         새로고침
                     </button>
+                </div>
+            )}
+            {!isFetching && !error && displayContents.length === 0 && (
+                <div className="flex flex-col items-center justify-center h-[30vh] text-center">
+                    <div className="relative w-24 h-24 mb-2">
+                        <Image
+                            src="/images/doneloopa.png"
+                            alt="Create a new note"
+                            fill
+                            style={{ objectFit: 'contain' }}
+                        />
+                    </div>
+                    <h3 className="text-xl font-semibold text-gray-700 mb-1">No notes yet</h3>
+                    <p className="text-gray-500 mb-6 max-w-xs">Create your first note to get started</p>
+                    <motion.button
+                        onClick={openBottomSheet}
+                        className="px-6 py-3 bg-[#5F4BB6] text-white rounded-full shadow-lg text-base font-semibold flex items-center"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                    >
+                        New Note
+                    </motion.button>
                 </div>
             )}
             <div className="space-y-5">

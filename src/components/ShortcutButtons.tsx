@@ -55,7 +55,7 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
     <>
       {/* New Note section */}
       <h3 className="text-2xl font-semibold text-black">New Note</h3>
-      <p className="text-base text-gray-600 mb-4">Master complex topics, one note at a time</p>
+      <p className="text-base text-gray-600 mb-4">Upload anything to understand complex topics</p>
 
       {/* Grid layout for shortcut buttons */}
       <div className="grid grid-cols-2 gap-3">
