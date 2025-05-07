@@ -402,8 +402,8 @@ export default function ContentList({ contents: externalContents, showTabs = fal
 
                                             {/* Ready message */}
                                             {(content.groups_count === 0 && content.chunks_count === 0 && !content.isProcessing) && (
-                                                <div className="mt-1 mb-2 text-base text-gray-500 font-semibold">
-                                                    ✅ Your Note is ready. Now generate memory cards!
+                                                <div className="mt-1 mb-2 text-base text-gray-500 font-normal">
+                                                    ✅ Your Note is ready. Now generate flashcards!
                                                 </div>
                                             )}
 

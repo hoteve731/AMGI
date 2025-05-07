@@ -295,16 +295,37 @@ export async function POST(req: Request) {
 
         // Process based on URL type
         if (isYouTubeUrl(url)) {
+            console.log(`Processing YouTube URL: ${url}`);
             const videoId = extractYouTubeVideoId(url);
             if (!videoId) {
+                console.error('Failed to extract videoId from URL:', url);
                 return NextResponse.json(
                     { error: '유효한 YouTube URL이 아닙니다.' },
                     { status: 400 }
                 );
             }
-            extractedText = await extractYouTubeTranscript(videoId);
+            console.log(`Extracted videoId: ${videoId}`);
+
+            try {
+                extractedText = await extractYouTubeTranscript(videoId);
+            } catch (ytError) {
+                console.error('YouTube transcript extraction error:', ytError);
+                return NextResponse.json(
+                    { error: `YouTube 트랜스크립트 추출 실패: ${ytError instanceof Error ? ytError.message : '알 수 없는 오류'}` },
+                    { status: 500 }
+                );
+            }
         } else {
-            extractedText = await extractWebContent(url);
+            console.log(`Processing web URL: ${url}`);
+            try {
+                extractedText = await extractWebContent(url);
+            } catch (webError) {
+                console.error('Web content extraction error:', webError);
+                return NextResponse.json(
+                    { error: `웹 콘텐츠 추출 실패: ${webError instanceof Error ? webError.message : '알 수 없는 오류'}` },
+                    { status: 500 }
+                );
+            }
         }
 
         return NextResponse.json({ text: extractedText });
@@ -313,7 +334,7 @@ export async function POST(req: Request) {
         const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.';
 
         return NextResponse.json(
-            { error: `Not a valid URL: ${errorMessage}` },
+            { error: `URL 처리 오류: ${errorMessage}` },
             { status: 500 }
         );
     }
