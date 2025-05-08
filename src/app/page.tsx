@@ -7,6 +7,7 @@ import BottomSheet from '@/components/BottomSheet'
 import BetaBanner from '@/components/BetaBanner'
 import UnlimitedNotesButton from '@/components/UnlimitedNotesButton'
 import EnsureDefaultContent from '@/components/EnsureDefaultContent'
+import AnimatedTitle from '@/components/AnimatedTitle'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,7 +24,7 @@ export default async function Home() {
     <main className="flex min-h-screen flex-col bg-[#F3F5FD]">
       {/* 사용자가 로그인한 경우 기본 콘텐츠 확인 */}
       {user && <EnsureDefaultContent />}
-      
+
       <header className="flex justify-between items-center py-3 px-4 border-b border-[#D4C4B7] bg-[#F3F5FD]">
         <div className="flex items-center gap-3">
           <MenuButton
@@ -46,7 +47,7 @@ export default async function Home() {
 
       {/* My Notes 타이틀 추가 */}
       <div className="px-5 pt-10">
-        <h3 className="text-2xl font-semibold text-black">My Notes</h3>
+        <AnimatedTitle>My Notes</AnimatedTitle>
       </div>
 
       <div className="flex-1 overflow-hidden">

@@ -182,18 +182,39 @@ export default function UploadAudioModal({ isOpen, onClose }: UploadAudioModalPr
             }
 
             const data = await response.json();
-            setTranscribedText(data.text);
-            setPollingId(data.pollingId);
+
+            // 즉시 응답이 있는 경우
+            if (data.transcription) {
+                setTranscribedText(data.transcription);
+                setIsProcessing(false);
+                setProcessingStep(null);
+                return;
+            }
+
+            // 폴링이 필요한 경우 폴링 ID 설정
+            if (data.contentId) {
+                setPollingId(data.contentId);
+                // 폴링 상태 유지
+                setIsProcessing(true);
+                setProcessingStep('transcribing');
+            } else {
+                // 응답이 없는 경우 (오류)
+                setIsProcessing(false);
+                setProcessingStep(null);
+                setError('트랜스크립션 응답이 없습니다.');
+            }
 
         } catch (error) {
             console.error('Audio transcription error:', error);
             setError(error instanceof Error ? error.message : 'An unknown error occurred');
+            setIsProcessing(false);
+            setProcessingStep(null);
         }
     };
 
     // Polling for transcription completion
     useSWR(
-        pollingId ? `/api/transcription-progress?id=${pollingId}` : null,
+        pollingId ? `/api/transcription-progress?pollingId=${pollingId}` : null,
         async (url) => {
             const res = await fetch(url);
             if (!res.ok) throw new Error('Failed to fetch status');
@@ -212,14 +233,19 @@ export default function UploadAudioModal({ isOpen, onClose }: UploadAudioModalPr
                     setProcessingStep(null);
 
                     // 트랜스크립션 텍스트가 있으면 상태로 반영
-                    if (data.text && typeof data.text === 'string') {
-                        setTranscribedText(data.text);
+                    if (data.transcription && typeof data.transcription === 'string') {
+                        setTranscribedText(data.transcription);
                     }
                 } else if (data && data.status === 'error') {
                     // 오류 발생 시
                     setPollingId(null);
                     setIsProcessing(false);
-                    setError(data.message || '트랜스크립션 처리 중 오류가 발생했습니다.');
+                    setProcessingStep(null);
+                    setError(data.error || '트랜스크립션 처리 중 오류가 발생했습니다.');
+                } else if (data && (data.status === 'processing' || data.status === 'in_progress')) {
+                    // 진행 중인 경우 진행률 업데이트
+                    setProgress(data.progress || 0);
+                    setProgressMessage(data.message || 'Processing...');
                 }
             }
         }
@@ -400,7 +426,7 @@ export default function UploadAudioModal({ isOpen, onClose }: UploadAudioModalPr
                                         </select>
                                     </div>
                                     <p className="text-gray-600 mb-6">
-                                        Upload audio file in {selectedLanguage} to generate notes.(max 75MB)
+                                        Upload audio file in {selectedLanguage} to generate notes.
                                     </p>
 
                                     <div
@@ -456,11 +482,8 @@ export default function UploadAudioModal({ isOpen, onClose }: UploadAudioModalPr
                                     )}
                                     {isProcessing && (
                                         <div className="mt-4 text-center">
-                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#5F4BB6] mx-auto mb-2"></div>
                                             <p className="text-sm text-gray-600">
-                                                {processingStep === 'transcribing' ? 'Transcribing...' : 'Processing...'}
-                                                <br />
-                                                <span className="text-xs text-gray-500">Large files may take longer to process.</span>
+                                                <span className="text-s text-gray-500">Large files may take longer to process. (1 min = 1 second)</span>
                                             </p>
                                         </div>
                                     )}
@@ -536,8 +559,8 @@ export default function UploadAudioModal({ isOpen, onClose }: UploadAudioModalPr
                                     </button>
                                     <button
                                         onClick={handleProcess}
-                                        disabled={isProcessing}
-                                        className={`px-4 py-2 rounded-lg font-medium ${isProcessing
+                                        disabled={isProcessing || !transcribedText}
+                                        className={`px-4 py-2 rounded-lg font-medium ${isProcessing || !transcribedText
                                             ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                                             : 'bg-[#7969F7] text-white hover:bg-[#6858e6]'
                                             } transition-colors`}

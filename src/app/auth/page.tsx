@@ -30,7 +30,7 @@ export default async function AuthPage() {
                     <span className="font-bold">LOOPA</span> <span className="font-light text-gray-600">AI Notes</span>
                 </h1>
                 <p className="text-xl text-gray-600 mt-2">
-                Your Notes, Reimagined.
+                    Instant Summaries. Effortless Insights.
                 </p>
             </div>
 

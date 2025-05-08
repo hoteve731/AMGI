@@ -6,7 +6,7 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { useSWRConfig } from 'swr'
 import { useRouter } from 'next/navigation'
 import LoadingOverlay from './LoadingOverlay'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import useSWR from 'swr'
 import { ChevronRightIcon } from '@heroicons/react/24/outline'
 import Image from 'next/image'
@@ -43,9 +43,37 @@ export default function ContentList({ contents: externalContents, showTabs = fal
     const [isLoading, setIsLoading] = useState(false)
     const [processedContents, setProcessedContents] = useState<Content[]>([])
     const [processingContentIds, setProcessingContentIds] = useState<string[]>([])
+    const [isVisible, setIsVisible] = useState(false)
     const router = useRouter()
     const supabase = createClientComponentClient()
     const { mutate: localMutate } = useSWRConfig()
+
+    // Animation variants for the container
+    const containerVariants = {
+        hidden: { opacity: 0 },
+        visible: {
+            opacity: 1,
+            transition: {
+                when: "beforeChildren",
+                staggerChildren: 0.1,
+                duration: 0.5,
+                ease: [0.25, 0.1, 0.25, 1.0]
+            }
+        }
+    }
+
+    // Animation variants for each content item
+    const itemVariants = {
+        hidden: { opacity: 0, y: 0 },
+        visible: {
+            opacity: 1,
+            y: 0,
+            transition: {
+                duration: 0.5,
+                ease: [0.25, 0.1, 0.25, 1.0]
+            }
+        }
+    }
 
     // 외부에서 제공된 콘텐츠가 없을 경우 SWR로 데이터 가져오기
     const { data, error, isLoading: isFetching, mutate } = useSWR<{ contents: Content[] }>(
@@ -59,6 +87,16 @@ export default function ContentList({ contents: externalContents, showTabs = fal
             dedupingInterval: 5000,
         }
     )
+
+    // 컴포넌트 마운트 시 애니메이션 트리거
+    useEffect(() => {
+        // 약간의 지연 후 애니메이션 시작
+        const timer = setTimeout(() => setIsVisible(true), 150);
+        return () => {
+            clearTimeout(timer);
+            setIsVisible(false);
+        }
+    }, []);
 
     // 임시 콘텐츠 처리
     useEffect(() => {
@@ -98,6 +136,24 @@ export default function ContentList({ contents: externalContents, showTabs = fal
 
     // 실제 사용할 콘텐츠 데이터 결정
     const contentsToProcess = externalContents || data?.contents || []
+
+    // 콘텐츠 개수 캐싱을 위한 함수
+    const cacheContentCount = useCallback((contents: Content[]) => {
+        try {
+            const count = contents?.length || 0;
+            localStorage.setItem('cached_content_count', count.toString());
+            console.log('콘텐츠 개수 캐싱 완료:', count);
+        } catch (error) {
+            console.error('콘텐츠 개수 캐싱 실패:', error);
+        }
+    }, []);
+
+    // 컴포넌트 마운트 시 및 데이터 변경 시 콘텐츠 개수 캐싱
+    useEffect(() => {
+        if (contentsToProcess && contentsToProcess.length >= 0) {
+            cacheContentCount(contentsToProcess);
+        }
+    }, [contentsToProcess, cacheContentCount]);
 
     // 콘텐츠 처리 상태 설정
     useEffect(() => {
@@ -332,108 +388,113 @@ export default function ContentList({ contents: externalContents, showTabs = fal
                     </motion.button>
                 </div>
             )}
-            <div className="space-y-4">
-                {displayContents.map((content, index) => (
+
+            {!isFetching && displayContents.length > 0 && (
+                <>
                     <motion.div
-                        key={content.id}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{
-                            duration: 0.3,
-                            delay: index * 0.05,
-                            ease: [0.25, 0.1, 0.25, 1.0]
-                        }}
-                        className={`
-                            bg-white/80 rounded-[16px] shadow-lg/60 overflow-hidden
-                            hover:bg-white/90 backdrop-blur-sm
-                            transition-all duration-200 active:scale-[0.98]
-                        `}
+                        className="space-y-4"
+                        variants={containerVariants}
+                        initial="hidden"
+                        animate={isVisible ? "visible" : "hidden"}
                     >
-                        <div className="p-5">
-                            <div className="flex justify-between items-center">
-                                {content.isProcessing ? (
-                                    <div className="flex-1">
-                                        <h2 className="text-lg font-bold text-gray-800">
-                                            {content.title}
-                                        </h2>
-                                        <div className="mt-2">
-                                            <div className="flex items-center justify-start">
-                                                <div className="flex">
-                                                    {[0, 1, 2].map((i) => (
-                                                        <motion.div
-                                                            key={i}
-                                                            className="w-2 h-2 rounded-full bg-[#7969F7] mx-0.5"
-                                                            animate={{
-                                                                opacity: [0.4, 1, 0.4],
-                                                                y: ['0px', '-4px', '0px']
-                                                            }}
-                                                            transition={{
-                                                                duration: 1,
-                                                                repeat: Infinity,
-                                                                delay: i * 0.2,
-                                                                ease: 'easeInOut',
-                                                            }}
-                                                        />
-                                                    ))}
-                                                </div>
-                                                <span className="ml-2 text-sm text-[#7969F7]">Processing...</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="flex-1 cursor-pointer relative"
-                                        onClick={() => handleContentClick(content.id)}
-                                    >
-                                        {/* Caret right icon - positioned at vertical center on the right */}
-                                        <div className="absolute right-1 top-1/2 -translate-y-1/2">
-                                            <ChevronRightIcon className="w-4 h-4 text-black text-opacity-40" />
-                                        </div>
-
-                                        {/* Icon with circular background - positioned at vertical center on the left */}
-                                        <div className="absolute left-0 top-1/2 -translate-y-1/2 flex items-center justify-center w-12 h-12 rounded-full bg-[#F3F5FD]">
-                                            <span className="text-xl">{content.icon || '📄'}</span>
-                                        </div>
-
-                                        <div className="pl-16 pr-8">
-                                            {/* Title */}
-                                            <h2 className="text-lg font-semibold text-gray-800">
-                                                {content.title}
-                                            </h2>
-
-                                            {/* Ready message */}
-                                            {(content.groups_count === 0 && content.chunks_count === 0 && !content.isProcessing) && (
-                                                <div className="mt-1 mb-2 text-base text-gray-500 font-normal">
-                                                    ✅ Your Note is ready. Now generate flashcards!
-                                                </div>
-                                            )}
-
-                                            {/* Bottom row with counts on left and date on right */}
-                                            <div className="flex items-center mt-2">
-                                                {/* Card count and date on the left */}
-                                                <div className="flex items-center gap-2 text-black text-opacity-40">
-                                                    <div className="flex items-center gap-1">
-                                                        <span className="text-xs">{content.chunks_count || 0} Cards</span>
+                        {displayContents.map((content, index) => (
+                            <motion.div
+                                key={content.id}
+                                variants={itemVariants}
+                                className={`
+                                    bg-white/80 rounded-[16px] shadow-lg/60 overflow-hidden
+                                    hover:bg-white/90 backdrop-blur-sm
+                                    transition-all duration-200 active:scale-[0.98]
+                                `}
+                                whileHover={{ scale: 1.01 }}
+                            >
+                                <div className="p-5">
+                                    <div className="flex justify-between items-center">
+                                        {content.isProcessing ? (
+                                            <div className="flex-1">
+                                                <h2 className="text-lg font-bold text-gray-800">
+                                                    {content.title}
+                                                </h2>
+                                                <div className="mt-2">
+                                                    <div className="flex items-center justify-start">
+                                                        <div className="flex">
+                                                            {[0, 1, 2].map((i) => (
+                                                                <motion.div
+                                                                    key={i}
+                                                                    className="w-2 h-2 rounded-full bg-[#7969F7] mx-0.5"
+                                                                    animate={{
+                                                                        opacity: [0.4, 1, 0.4],
+                                                                        y: ['0px', '-4px', '0px']
+                                                                    }}
+                                                                    transition={{
+                                                                        duration: 1,
+                                                                        repeat: Infinity,
+                                                                        delay: i * 0.2,
+                                                                        ease: 'easeInOut',
+                                                                    }}
+                                                                />
+                                                            ))}
+                                                        </div>
+                                                        <span className="ml-2 text-sm text-[#7969F7]">Processing...</span>
                                                     </div>
-                                                    <span className="text-xs">•</span>
-
-                                                    {/* Date */}
-                                                    <span className="text-xs">
-                                                        {new Date(content.created_at).toLocaleDateString('en-US', {
-                                                            year: 'numeric',
-                                                            month: 'long',
-                                                            day: 'numeric'
-                                                        })}
-                                                    </span>
                                                 </div>
                                             </div>
-                                        </div>
+                                        ) : (
+                                            <div className="flex-1 cursor-pointer relative"
+                                                onClick={() => handleContentClick(content.id)}
+                                            >
+                                                {/* Caret right icon - positioned at vertical center on the right */}
+                                                <div className="absolute right-1 top-1/2 -translate-y-1/2">
+                                                    <ChevronRightIcon className="w-4 h-4 text-black text-opacity-40" />
+                                                </div>
+
+                                                {/* Icon with circular background - positioned at vertical center on the left */}
+                                                <div className="absolute left-0 top-1/2 -translate-y-1/2 flex items-center justify-center w-12 h-12 rounded-full bg-[#F3F5FD]">
+                                                    <span className="text-xl">{content.icon || '📄'}</span>
+                                                </div>
+
+                                                <div className="pl-16 pr-8">
+                                                    {/* Title */}
+                                                    <h2 className="text-lg font-semibold text-gray-800">
+                                                        {content.title}
+                                                    </h2>
+
+                                                    {/* Ready message */}
+                                                    {(content.groups_count === 0 && content.chunks_count === 0 && !content.isProcessing) && (
+                                                        <div className="mt-1 mb-2 text-base text-gray-500 font-normal">
+                                                            ✅ Your Note is ready. Now generate flashcards!
+                                                        </div>
+                                                    )}
+
+                                                    {/* Bottom row with counts on left and date on right */}
+                                                    <div className="flex items-center mt-2">
+                                                        {/* Card count and date on the left */}
+                                                        <div className="flex items-center gap-2 text-black text-opacity-40">
+                                                            <div className="flex items-center gap-1">
+                                                                <span className="text-xs">{content.chunks_count || 0} Cards</span>
+                                                            </div>
+                                                            <span className="text-xs">•</span>
+
+                                                            {/* Date */}
+                                                            <span className="text-xs">
+                                                                {new Date(content.created_at).toLocaleDateString('en-US', {
+                                                                    year: 'numeric',
+                                                                    month: 'long',
+                                                                    day: 'numeric'
+                                                                })}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
-                                )}
-                            </div>
-                        </div>
+                                </div>
+                            </motion.div>
+                        ))}
                     </motion.div>
-                ))}
-            </div>
+                </>
+            )}
         </div>
     )
 }

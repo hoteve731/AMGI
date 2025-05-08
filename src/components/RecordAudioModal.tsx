@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useSWRConfig } from 'swr';
+import useSWR from 'swr';
 
 interface RecordAudioModalProps {
     isOpen: boolean;
@@ -20,6 +21,9 @@ export default function RecordAudioModal({ isOpen, onClose }: RecordAudioModalPr
     const [error, setError] = useState<string | null>(null);
     const [transcribedText, setTranscribedText] = useState<string | null>(null);
     const [selectedLanguage, setSelectedLanguage] = useState<string>('English');
+    const [pollingId, setPollingId] = useState<string | null>(null);
+    const [progress, setProgress] = useState<number>(0);
+    const [progressMessage, setProgressMessage] = useState<string>('Processing...');
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const chunksRef = useRef<Blob[]>([]);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -154,6 +158,8 @@ export default function RecordAudioModal({ isOpen, onClose }: RecordAudioModalPr
         setIsProcessing(true);
         setProcessingStep('transcribing');
         setError(null);
+        setProgress(0);
+        setProgressMessage('Transcribing audio...');
 
         try {
             // Create form data with audio file
@@ -173,16 +179,74 @@ export default function RecordAudioModal({ isOpen, onClose }: RecordAudioModalPr
             }
 
             const data = await response.json();
-            setTranscribedText(data.text);
+
+            // 즉시 응답이 있는 경우
+            if (data.transcription) {
+                setTranscribedText(data.transcription);
+                setIsProcessing(false);
+                setProcessingStep(null);
+                return;
+            }
+
+            // 폴링이 필요한 경우 폴링 ID 설정
+            if (data.contentId) {
+                setPollingId(data.contentId);
+                // 폴링 시작 - 실제 폴링은 useSWR에서 처리
+                setIsProcessing(true);
+                setProcessingStep('transcribing');
+            } else {
+                // 응답이 없는 경우 (오류)
+                setIsProcessing(false);
+                setProcessingStep(null);
+                setError('트랜스크립션 응답이 없습니다.');
+            }
 
         } catch (error) {
             console.error('Audio transcription error:', error);
             setError(error instanceof Error ? error.message : 'An unknown error occurred');
-        } finally {
             setIsProcessing(false);
             setProcessingStep(null);
         }
     };
+
+    // 폴링을 위한 SWR 훅 추가
+    useSWR(
+        pollingId ? `/api/transcription-progress?pollingId=${pollingId}` : null,
+        async (url) => {
+            const res = await fetch(url);
+            if (!res.ok) throw new Error('Failed to fetch status');
+            return res.json();
+        },
+        {
+            refreshInterval: 3000, // 3초마다 확인
+            onSuccess: (data) => {
+                console.log('Transcription status:', data);
+
+                // 완료 상태일 때만 처리
+                if (data && data.status === 'completed') {
+                    // 폴링 중단
+                    setPollingId(null);
+                    setIsProcessing(false);
+                    setProcessingStep(null);
+
+                    // 트랜스크립션 텍스트가 있으면 상태로 반영
+                    if (data.transcription && typeof data.transcription === 'string') {
+                        setTranscribedText(data.transcription);
+                    }
+                } else if (data && data.status === 'failed') {
+                    // 오류 발생 시
+                    setPollingId(null);
+                    setIsProcessing(false);
+                    setProcessingStep(null);
+                    setError(data.error || '트랜스크립션 처리 중 오류가 발생했습니다.');
+                } else if (data && (data.status === 'processing' || data.status === 'in_progress')) {
+                    // 진행 중인 경우 진행률 업데이트
+                    setProgress(data.progress || 0);
+                    setProgressMessage(data.message || 'Processing...');
+                }
+            }
+        }
+    );
 
     // Process transcribed text through markdown conversion
     const handleProcess = async () => {
@@ -485,8 +549,8 @@ export default function RecordAudioModal({ isOpen, onClose }: RecordAudioModalPr
                                     </button>
                                     <button
                                         onClick={handleProcess}
-                                        disabled={isProcessing}
-                                        className={`px-4 py-2 rounded-lg font-medium ${isProcessing
+                                        disabled={isProcessing || !transcribedText}
+                                        className={`px-4 py-2 rounded-lg font-medium ${isProcessing || !transcribedText
                                             ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                                             : 'bg-[#7969F7] text-white hover:bg-[#6858e6]'
                                             } transition-colors`}

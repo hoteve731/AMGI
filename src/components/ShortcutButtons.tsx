@@ -24,6 +24,33 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
   const [showRecordAudioModal, setShowRecordAudioModal] = useState(false)
   const [showUploadAudioModal, setShowUploadAudioModal] = useState(false)
   const [contentCount, setContentCount] = useState(0)
+  const [isVisible, setIsVisible] = useState(false)
+
+  // Animation variants for the container
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        when: "beforeChildren",
+        staggerChildren: 0.1,
+        duration: 0.3
+      }
+    }
+  }
+
+  // Animation variants for each button
+  const buttonVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.4,
+        ease: "easeOut"
+      }
+    }
+  }
 
   // Fetch content count when component mounts
   useEffect(() => {
@@ -66,7 +93,12 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
   // Set mounted state to true when component mounts
   useEffect(() => {
     setMounted(true)
-    return () => setMounted(false)
+    // Trigger animation after a small delay for better visual effect
+    setTimeout(() => setIsVisible(true), 100)
+    return () => {
+      setMounted(false)
+      setIsVisible(false)
+    }
   }, [])
 
   // Function to open the Upload Text modal
@@ -123,15 +155,29 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
   return (
     <>
       {/* New Note section */}
-      <h3 className="text-2xl font-semibold text-black mt-2">New Note</h3>
-      <p className="text-base text-gray-600 mb-4">Upload anything to understand complex topics</p>
+      <motion.h3
+        className="text-2xl font-semibold text-black mt-2 mb-4"
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: isVisible ? 1 : 0, y: isVisible ? 0 : 15 }}
+        transition={{ duration: 0.4, ease: "easeOut" }}
+      >
+        New Note
+      </motion.h3>
 
       {/* Grid layout for shortcut buttons */}
-      <div className="grid grid-cols-2 gap-3">
+      <motion.div
+        className="grid grid-cols-2 gap-3"
+        variants={containerVariants}
+        initial="hidden"
+        animate={isVisible ? "visible" : "hidden"}
+      >
         {/* Upload Text - This one actually opens the bottom sheet */}
-        <button
+        <motion.button
+          variants={buttonVariants}
           onClick={handleUploadText}
           className="flex flex-col items-center justify-center bg-white hover:bg-white/50 transition-colors duration-200 rounded-xl p-4"
+          whileHover={{ scale: 1.03 }}
+          whileTap={{ scale: 0.98 }}
         >
           <Image
             src="/images/loopadocs.png"
@@ -141,12 +187,15 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
             className="mb-1"
           />
           <span className="text-base font-semibold text-black/70">Upload text</span>
-        </button>
+        </motion.button>
 
         {/* Web link - Now active */}
-        <button
+        <motion.button
+          variants={buttonVariants}
           onClick={handleWebLinkClick}
           className="flex flex-col items-center justify-center bg-white hover:bg-white/50 transition-colors duration-200 rounded-xl p-4"
+          whileHover={{ scale: 1.03 }}
+          whileTap={{ scale: 0.98 }}
         >
           <Image
             src="/images/loopalink.png"
@@ -156,12 +205,15 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
             className="mb-1"
           />
           <span className="text-base font-semibold text-black/70">Web link</span>
-        </button>
+        </motion.button>
 
         {/* Record Audio - New feature */}
-        <button
+        <motion.button
+          variants={buttonVariants}
           onClick={handleRecordAudioClick}
           className="flex flex-col items-center justify-center bg-white hover:bg-white/50 transition-colors duration-200 rounded-xl p-4"
+          whileHover={{ scale: 1.03 }}
+          whileTap={{ scale: 0.98 }}
         >
           <Image
             src="/images/looparecord.png"
@@ -171,12 +223,15 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
             className="mb-1"
           />
           <span className="text-base font-semibold text-black/70">Record Audio</span>
-        </button>
+        </motion.button>
 
         {/* Upload Audio - New feature */}
-        <button
+        <motion.button
+          variants={buttonVariants}
           onClick={handleUploadAudioClick}
           className="flex flex-col items-center justify-center bg-white hover:bg-white/50 transition-colors duration-200 rounded-xl p-4"
+          whileHover={{ scale: 1.03 }}
+          whileTap={{ scale: 0.98 }}
         >
           <Image
             src="/images/loopaaudio.png"
@@ -186,12 +241,15 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
             className="mb-1"
           />
           <span className="text-base font-semibold text-black/70">Upload Audio</span>
-        </button>
+        </motion.button>
 
         {/* Make visual map - Coming soon */}
-        <button
+        <motion.button
+          variants={buttonVariants}
           onClick={() => handleComingSoonFeature('Make visual map')}
           className="flex flex-col items-center justify-center bg-gray-200 hover:bg-gray-300/50 transition-colors duration-200 rounded-xl p-4"
+          whileHover={{ scale: 1.03 }}
+          whileTap={{ scale: 0.98 }}
         >
           <Image
             src="/images/loopamap.png"
@@ -199,15 +257,17 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
             width={80}
             height={80}
             className="mb-1"
-
           />
           <span className="text-base font-semibold text-gray-400">Make Diagram</span>
-        </button>
+        </motion.button>
 
         {/* Upload PDF - Coming soon */}
-        <button
+        <motion.button
+          variants={buttonVariants}
           onClick={() => handleComingSoonFeature('Upload PDF')}
           className="flex flex-col items-center justify-center bg-gray-200 hover:bg-gray-300/50 transition-colors duration-200 rounded-xl p-4"
+          whileHover={{ scale: 1.03 }}
+          whileTap={{ scale: 0.98 }}
         >
           <Image
             src="/images/loopapdf.png"
@@ -217,8 +277,8 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
             className="mb-1"
           />
           <span className="text-base font-semibold text-gray-400">Upload PDF</span>
-        </button>
-      </div>
+        </motion.button>
+      </motion.div>
 
       {/* Coming Soon Modal - Using Portal */}
       {mounted && createPortal(
