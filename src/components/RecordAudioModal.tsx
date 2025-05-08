@@ -312,7 +312,7 @@ export default function RecordAudioModal({ isOpen, onClose }: RecordAudioModalPr
                         <div className="flex items-center justify-between mb-6">
                             <div className="flex items-center">
                                 <Image
-                                    src="/images/loopaaudio.png"
+                                    src="/images/looparecord.png"
                                     alt="Record Audio"
                                     width={40}
                                     height={40}

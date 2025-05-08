@@ -4,6 +4,18 @@ import OpenAI from 'openai';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
 import { generateUnifiedChunksPrompt, generateMarkdownConversionPrompt } from './prompt_generator';
+import { transcribeAudio } from './audio_processor';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
+import { v4 as uuidv4 } from 'uuid';
+import { Readable } from 'stream';
+import { finished } from 'stream/promises';
+import fileUpload from 'express-fileupload';
+import express from 'express';
+
+// @types/express-fileupload 패키지가 이미 Express.Request에 files 속성을 정의하고 있으므로
+// 별도의 타입 확장이 필요하지 않습니다.
 
 console.log("GCF Script - Top Level: Starting execution..."); // 최상단 로그
 
@@ -497,4 +509,131 @@ async function updateContentStatus(supabase: SupabaseClient, contentId: string, 
     }
 }
 
-console.log("GCF Script - Bottom Level: Function registered.");
+// === 오디오 트랜스크립션 엔드포인트 ===
+export const processAudioTranscription = functions.http('processAudioTranscription', async (req, res) => {
+    // CORS 설정
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type, Content-Length');
+
+    // OPTIONS 요청 처리
+    if (req.method === 'OPTIONS') {
+        return res.status(204).send('');
+    }
+
+    // POST 요청만 허용
+    if (req.method !== 'POST') {
+        return res.status(405).send({ success: false, error: 'Method Not Allowed' });
+    }
+
+    // 클라이언트 초기화 확인
+    if (!isInitialized) {
+        console.error('Clients not initialized. Cannot process request.');
+        return res.status(500).send({ success: false, error: 'Server configuration error' });
+    }
+    
+    // 파일 업로드 미들웨어 설정
+    const fileMiddleware = fileUpload({
+        limits: { fileSize: 75 * 1024 * 1024 }, // 75MB 제한
+        abortOnLimit: true,
+        useTempFiles: true,
+        tempFileDir: os.tmpdir(),
+        debug: true
+    });
+    
+    // 미들웨어 적용
+    await new Promise<void>((resolve, reject) => {
+        fileMiddleware(req as any, res as any, (err: any) => {
+            if (err) {
+                console.error('File upload middleware error:', err);
+                reject(err);
+            } else {
+                resolve();
+            }
+        });
+    }).catch(err => {
+        return res.status(400).send({ 
+            success: false, 
+            error: `File upload error: ${err.message || 'Unknown error'}` 
+        });
+    });
+
+    let contentId = '';
+
+    try {
+        console.log("Audio transcription request received:", req.headers['content-type']);
+
+        // multipart/form-data 요청 확인
+        if (!req.headers['content-type']?.includes('multipart/form-data')) {
+            return res.status(400).send('Invalid content type. Expected multipart/form-data');
+        }
+
+        // 요청 데이터 파싱
+        const { userId, language = 'English', contentId: reqContentId } = req.body;
+        contentId = reqContentId as string;
+
+        if (!userId) {
+            return res.status(400).send('Missing required parameter: userId');
+        }
+
+        if (!req.files || !req.files.file) {
+            return res.status(400).send('No audio file provided');
+        }
+
+        // express-fileupload에서는 파일이 단일 파일이거나 배열일 수 있음
+        const fileObj = req.files.file;
+        // 단일 파일인지 배열인지 확인
+        const file = Array.isArray(fileObj) ? fileObj[0] : fileObj;
+        
+        // express-fileupload의 속성 이름 사용
+        const fileName = file.name || 'audio-file';
+        const fileType = file.mimetype || 'audio/mpeg';
+        const fileBuffer = file.data; // buffer 대신 data 사용
+
+        console.log(`[AudioTranscription][${contentId}] Processing file: ${fileName}, size: ${fileBuffer.length} bytes, type: ${fileType}`);
+
+        // 오디오 트랜스크립션 수행
+        const result = await transcribeAudio(
+            supabase,
+            openai,
+            fileBuffer,
+            fileName,
+            fileType,
+            language,
+            userId
+        );
+
+        if (!result.success) {
+            console.error(`[AudioTranscription][${contentId}] Transcription failed:`, result.error);
+            
+            // 오류가 있지만 사용자에게 보여줄 텍스트가 있는 경우 (예: 파일이 너무 긴 경우)
+            if (result.transcription) {
+                return res.status(200).send({
+                    success: true,
+                    transcription: result.transcription,
+                    warning: result.error
+                });
+            }
+            
+            return res.status(500).send({
+                success: false,
+                error: result.error || 'Unknown error during transcription'
+            });
+        }
+
+        // 성공 응답
+        return res.status(200).send({
+            success: true,
+            transcription: result.transcription
+        });
+
+    } catch (error: any) {
+        console.error(`[AudioTranscription][${contentId}] Error:`, error);
+        return res.status(500).send({
+            success: false,
+            error: error.message || 'Unknown server error'
+        });
+    }
+});
+
+console.log("GCF Script - Bottom Level: Functions registered.");

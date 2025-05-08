@@ -54,8 +54,8 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
         return '/images/loopalink.png'
       case 'Make visual map':
         return '/images/loopamap.png'
-      case 'Record Audio':
-        return '/images/loopaaudio.png'
+      case 'Record Record':
+        return '/images/looparecord.png'
       case 'Upload Audio':
         return '/images/loopaaudio.png'
       default:
@@ -164,7 +164,7 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
           className="flex flex-col items-center justify-center bg-white hover:bg-white/50 transition-colors duration-200 rounded-xl p-4"
         >
           <Image
-            src="/images/loopaaudio.png"
+            src="/images/looparecord.png"
             alt="Record Audio"
             width={80}
             height={80}
@@ -191,7 +191,7 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
         {/* Make visual map - Coming soon */}
         <button
           onClick={() => handleComingSoonFeature('Make visual map')}
-          className="flex flex-col items-center justify-center bg-[#5f4bb6]/30 hover:bg-[#5f4bb6]/50 transition-colors duration-200 rounded-xl p-4"
+          className="flex flex-col items-center justify-center bg-gray-200 hover:bg-gray-300/50 transition-colors duration-200 rounded-xl p-4"
         >
           <Image
             src="/images/loopamap.png"
@@ -201,13 +201,13 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
             className="mb-1"
 
           />
-          <span className="text-base font-semibold text-white/50">Make Diagram</span>
+          <span className="text-base font-semibold text-gray-400">Make Diagram</span>
         </button>
 
         {/* Upload PDF - Coming soon */}
         <button
           onClick={() => handleComingSoonFeature('Upload PDF')}
-          className="flex flex-col items-center justify-center bg-[#5f4bb6]/30 hover:bg-[#5f4bb6]/50 transition-colors duration-200 rounded-xl p-4"
+          className="flex flex-col items-center justify-center bg-gray-200 hover:bg-gray-300/50 transition-colors duration-200 rounded-xl p-4"
         >
           <Image
             src="/images/loopapdf.png"
@@ -216,7 +216,7 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
             height={80}
             className="mb-1"
           />
-          <span className="text-base font-semibold text-white/50">Upload PDF</span>
+          <span className="text-base font-semibold text-gray-400">Upload PDF</span>
         </button>
       </div>
 
@@ -250,7 +250,7 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
                       height={80}
                     />
                   </div>
-                  <h3 className="text-xl font-semibold text-[#5F4BB6] mb-2">Coming Soon!</h3>
+                  <h3 className="text-xl font-semibold text-[#5f4bb6] mb-2">Coming Soon!</h3>
                   <p className="text-gray-600 mb-6">
                     {modalFeature} feature is currently under development and will be available very soon.
                   </p>

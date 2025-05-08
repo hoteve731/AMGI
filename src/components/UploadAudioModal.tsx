@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useSWRConfig } from 'swr';
+import useSWR from 'swr';
 
 interface UploadAudioModalProps {
     isOpen: boolean;
@@ -19,6 +20,9 @@ export default function UploadAudioModal({ isOpen, onClose }: UploadAudioModalPr
     const [transcribedText, setTranscribedText] = useState<string | null>(null);
     const [selectedLanguage, setSelectedLanguage] = useState<string>('English');
     const [isDragging, setIsDragging] = useState(false);
+    const [progress, setProgress] = useState(0);
+    const [progressMessage, setProgressMessage] = useState('');
+    const [pollingId, setPollingId] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const router = useRouter();
     const { mutate } = useSWRConfig();
@@ -44,14 +48,24 @@ export default function UploadAudioModal({ isOpen, onClose }: UploadAudioModalPr
         }
     }, []);
 
-    // Reset state when modal closes
+    // Reset state when modal opens or closes
     useEffect(() => {
-        if (!isOpen) {
+        if (isOpen) {
+            // Reset state when modal opens
+            setIsProcessing(false);
+            setProcessingStep(null);
+            // Don't reset other states when opening to preserve previous selections
+        } else {
+            // Reset all states when modal closes
             setAudioFile(null);
             setError(null);
             setTranscribedText(null);
             setProcessingStep(null);
             setIsDragging(false);
+            setProgress(0);
+            setProgressMessage('');
+            setPollingId(null);
+            setIsProcessing(false);
         }
     }, [isOpen]);
 
@@ -91,8 +105,8 @@ export default function UploadAudioModal({ isOpen, onClose }: UploadAudioModalPr
         }
 
         // Check file size (25MB limit)
-        if (file.size > 25 * 1024 * 1024) {
-            setError('File size exceeds 25MB limit');
+        if (file.size > 75 * 1024 * 1024) {
+            setError('File size exceeds 75MB limit');
             return;
         }
 
@@ -147,6 +161,8 @@ export default function UploadAudioModal({ isOpen, onClose }: UploadAudioModalPr
         setIsProcessing(true);
         setProcessingStep('transcribing');
         setError(null);
+        setProgress(0);
+        setProgressMessage('Transcribing audio...');
 
         try {
             // Create form data with audio file
@@ -167,15 +183,47 @@ export default function UploadAudioModal({ isOpen, onClose }: UploadAudioModalPr
 
             const data = await response.json();
             setTranscribedText(data.text);
+            setPollingId(data.pollingId);
 
         } catch (error) {
             console.error('Audio transcription error:', error);
             setError(error instanceof Error ? error.message : 'An unknown error occurred');
-        } finally {
-            setIsProcessing(false);
-            setProcessingStep(null);
         }
     };
+
+    // Polling for transcription completion
+    useSWR(
+        pollingId ? `/api/transcription-progress?id=${pollingId}` : null,
+        async (url) => {
+            const res = await fetch(url);
+            if (!res.ok) throw new Error('Failed to fetch status');
+            return res.json();
+        },
+        {
+            refreshInterval: 3000, // 3초마다 확인
+            onSuccess: (data) => {
+                console.log('Transcription status:', data);
+                
+                // 완료 상태일 때만 처리
+                if (data && data.status === 'completed') {
+                    // 폴링 중단
+                    setPollingId(null);
+                    setIsProcessing(false);
+                    setProcessingStep(null);
+                    
+                    // 트랜스크립션 텍스트가 있으면 상태로 반영
+                    if (data.text && typeof data.text === 'string') {
+                        setTranscribedText(data.text);
+                    }
+                } else if (data && data.status === 'error') {
+                    // 오류 발생 시
+                    setPollingId(null);
+                    setIsProcessing(false);
+                    setError(data.message || '트랜스크립션 처리 중 오류가 발생했습니다.');
+                }
+            }
+        }
+    );
 
     // Process transcribed text through markdown conversion
     const handleProcess = async () => {
@@ -183,6 +231,8 @@ export default function UploadAudioModal({ isOpen, onClose }: UploadAudioModalPr
 
         setIsProcessing(true);
         setProcessingStep('processing');
+        setProgress(0);
+        setProgressMessage('Processing text...');
 
         try {
             // Create temporary content for immediate UI update
@@ -278,6 +328,8 @@ export default function UploadAudioModal({ isOpen, onClose }: UploadAudioModalPr
         } finally {
             setIsProcessing(false);
             setProcessingStep(null);
+            setProgress(0);
+            setProgressMessage('');
         }
     };
 
@@ -348,7 +400,7 @@ export default function UploadAudioModal({ isOpen, onClose }: UploadAudioModalPr
                                         </select>
                                     </div>
                                     <p className="text-gray-600 mb-6">
-                                        Upload audio in {selectedLanguage} to generate AI notes. Supported formats: MP3, MP4, WAV, WebM, M4A (max 25MB).
+                                        Upload audio in {selectedLanguage} to generate AI notes. Supported formats: MP3, MP4, WAV, WebM, M4A (max 75MB).
                                     </p>
 
                                     <div
@@ -366,7 +418,7 @@ export default function UploadAudioModal({ isOpen, onClose }: UploadAudioModalPr
                                                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                                                     </svg>
                                                 </div>
-                                                <p className="text-lg font-medium text-green-600 mb-2">File Selected</p>
+                                                <p className="text-lg font-semibold text-green-600 mb-2">File Selected</p>
                                                 <p className="text-gray-600 mb-1">{audioFile.name}</p>
                                                 <p className="text-gray-500 text-sm mb-4">{formatFileSize(audioFile.size)}</p>
                                                 {audioFile.type.startsWith('audio/') && (
@@ -384,7 +436,7 @@ export default function UploadAudioModal({ isOpen, onClose }: UploadAudioModalPr
                                                 <p className="text-gray-600 mb-4">or</p>
                                                 <button
                                                     onClick={triggerFileInput}
-                                                    className="px-4 py-2 bg-[#5F4BB6] text-white rounded-lg hover:bg-[#4A3A9F] transition-colors"
+                                                    className="px-4 py-2 bg-[#5F4BB6] font-medium text-white rounded-lg hover:bg-[#4A3A9F] transition-colors"
                                                 >
                                                     Select Audio File
                                                 </button>
@@ -402,6 +454,16 @@ export default function UploadAudioModal({ isOpen, onClose }: UploadAudioModalPr
                                     {error && (
                                         <p className="text-red-500 text-sm mb-4">{error}</p>
                                     )}
+                                    {isProcessing && (
+                                        <div className="mt-4 text-center">
+                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#5F4BB6] mx-auto mb-2"></div>
+                                            <p className="text-sm text-gray-600">
+                                                {processingStep === 'transcribing' ? 'Transcribing...' : 'Processing...'}
+                                                <br />
+                                                <span className="text-xs text-gray-500">Large files may take longer to process.</span>
+                                            </p>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="flex justify-between">
@@ -411,7 +473,7 @@ export default function UploadAudioModal({ isOpen, onClose }: UploadAudioModalPr
                                                 onClick={() => setAudioFile(null)}
                                                 className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
                                             >
-                                                Choose Different File
+                                                Cancel
                                             </button>
                                             <button
                                                 onClick={transcribeAudio}
@@ -431,14 +493,7 @@ export default function UploadAudioModal({ isOpen, onClose }: UploadAudioModalPr
                                                 )}
                                             </button>
                                         </>
-                                    ) : (
-                                        <button
-                                            onClick={triggerFileInput}
-                                            className="w-full py-3 bg-[#5F4BB6] hover:bg-[#4A3A9F] text-white font-semibold rounded-xl transition-colors duration-200"
-                                        >
-                                            Select Audio File
-                                        </button>
-                                    )}
+                                    ) : null}
                                 </div>
                             </>
                         ) : (
