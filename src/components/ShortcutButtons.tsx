@@ -186,7 +186,7 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
             height={80}
             className="mb-1"
           />
-          <span className="text-base font-semibold text-black/70">Upload text</span>
+          <span className="text-base font-light text-black/70">Upload text</span>
         </motion.button>
 
         {/* Web link - Now active */}
@@ -204,7 +204,7 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
             height={80}
             className="mb-1"
           />
-          <span className="text-base font-semibold text-black/70">Web link</span>
+          <span className="text-base font-light text-black/70">Web link</span>
         </motion.button>
 
         {/* Record Audio - New feature */}
@@ -222,7 +222,7 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
             height={80}
             className="mb-1"
           />
-          <span className="text-base font-semibold text-black/70">Record Audio</span>
+          <span className="text-base font-light text-black/70">Record Audio</span>
         </motion.button>
 
         {/* Upload Audio - New feature */}
@@ -240,7 +240,7 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
             height={80}
             className="mb-1"
           />
-          <span className="text-base font-semibold text-black/70">Upload Audio</span>
+          <span className="text-base font-light text-black/70">Upload Audio</span>
         </motion.button>
 
         {/* Make visual map - Coming soon */}
@@ -258,7 +258,7 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
             height={80}
             className="mb-1"
           />
-          <span className="text-base font-semibold text-gray-400">Make Diagram</span>
+          <span className="text-base font-light text-gray-400">Make Diagram</span>
         </motion.button>
 
         {/* Upload PDF - Coming soon */}
@@ -276,7 +276,7 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
             height={80}
             className="mb-1"
           />
-          <span className="text-base font-semibold text-gray-400">Upload PDF</span>
+          <span className="text-base font-light text-gray-400">Upload PDF</span>
         </motion.button>
       </motion.div>
 

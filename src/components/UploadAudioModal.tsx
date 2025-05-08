@@ -483,7 +483,7 @@ export default function UploadAudioModal({ isOpen, onClose }: UploadAudioModalPr
                                     {isProcessing && (
                                         <div className="mt-4 text-center">
                                             <p className="text-sm text-gray-600">
-                                                <span className="text-s text-gray-500">Large files may take longer to process. (1 min = 1 second)</span>
+                                                <span className="text-s text-gray-500">Large files may take longer to process. (1 min = 2~3 seconds)</span>
                                             </p>
                                         </div>
                                     )}
