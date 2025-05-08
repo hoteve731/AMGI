@@ -7,6 +7,8 @@ import { createPortal } from 'react-dom'
 import WebLinkModal from './WebLinkModal'
 import UploadTextModal from './UploadTextModal'
 import SubscriptionModal from './SubscriptionModal'
+import RecordAudioModal from './RecordAudioModal'
+import UploadAudioModal from './UploadAudioModal'
 
 interface ShortcutButtonsProps {
   userName?: string
@@ -19,13 +21,15 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
   const [showWebLinkModal, setShowWebLinkModal] = useState(false)
   const [showUploadTextModal, setShowUploadTextModal] = useState(false)
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false)
+  const [showRecordAudioModal, setShowRecordAudioModal] = useState(false)
+  const [showUploadAudioModal, setShowUploadAudioModal] = useState(false)
   const [contentCount, setContentCount] = useState(0)
-  
+
   // Fetch content count when component mounts
   useEffect(() => {
     fetchContentCount()
   }, [])
-  
+
   // Function to fetch content count
   const fetchContentCount = async () => {
     try {
@@ -50,6 +54,10 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
         return '/images/loopalink.png'
       case 'Make visual map':
         return '/images/loopamap.png'
+      case 'Record Audio':
+        return '/images/loopaaudio.png'
+      case 'Upload Audio':
+        return '/images/loopaaudio.png'
       default:
         return '/images/loopadocs.png'
     }
@@ -92,6 +100,26 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
     }
   }
 
+  // Function to open the Record Audio modal
+  const handleRecordAudioClick = () => {
+    // Check if user has reached the free limit
+    if (contentCount >= 3) {
+      setShowSubscriptionModal(true)
+    } else {
+      setShowRecordAudioModal(true)
+    }
+  }
+
+  // Function to open the Upload Audio modal
+  const handleUploadAudioClick = () => {
+    // Check if user has reached the free limit
+    if (contentCount >= 3) {
+      setShowSubscriptionModal(true)
+    } else {
+      setShowUploadAudioModal(true)
+    }
+  }
+
   return (
     <>
       {/* New Note section */}
@@ -115,21 +143,6 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
           <span className="text-base font-semibold text-black/70">Upload text</span>
         </button>
 
-        {/* Upload PDF - Coming soon */}
-        <button
-          onClick={() => handleComingSoonFeature('Upload PDF')}
-          className="flex flex-col items-center justify-center bg-white hover:bg-white/50 transition-colors duration-200 rounded-xl p-4"
-        >
-          <Image
-            src="/images/loopapdf.png"
-            alt="Upload PDF"
-            width={80}
-            height={80}
-            className="mb-1"
-          />
-          <span className="text-base font-semibold text-black/70">Upload PDF</span>
-        </button>
-
         {/* Web link - Now active */}
         <button
           onClick={handleWebLinkClick}
@@ -143,6 +156,36 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
             className="mb-1"
           />
           <span className="text-base font-semibold text-black/70">Web link</span>
+        </button>
+
+        {/* Record Audio - New feature */}
+        <button
+          onClick={handleRecordAudioClick}
+          className="flex flex-col items-center justify-center bg-white hover:bg-white/50 transition-colors duration-200 rounded-xl p-4"
+        >
+          <Image
+            src="/images/loopaaudio.png"
+            alt="Record Audio"
+            width={80}
+            height={80}
+            className="mb-1"
+          />
+          <span className="text-base font-semibold text-black/70">Record Audio</span>
+        </button>
+
+        {/* Upload Audio - New feature */}
+        <button
+          onClick={handleUploadAudioClick}
+          className="flex flex-col items-center justify-center bg-white hover:bg-white/50 transition-colors duration-200 rounded-xl p-4"
+        >
+          <Image
+            src="/images/loopaaudio.png"
+            alt="Upload Audio"
+            width={80}
+            height={80}
+            className="mb-1"
+          />
+          <span className="text-base font-semibold text-black/70">Upload Audio</span>
         </button>
 
         {/* Make visual map - Coming soon */}
@@ -159,6 +202,21 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
 
           />
           <span className="text-base font-semibold text-white/50">Make Diagram</span>
+        </button>
+
+        {/* Upload PDF - Coming soon */}
+        <button
+          onClick={() => handleComingSoonFeature('Upload PDF')}
+          className="flex flex-col items-center justify-center bg-[#5f4bb6]/30 hover:bg-[#5f4bb6]/50 transition-colors duration-200 rounded-xl p-4"
+        >
+          <Image
+            src="/images/loopapdf.png"
+            alt="Upload PDF"
+            width={80}
+            height={80}
+            className="mb-1"
+          />
+          <span className="text-base font-semibold text-white/50">Upload PDF</span>
         </button>
       </div>
 
@@ -221,7 +279,19 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
         isOpen={showUploadTextModal}
         onClose={() => setShowUploadTextModal(false)}
       />
-      
+
+      {/* Record Audio Modal */}
+      <RecordAudioModal
+        isOpen={showRecordAudioModal}
+        onClose={() => setShowRecordAudioModal(false)}
+      />
+
+      {/* Upload Audio Modal */}
+      <UploadAudioModal
+        isOpen={showUploadAudioModal}
+        onClose={() => setShowUploadAudioModal(false)}
+      />
+
       {/* Subscription Modal */}
       <SubscriptionModal
         isOpen={showSubscriptionModal}
