@@ -23,10 +23,10 @@ if (!global.transcriptionProgress) {
 // Maximum allowed upload size (75MB)
 const MAX_UPLOAD_SIZE = 75 * 1024 * 1024;
 
-// Cloud function URL - 배포된 URL로 업데이트 필요
-// 현재는 임시로 로컬 API 처리 방식으로 돌아가도록 설정
-const CLOUD_FUNCTION_URL = process.env.AUDIO_TRANSCRIPTION_FUNCTION_URL || '';
-const USE_LOCAL_PROCESSING = !CLOUD_FUNCTION_URL; // 클라우드 함수 URL이 없으면 로컬 처리
+// Cloud function URL - 로컬에서 실행 중인 클라우드 함수 사용
+// 8080 포트에서 실행 중인 로컬 클라우드 함수 사용
+const CLOUD_FUNCTION_URL = process.env.AUDIO_TRANSCRIPTION_FUNCTION_URL || 'http://localhost:8080/processAudioTranscription';
+const USE_LOCAL_PROCESSING = false; // 클라우드 함수 강제 사용
 
 export async function POST(req: Request) {
     const supabase = await createClient();
@@ -113,16 +113,23 @@ export async function POST(req: Request) {
                     try {
                         // Create a new FormData for the cloud function
                         const cloudFormData = new FormData();
-                        cloudFormData.append('file', file);
+
+                        // 파일 데이터 추가 - 파일명 명시적 지정
+                        cloudFormData.append('file', file, fileName);
+
+                        // 메타데이터 추가
                         cloudFormData.append('language', language);
                         cloudFormData.append('userId', userId);
                         cloudFormData.append('contentId', progressId);
+
+                        console.log(`Calling cloud function with: language=${language}, userId=${userId}, contentId=${progressId}`);
 
                         // Call the cloud function
                         console.log(`Calling cloud function for file: ${fileName}`);
                         const cloudResponse = await fetch(CLOUD_FUNCTION_URL, {
                             method: 'POST',
-                            body: cloudFormData
+                            body: cloudFormData,
+                            // Content-Type 헤더를 명시적으로 설정하지 않음 (브라우저가 자동으로 boundary 설정)
                         });
 
                         if (!cloudResponse.ok) {

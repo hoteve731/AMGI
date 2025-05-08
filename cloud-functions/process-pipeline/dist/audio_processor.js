@@ -10,6 +10,9 @@ const os_1 = __importDefault(require("os"));
 const uuid_1 = require("uuid");
 // Maximum duration for OpenAI API (1500 seconds = 25 minutes)
 const MAX_DURATION_SECONDS = 1500;
+// Maximum chunk size in bytes (10MB instead of 20MB to avoid API limitations)
+const MAX_CHUNK_SIZE_MB = 10;
+const MAX_CHUNK_SIZE_BYTES = MAX_CHUNK_SIZE_MB * 1024 * 1024;
 /**
  * 오디오 파일을 트랜스크립션하는 함수
  */
@@ -27,10 +30,14 @@ async function transcribeAudio(supabase, openai, fileBuffer, fileName, fileType,
         fs_1.default.writeFileSync(tempFilePath, fileBuffer);
         tempFiles.push(tempFilePath);
         console.log(`[AudioProcessor] Saved file to temporary location: ${tempFilePath}`);
-        // OpenAI API에 전송할 파일 생성
+        // 파일 크기가 MAX_CHUNK_SIZE_BYTES보다 큰 경우 청크로 나누어 처리
+        if (fileBuffer.length > MAX_CHUNK_SIZE_BYTES) {
+            console.log(`[AudioProcessor] File size (${fileBuffer.length} bytes) exceeds ${MAX_CHUNK_SIZE_MB}MB, processing in chunks`);
+            return await processLargeAudioFile(openai, tempFilePath, fileName, language);
+        }
+        // 작은 파일은 한 번에 처리
+        console.log(`[AudioProcessor] Processing file as a single chunk`);
         const fileStream = fs_1.default.createReadStream(tempFilePath);
-        // 트랜스크립션 시도
-        console.log(`[AudioProcessor] Attempting transcription with model: gpt-4o-mini-transcribe`);
         try {
             const transcription = await openai.audio.transcriptions.create({
                 file: fileStream,
@@ -49,14 +56,10 @@ async function transcribeAudio(supabase, openai, fileBuffer, fileName, fileType,
         }
         catch (error) {
             console.error(`[AudioProcessor] Transcription error:`, error);
-            // 파일 길이가 너무 길 경우 사용자에게 안내 메시지 제공
+            // 파일 길이가 너무 길 경우 청크 처리 시도
             if (error.message && error.message.includes('longer than 1500 seconds')) {
-                const errorMessage = formatErrorMessage(fileName, fileBuffer.length);
-                return {
-                    success: false,
-                    error: 'File duration exceeds limit',
-                    transcription: errorMessage
-                };
+                console.log(`[AudioProcessor] File duration exceeds limit, trying chunk processing`);
+                return await processLargeAudioFile(openai, tempFilePath, fileName, language);
             }
             throw error; // 다른 오류는 상위로 전달
         }
@@ -81,6 +84,93 @@ async function transcribeAudio(supabase, openai, fileBuffer, fileName, fileType,
                 console.error(`[AudioProcessor] Error deleting temp file ${tempFile}:`, err);
             }
         }
+    }
+}
+/**
+ * 큰 오디오 파일을 청크로 나누어 처리하는 함수
+ */
+async function processLargeAudioFile(openai, filePath, fileName, language) {
+    const tempChunkFiles = [];
+    try {
+        const fileSize = fs_1.default.statSync(filePath).size;
+        const numChunks = Math.ceil(fileSize / MAX_CHUNK_SIZE_BYTES);
+        console.log(`[AudioProcessor] Processing large file in ${numChunks} chunks`);
+        // 언어에 따른 프롬프트 준비
+        let prompt = '';
+        if (language !== 'English') {
+            prompt = `This is audio in ${language}.`;
+        }
+        // 각 청크별 트랜스크립션 결과를 저장할 배열
+        const transcriptionParts = [];
+        // 파일을 청크로 나누어 처리
+        for (let i = 0; i < numChunks; i++) {
+            const start = i * MAX_CHUNK_SIZE_BYTES;
+            const end = Math.min((i + 1) * MAX_CHUNK_SIZE_BYTES, fileSize);
+            console.log(`[AudioProcessor] Processing chunk ${i + 1}/${numChunks} (bytes ${start}-${end})`);
+            // 청크 파일 생성
+            const chunkFilePath = path_1.default.join(os_1.default.tmpdir(), `chunk-${i}-${(0, uuid_1.v4)()}.${fileName.split('.').pop()}`);
+            const chunkBuffer = Buffer.alloc(end - start);
+            const fd = fs_1.default.openSync(filePath, 'r');
+            fs_1.default.readSync(fd, chunkBuffer, 0, end - start, start);
+            fs_1.default.closeSync(fd);
+            fs_1.default.writeFileSync(chunkFilePath, chunkBuffer);
+            tempChunkFiles.push(chunkFilePath);
+            // 청크 트랜스크립션
+            const fileStream = fs_1.default.createReadStream(chunkFilePath);
+            try {
+                const chunkTranscription = await openai.audio.transcriptions.create({
+                    file: fileStream,
+                    model: "gpt-4o-mini-transcribe",
+                    response_format: "text",
+                    prompt: prompt
+                });
+                transcriptionParts.push(chunkTranscription);
+                console.log(`[AudioProcessor] Chunk ${i + 1}/${numChunks} transcription successful`);
+            }
+            catch (chunkError) {
+                console.error(`[AudioProcessor] Error transcribing chunk ${i + 1}/${numChunks}:`, chunkError);
+                // 청크 처리 중 오류가 발생해도 계속 진행
+                transcriptionParts.push(`[Transcription error in part ${i + 1}: ${chunkError.message}]`);
+            }
+        }
+        // 모든 청크 트랜스크립션 결과 합치기
+        const combinedTranscription = transcriptionParts.join('\n\n');
+        // 트랜스크립션 결과 포맷팅
+        const formattedText = formatTranscribedText(combinedTranscription, fileName, language);
+        console.log(`[AudioProcessor] Combined transcription successful, length: ${formattedText.length} characters`);
+        // 임시 청크 파일 정리
+        for (const tempFile of tempChunkFiles) {
+            try {
+                if (fs_1.default.existsSync(tempFile)) {
+                    fs_1.default.unlinkSync(tempFile);
+                }
+            }
+            catch (err) {
+                console.error(`[AudioProcessor] Error deleting temp chunk file ${tempFile}:`, err);
+            }
+        }
+        return {
+            success: true,
+            transcription: formattedText
+        };
+    }
+    catch (error) {
+        console.error(`[AudioProcessor] Error in chunk processing:`, error);
+        // 임시 청크 파일 정리
+        for (const tempFile of tempChunkFiles) {
+            try {
+                if (fs_1.default.existsSync(tempFile)) {
+                    fs_1.default.unlinkSync(tempFile);
+                }
+            }
+            catch (err) {
+                console.error(`[AudioProcessor] Error deleting temp chunk file ${tempFile}:`, err);
+            }
+        }
+        return {
+            success: false,
+            error: error.message || 'Unknown error during chunk processing'
+        };
     }
 }
 /**

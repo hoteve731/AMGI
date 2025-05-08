@@ -203,14 +203,14 @@ export default function UploadAudioModal({ isOpen, onClose }: UploadAudioModalPr
             refreshInterval: 3000, // 3초마다 확인
             onSuccess: (data) => {
                 console.log('Transcription status:', data);
-                
+
                 // 완료 상태일 때만 처리
                 if (data && data.status === 'completed') {
                     // 폴링 중단
                     setPollingId(null);
                     setIsProcessing(false);
                     setProcessingStep(null);
-                    
+
                     // 트랜스크립션 텍스트가 있으면 상태로 반영
                     if (data.text && typeof data.text === 'string') {
                         setTranscribedText(data.text);
@@ -351,7 +351,7 @@ export default function UploadAudioModal({ isOpen, onClose }: UploadAudioModalPr
                         animate={{ scale: 1, opacity: 1 }}
                         exit={{ scale: 0.9, opacity: 0 }}
                         transition={{ duration: 0.3 }}
-                        className="bg-white rounded-2xl p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-hidden flex flex-col"
+                        className="bg-white rounded-2xl p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-auto flex flex-col"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div className="flex items-center justify-between mb-6">
@@ -400,11 +400,11 @@ export default function UploadAudioModal({ isOpen, onClose }: UploadAudioModalPr
                                         </select>
                                     </div>
                                     <p className="text-gray-600 mb-6">
-                                        Upload audio in {selectedLanguage} to generate AI notes. Supported formats: MP3, MP4, WAV, WebM, M4A (max 75MB).
+                                        Upload audio file in {selectedLanguage} to generate notes.(max 75MB)
                                     </p>
 
                                     <div
-                                        className={`flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg bg-gray-50 mb-4 ${isDragging ? 'border-[#5F4BB6] bg-[#5F4BB6]/10' : 'border-gray-300'
+                                        className={`flex flex-col items-center justify-center p-4 border-2 border-dashed rounded-lg bg-gray-50 ${isDragging ? 'border-[#5F4BB6] bg-[#5F4BB6]/10' : 'border-gray-300'
                                             } transition-colors duration-200`}
                                         onDragEnter={handleDragEnter}
                                         onDragLeave={handleDragLeave}
@@ -413,16 +413,16 @@ export default function UploadAudioModal({ isOpen, onClose }: UploadAudioModalPr
                                     >
                                         {audioFile ? (
                                             <div className="text-center">
-                                                <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                                                    <svg className="w-10 h-10 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                                <div className="w-14 h-14 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-2">
+                                                    <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
                                                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                                                     </svg>
                                                 </div>
                                                 <p className="text-lg font-semibold text-green-600 mb-2">File Selected</p>
                                                 <p className="text-gray-600 mb-1">{audioFile.name}</p>
-                                                <p className="text-gray-500 text-sm mb-4">{formatFileSize(audioFile.size)}</p>
+                                                <p className="text-gray-500 text-sm mb-1">{formatFileSize(audioFile.size)}</p>
                                                 {audioFile.type.startsWith('audio/') && (
-                                                    <audio className="mt-2 mb-4" controls src={URL.createObjectURL(audioFile)} />
+                                                    <audio className="mt-2 mb-1" controls src={URL.createObjectURL(audioFile)} />
                                                 )}
                                             </div>
                                         ) : (
@@ -498,7 +498,7 @@ export default function UploadAudioModal({ isOpen, onClose }: UploadAudioModalPr
                             </>
                         ) : (
                             <>
-                                <div className="flex-grow overflow-auto mb-4 border border-gray-200 rounded-lg p-3 bg-gray-50">
+                                <div className="flex-grow overflow-auto mb-4 border border-gray-200 rounded-lg p-3 bg-gray-50 max-h-[40vh]">
                                     <pre className="whitespace-pre-wrap text-sm text-gray-800 font-mono">
                                         {transcribedText}
                                     </pre>
