@@ -531,7 +531,7 @@ export const processAudioTranscription = functions.http('processAudioTranscripti
         console.error('Clients not initialized. Cannot process request.');
         return res.status(500).send({ success: false, error: 'Server configuration error' });
     }
-    
+
     // 파일 업로드 미들웨어 설정
     const fileMiddleware = fileUpload({
         limits: { fileSize: 75 * 1024 * 1024 }, // 75MB 제한
@@ -540,7 +540,7 @@ export const processAudioTranscription = functions.http('processAudioTranscripti
         tempFileDir: os.tmpdir(),
         debug: true
     });
-    
+
     // 미들웨어 적용
     await new Promise<void>((resolve, reject) => {
         fileMiddleware(req as any, res as any, (err: any) => {
@@ -552,9 +552,9 @@ export const processAudioTranscription = functions.http('processAudioTranscripti
             }
         });
     }).catch(err => {
-        return res.status(400).send({ 
-            success: false, 
-            error: `File upload error: ${err.message || 'Unknown error'}` 
+        return res.status(400).send({
+            success: false,
+            error: `File upload error: ${err.message || 'Unknown error'}`
         });
     });
 
@@ -584,7 +584,7 @@ export const processAudioTranscription = functions.http('processAudioTranscripti
         const fileObj = req.files.file;
         // 단일 파일인지 배열인지 확인
         const file = Array.isArray(fileObj) ? fileObj[0] : fileObj;
-        
+
         // express-fileupload의 속성 이름 사용
         const fileName = file.name || 'audio-file';
         const fileType = file.mimetype || 'audio/mpeg';
@@ -595,7 +595,6 @@ export const processAudioTranscription = functions.http('processAudioTranscripti
         // 오디오 트랜스크립션 수행
         const result = await transcribeAudio(
             supabase,
-            openai,
             fileBuffer,
             fileName,
             fileType,
@@ -605,7 +604,7 @@ export const processAudioTranscription = functions.http('processAudioTranscripti
 
         if (!result.success) {
             console.error(`[AudioTranscription][${contentId}] Transcription failed:`, result.error);
-            
+
             // 오류가 있지만 사용자에게 보여줄 텍스트가 있는 경우 (예: 파일이 너무 긴 경우)
             if (result.transcription) {
                 return res.status(200).send({
@@ -614,7 +613,7 @@ export const processAudioTranscription = functions.http('processAudioTranscripti
                     warning: result.error
                 });
             }
-            
+
             return res.status(500).send({
                 success: false,
                 error: result.error || 'Unknown error during transcription'
@@ -624,7 +623,8 @@ export const processAudioTranscription = functions.http('processAudioTranscripti
         // 성공 응답
         return res.status(200).send({
             success: true,
-            transcription: result.transcription
+            transcription: result.transcription,
+            language_code: result.language_code
         });
 
     } catch (error: any) {

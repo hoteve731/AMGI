@@ -1,6 +1,6 @@
 // cloud-functions/process-pipeline/src/audio_processor.ts
-import OpenAI from 'openai';
 import { SupabaseClient } from '@supabase/supabase-js';
+import { AssemblyAI } from 'assemblyai';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -8,9 +8,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { Readable } from 'stream';
 import { finished } from 'stream/promises';
 
-// Maximum duration for OpenAI API (1500 seconds = 25 minutes)
-const MAX_DURATION_SECONDS = 1500;
-// Maximum chunk size in bytes (10MB instead of 20MB to avoid API limitations)
+// Maximum chunk size in bytes (10MB)
 const MAX_CHUNK_SIZE_MB = 10;
 const MAX_CHUNK_SIZE_BYTES = MAX_CHUNK_SIZE_MB * 1024 * 1024;
 
@@ -19,23 +17,26 @@ const MAX_CHUNK_SIZE_BYTES = MAX_CHUNK_SIZE_MB * 1024 * 1024;
  */
 export async function transcribeAudio(
     supabase: SupabaseClient,
-    openai: OpenAI,
     fileBuffer: Buffer,
     fileName: string,
     fileType: string,
     language: string = 'English',
     userId: string
-): Promise<{ success: boolean; transcription?: string; error?: string }> {
+): Promise<{ success: boolean; transcription?: string; language_code?: string; error?: string }> {
     let tempFiles: string[] = [];
 
     try {
         console.log(`[AudioProcessor] Starting transcription for file: ${fileName}, size: ${fileBuffer.length} bytes`);
 
-        // 언어에 따른 프롬프트 준비
-        let prompt = '';
-        if (language !== 'English') {
-            prompt = `This is audio in ${language}.`;
+        // Initialize AssemblyAI client
+        const apiKey = process.env.ASSEMBLYAI_API_KEY;
+        if (!apiKey) {
+            throw new Error("ASSEMBLYAI_API_KEY is not set in environment variables");
         }
+
+        const assemblyClient = new AssemblyAI({
+            apiKey: apiKey
+        });
 
         // 임시 파일 경로 생성
         const tempFilePath = path.join(os.tmpdir(), `audio-${uuidv4()}.${fileName.split('.').pop()}`);
@@ -47,37 +48,47 @@ export async function transcribeAudio(
         // 파일 크기가 MAX_CHUNK_SIZE_BYTES보다 큰 경우 청크로 나누어 처리
         if (fileBuffer.length > MAX_CHUNK_SIZE_BYTES) {
             console.log(`[AudioProcessor] File size (${fileBuffer.length} bytes) exceeds ${MAX_CHUNK_SIZE_MB}MB, processing in chunks`);
-            return await processLargeAudioFile(openai, tempFilePath, fileName, language);
+            return await processLargeAudioFile(assemblyClient, tempFilePath, fileName, language);
         }
 
         // 작은 파일은 한 번에 처리
         console.log(`[AudioProcessor] Processing file as a single chunk`);
-        const fileStream = fs.createReadStream(tempFilePath);
 
         try {
-            const transcription = await openai.audio.transcriptions.create({
-                file: fileStream,
-                model: "gpt-4o-mini-transcribe",
-                response_format: "text",
-                prompt: prompt
-            });
+            // Prepare AssemblyAI params
+            const params = {
+                audio: fileBuffer,
+                speech_model: "universal", // Use universal model for better accuracy
+                language_detection: true,  // Automatically detect language
+            };
+
+            // Call AssemblyAI API
+            const transcript = await assemblyClient.transcripts.transcribe(params);
+
+            if (transcript.status === "error") {
+                throw new Error(`AssemblyAI transcription failed: ${transcript.error}`);
+            }
+
+            // transcript.text가 없을 경우 빈 문자열 사용
+            const transcriptText = transcript.text || '';
 
             // 트랜스크립션 결과 포맷팅
-            const formattedText = formatTranscribedText(transcription, fileName, language);
-            console.log(`[AudioProcessor] Transcription successful, length: ${formattedText.length} characters`);
+            const formattedText = formatTranscribedText(transcriptText, fileName, transcript.language_code || language);
+            console.log(`[AudioProcessor] Transcription successful, length: ${formattedText.length} characters, language: ${transcript.language_code}`);
 
             // 성공 결과 반환
             return {
                 success: true,
-                transcription: formattedText
+                transcription: formattedText,
+                language_code: transcript.language_code
             };
         } catch (error: any) {
             console.error(`[AudioProcessor] Transcription error:`, error);
 
-            // 파일 길이가 너무 길 경우 청크 처리 시도
-            if (error.message && error.message.includes('longer than 1500 seconds')) {
-                console.log(`[AudioProcessor] File duration exceeds limit, trying chunk processing`);
-                return await processLargeAudioFile(openai, tempFilePath, fileName, language);
+            // 파일 크기가 큰 경우 청크 처리 시도
+            if (error.message && (error.message.includes('file too large') || error.message.includes('size limit'))) {
+                console.log(`[AudioProcessor] File size exceeds limit, trying chunk processing`);
+                return await processLargeAudioFile(assemblyClient, tempFilePath, fileName, language);
             }
 
             throw error; // 다른 오류는 상위로 전달
@@ -107,106 +118,80 @@ export async function transcribeAudio(
  * 큰 오디오 파일을 청크로 나누어 처리하는 함수
  */
 async function processLargeAudioFile(
-    openai: OpenAI,
+    assemblyClient: AssemblyAI,
     filePath: string,
     fileName: string,
     language: string
-): Promise<{ success: boolean; transcription?: string; error?: string }> {
-    const tempChunkFiles: string[] = [];
+): Promise<{ success: boolean; transcription?: string; language_code?: string; error?: string }> {
+    console.log(`[AudioProcessor] Starting large file processing for ${fileName}`);
 
     try {
         const fileSize = fs.statSync(filePath).size;
-        const numChunks = Math.ceil(fileSize / MAX_CHUNK_SIZE_BYTES);
+        const chunkSize = MAX_CHUNK_SIZE_BYTES;
+        const totalChunks = Math.ceil(fileSize / chunkSize);
 
-        console.log(`[AudioProcessor] Processing large file in ${numChunks} chunks`);
+        console.log(`[AudioProcessor] File size: ${fileSize} bytes, will be processed in ${totalChunks} chunks`);
 
-        // 언어에 따른 프롬프트 준비
-        let prompt = '';
-        if (language !== 'English') {
-            prompt = `This is audio in ${language}.`;
-        }
+        let allTranscriptions: string[] = [];
+        let detectedLanguage: string | undefined;
 
-        // 각 청크별 트랜스크립션 결과를 저장할 배열
-        const transcriptionParts: string[] = [];
-
-        // 파일을 청크로 나누어 처리
-        for (let i = 0; i < numChunks; i++) {
-            const start = i * MAX_CHUNK_SIZE_BYTES;
-            const end = Math.min((i + 1) * MAX_CHUNK_SIZE_BYTES, fileSize);
-
-            console.log(`[AudioProcessor] Processing chunk ${i + 1}/${numChunks} (bytes ${start}-${end})`);
-
-            // 청크 파일 생성
-            const chunkFilePath = path.join(os.tmpdir(), `chunk-${i}-${uuidv4()}.${fileName.split('.').pop()}`);
+        // 각 청크를 순차적으로 처리
+        for (let i = 0; i < totalChunks; i++) {
+            const start = i * chunkSize;
+            const end = Math.min(start + chunkSize, fileSize);
             const chunkBuffer = Buffer.alloc(end - start);
 
-            const fd = fs.openSync(filePath, 'r');
-            fs.readSync(fd, chunkBuffer, 0, end - start, start);
-            fs.closeSync(fd);
+            // 파일에서 청크 읽기
+            const fileHandle = await fs.promises.open(filePath, 'r');
+            await fileHandle.read(chunkBuffer, 0, end - start, start);
+            await fileHandle.close();
 
-            fs.writeFileSync(chunkFilePath, chunkBuffer);
-            tempChunkFiles.push(chunkFilePath);
+            console.log(`[AudioProcessor] Processing chunk ${i + 1}/${totalChunks}, size: ${chunkBuffer.length} bytes`);
 
-            // 청크 트랜스크립션
-            const fileStream = fs.createReadStream(chunkFilePath);
+            // Prepare AssemblyAI params
+            const params = {
+                audio: chunkBuffer,
+                speech_model: "universal", // Use universal model for better accuracy
+                language_detection: i === 0, // Only detect language in first chunk
+            };
 
-            try {
-                const chunkTranscription = await openai.audio.transcriptions.create({
-                    file: fileStream,
-                    model: "gpt-4o-mini-transcribe",
-                    response_format: "text",
-                    prompt: prompt
-                });
+            // Call AssemblyAI API
+            const transcript = await assemblyClient.transcripts.transcribe(params);
 
-                transcriptionParts.push(chunkTranscription);
-                console.log(`[AudioProcessor] Chunk ${i + 1}/${numChunks} transcription successful`);
-            } catch (chunkError: any) {
-                console.error(`[AudioProcessor] Error transcribing chunk ${i + 1}/${numChunks}:`, chunkError);
-
-                // 청크 처리 중 오류가 발생해도 계속 진행
-                transcriptionParts.push(`[Transcription error in part ${i + 1}: ${chunkError.message}]`);
+            if (transcript.status === "error") {
+                throw new Error(`AssemblyAI transcription failed for chunk ${i + 1}: ${transcript.error}`);
             }
+
+            // 첫 번째 청크에서 감지된 언어 저장
+            if (i === 0 && transcript.language_code) {
+                detectedLanguage = transcript.language_code;
+                console.log(`[AudioProcessor] Detected language: ${detectedLanguage}`);
+            }
+
+            // transcript.text가 없을 경우 빈 문자열 사용
+            const transcriptText = transcript.text || '';
+
+            allTranscriptions.push(transcriptText);
+            console.log(`[AudioProcessor] Chunk ${i + 1} transcription completed, length: ${transcriptText.length} characters`);
         }
 
-        // 모든 청크 트랜스크립션 결과 합치기
-        const combinedTranscription = transcriptionParts.join('\n\n');
+        // 모든 트랜스크립션 결합
+        const combinedText = allTranscriptions.join(' ');
 
-        // 트랜스크립션 결과 포맷팅
-        const formattedText = formatTranscribedText(combinedTranscription, fileName, language);
-        console.log(`[AudioProcessor] Combined transcription successful, length: ${formattedText.length} characters`);
-
-        // 임시 청크 파일 정리
-        for (const tempFile of tempChunkFiles) {
-            try {
-                if (fs.existsSync(tempFile)) {
-                    fs.unlinkSync(tempFile);
-                }
-            } catch (err) {
-                console.error(`[AudioProcessor] Error deleting temp chunk file ${tempFile}:`, err);
-            }
-        }
+        // 결합된 텍스트 포맷팅
+        const formattedText = formatTranscribedText(combinedText, fileName, detectedLanguage || language);
+        console.log(`[AudioProcessor] All chunks processed successfully, total length: ${formattedText.length} characters`);
 
         return {
             success: true,
-            transcription: formattedText
+            transcription: formattedText,
+            language_code: detectedLanguage
         };
     } catch (error: any) {
-        console.error(`[AudioProcessor] Error in chunk processing:`, error);
-
-        // 임시 청크 파일 정리
-        for (const tempFile of tempChunkFiles) {
-            try {
-                if (fs.existsSync(tempFile)) {
-                    fs.unlinkSync(tempFile);
-                }
-            } catch (err) {
-                console.error(`[AudioProcessor] Error deleting temp chunk file ${tempFile}:`, err);
-            }
-        }
-
+        console.error(`[AudioProcessor] Error processing large file:`, error);
         return {
             success: false,
-            error: error.message || 'Unknown error during chunk processing'
+            error: error.message || 'Unknown error during large file processing'
         };
     }
 }
@@ -215,12 +200,17 @@ async function processLargeAudioFile(
  * 트랜스크립션 텍스트 포맷팅 함수
  */
 function formatTranscribedText(text: string, fileName: string, language: string): string {
-    const timestamp = new Date().toISOString();
-    const header = `# ${fileName} - Audio Transcription\n\n`;
-    const metadata = `*Transcribed at: ${timestamp}*\n*Language: ${language}*\n\n`;
-    const content = `## Content\n\n${text}\n`;
+    const timestamp = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
 
-    return header + metadata + content;
+    return `# Audio Transcription
+
+**Source**: ${fileName}
+**Date**: ${timestamp}
+**Language**: ${language}
+
+## Transcript
+
+${text}`;
 }
 
 /**
@@ -228,20 +218,17 @@ function formatTranscribedText(text: string, fileName: string, language: string)
  */
 function formatErrorMessage(fileName: string, fileSize: number): string {
     return `
-# 파일이 너무 깁니다
+# 파일 처리 오류
 
-죄송합니다. 현재 이 파일은 OpenAI API의 제한으로 인해 처리할 수 없습니다.
+죄송합니다. 현재 이 파일을 처리할 수 없습니다.
 
 ## 파일 정보
 - **파일 이름**: ${fileName}
 - **파일 크기**: ${(fileSize / (1024 * 1024)).toFixed(2)}MB
-- **제한 사항**: OpenAI API는 1500초(25분) 이상의 오디오 파일을 한 번에 처리할 수 없습니다.
 
 ## 해결 방법
-1. 파일을 25분 이하의 작은 조각들로 분할하여 각각 업로드해 주세요.
+1. 파일을 더 작은 조각들로 분할하여 각각 업로드해 주세요.
 2. 오디오 편집 프로그램(예: Audacity)을 사용하여 파일을 분할할 수 있습니다.
 3. 더 짧은 오디오 파일을 업로드해 주세요.
-
-이 문제는 현재 OpenAI API의 기술적 제한으로 인한 것이며, 추후 개선될 예정입니다.
 `;
 }

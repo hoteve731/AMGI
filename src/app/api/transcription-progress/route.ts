@@ -9,6 +9,7 @@ declare global {
             message: string;
             status: string;
             text?: string; // Optional text field for completed transcriptions
+            language_code?: string; // Added language code field for AssemblyAI
         }
     };
 }

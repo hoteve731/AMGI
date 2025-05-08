@@ -261,7 +261,7 @@ export default function ContentList({ contents: externalContents, showTabs = fal
     };
 
     return (
-        <div className="flex-1 overflow-y-auto p-4 pt-5 pb-[120px] relative">
+        <div className="flex-1 overflow-y-auto p-4 pt-5 pb-[40px] relative">
             {isLoading && <LoadingOverlay />}
             {isFetching && (
                 <div className="flex items-center justify-center h-64">
@@ -332,7 +332,7 @@ export default function ContentList({ contents: externalContents, showTabs = fal
                     </motion.button>
                 </div>
             )}
-            <div className="space-y-5">
+            <div className="space-y-4">
                 {displayContents.map((content, index) => (
                     <motion.div
                         key={content.id}

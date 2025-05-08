@@ -527,7 +527,7 @@ exports.processAudioTranscription = functions.http('processAudioTranscription', 
         const fileBuffer = file.data; // buffer 대신 data 사용
         console.log(`[AudioTranscription][${contentId}] Processing file: ${fileName}, size: ${fileBuffer.length} bytes, type: ${fileType}`);
         // 오디오 트랜스크립션 수행
-        const result = await (0, audio_processor_1.transcribeAudio)(supabase, openai, fileBuffer, fileName, fileType, language, userId);
+        const result = await (0, audio_processor_1.transcribeAudio)(supabase, fileBuffer, fileName, fileType, language, userId);
         if (!result.success) {
             console.error(`[AudioTranscription][${contentId}] Transcription failed:`, result.error);
             // 오류가 있지만 사용자에게 보여줄 텍스트가 있는 경우 (예: 파일이 너무 긴 경우)
@@ -546,7 +546,8 @@ exports.processAudioTranscription = functions.http('processAudioTranscription', 
         // 성공 응답
         return res.status(200).send({
             success: true,
-            transcription: result.transcription
+            transcription: result.transcription,
+            language_code: result.language_code
         });
     }
     catch (error) {
