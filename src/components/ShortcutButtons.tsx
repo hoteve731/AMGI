@@ -7,7 +7,7 @@ import { createPortal } from 'react-dom'
 import WebLinkModal from './WebLinkModal'
 import UploadTextModal from './UploadTextModal'
 import SubscriptionModal from './SubscriptionModal'
-import RecordAudioModal from './RecordAudioModal'
+// import RecordAudioModal from './RecordAudioModal'
 import UploadAudioModal from './UploadAudioModal'
 
 interface ShortcutButtonsProps {
@@ -21,7 +21,7 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
   const [showWebLinkModal, setShowWebLinkModal] = useState(false)
   const [showUploadTextModal, setShowUploadTextModal] = useState(false)
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false)
-  const [showRecordAudioModal, setShowRecordAudioModal] = useState(false)
+  // const [showRecordAudioModal, setShowRecordAudioModal] = useState(false)
   const [showUploadAudioModal, setShowUploadAudioModal] = useState(false)
   const [contentCount, setContentCount] = useState(0)
   const [isVisible, setIsVisible] = useState(false)
@@ -132,16 +132,6 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
     }
   }
 
-  // Function to open the Record Audio modal
-  const handleRecordAudioClick = () => {
-    // Check if user has reached the free limit
-    if (contentCount >= 3) {
-      setShowSubscriptionModal(true)
-    } else {
-      setShowRecordAudioModal(true)
-    }
-  }
-
   // Function to open the Upload Audio modal
   const handleUploadAudioClick = () => {
     // Check if user has reached the free limit
@@ -164,119 +154,74 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
         New Note
       </motion.h3>
 
-      {/* Grid layout for shortcut buttons */}
+      {/* 세로 레이아웃으로 변경 (3×1) */}
       <motion.div
-        className="grid grid-cols-2 gap-3"
+        className="flex flex-col w-full gap-3"
         variants={containerVariants}
         initial="hidden"
         animate={isVisible ? "visible" : "hidden"}
       >
-        {/* Upload Text - This one actually opens the bottom sheet */}
+        {/* Upload Text */}
         <motion.button
           variants={buttonVariants}
           onClick={handleUploadText}
-          className="flex flex-col items-center justify-center bg-white hover:bg-white/50 transition-colors duration-200 rounded-xl p-4"
-          whileHover={{ scale: 1.03 }}
+          className="w-full flex flex-row items-center bg-white hover:bg-white/50 transition-colors duration-200 rounded-xl p-4"
+          whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
         >
           <Image
             src="/images/loopadocs.png"
             alt="Upload text"
-            width={80}
-            height={80}
-            className="mb-1"
+            width={40}
+            height={40}
+            className="mr-4"
           />
-          <span className="text-base font-light text-black/70">Upload text</span>
+          <div className="flex flex-col items-start">
+            <span className="text-base font-medium text-gray-800">Upload text</span>
+            <span className="text-sm text-gray-500">Write or paste text</span>
+          </div>
         </motion.button>
 
-        {/* Web link - Now active */}
+        {/* Web link */}
         <motion.button
           variants={buttonVariants}
           onClick={handleWebLinkClick}
-          className="flex flex-col items-center justify-center bg-white hover:bg-white/50 transition-colors duration-200 rounded-xl p-4"
-          whileHover={{ scale: 1.03 }}
+          className="w-full flex flex-row items-center bg-white hover:bg-white/50 transition-colors duration-200 rounded-xl p-4"
+          whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
         >
           <Image
             src="/images/loopalink.png"
             alt="Web link"
-            width={80}
-            height={80}
-            className="mb-1"
+            width={40}
+            height={40}
+            className="mr-4"
           />
-          <span className="text-base font-light text-black/70">Web link</span>
+          <div className="flex flex-col items-start">
+            <span className="text-base font-medium text-gray-800">Web link</span>
+            <span className="text-sm text-gray-500">Extract from URL</span>
+          </div>
         </motion.button>
 
-        {/* Record Audio - New feature */}
-        <motion.button
-          variants={buttonVariants}
-          onClick={handleRecordAudioClick}
-          className="flex flex-col items-center justify-center bg-white hover:bg-white/50 transition-colors duration-200 rounded-xl p-4"
-          whileHover={{ scale: 1.03 }}
-          whileTap={{ scale: 0.98 }}
-        >
-          <Image
-            src="/images/looparecord.png"
-            alt="Record Audio"
-            width={80}
-            height={80}
-            className="mb-1"
-          />
-          <span className="text-base font-light text-black/70">Record Audio</span>
-        </motion.button>
-
-        {/* Upload Audio - New feature */}
+        {/* Upload Audio */}
         <motion.button
           variants={buttonVariants}
           onClick={handleUploadAudioClick}
-          className="flex flex-col items-center justify-center bg-white hover:bg-white/50 transition-colors duration-200 rounded-xl p-4"
-          whileHover={{ scale: 1.03 }}
+          className="w-full flex flex-row items-center bg-white hover:bg-white/50 transition-colors duration-200 rounded-xl p-4"
+          whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
         >
           <Image
             src="/images/loopaaudio.png"
             alt="Upload Audio"
-            width={80}
-            height={80}
-            className="mb-1"
+            width={40}
+            height={40}
+            className="mr-4"
           />
-          <span className="text-base font-light text-black/70">Upload Audio</span>
-        </motion.button>
-
-        {/* Make visual map - Coming soon */}
-        <motion.button
-          variants={buttonVariants}
-          onClick={() => handleComingSoonFeature('Make visual map')}
-          className="flex flex-col items-center justify-center bg-gray-200 hover:bg-gray-300/50 transition-colors duration-200 rounded-xl p-4"
-          whileHover={{ scale: 1.03 }}
-          whileTap={{ scale: 0.98 }}
-        >
-          <Image
-            src="/images/loopamap.png"
-            alt="Make visual map"
-            width={80}
-            height={80}
-            className="mb-1"
-          />
-          <span className="text-base font-light text-gray-400">Make Diagram</span>
-        </motion.button>
-
-        {/* Upload PDF - Coming soon */}
-        <motion.button
-          variants={buttonVariants}
-          onClick={() => handleComingSoonFeature('Upload PDF')}
-          className="flex flex-col items-center justify-center bg-gray-200 hover:bg-gray-300/50 transition-colors duration-200 rounded-xl p-4"
-          whileHover={{ scale: 1.03 }}
-          whileTap={{ scale: 0.98 }}
-        >
-          <Image
-            src="/images/loopapdf.png"
-            alt="Upload PDF"
-            width={80}
-            height={80}
-            className="mb-1"
-          />
-          <span className="text-base font-light text-gray-400">Upload PDF</span>
+          <div className="flex flex-col items-start">
+            <span className="text-base font-medium text-gray-800">Upload Audio</span>
+            <span className="text-sm text-gray-500">Transcribe audio file</span>
+          </div>
         </motion.button>
       </motion.div>
 
@@ -340,11 +285,12 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
         onClose={() => setShowUploadTextModal(false)}
       />
 
-      {/* Record Audio Modal */}
+      {/* Record Audio Modal - COMMENTED OUT
       <RecordAudioModal
         isOpen={showRecordAudioModal}
         onClose={() => setShowRecordAudioModal(false)}
       />
+      */}
 
       {/* Upload Audio Modal */}
       <UploadAudioModal

@@ -104,9 +104,9 @@ export default function UploadAudioModal({ isOpen, onClose }: UploadAudioModalPr
             return;
         }
 
-        // Check file size (25MB limit)
-        if (file.size > 75 * 1024 * 1024) {
-            setError('File size exceeds 75MB limit');
+        // Check file size (10MB limit)
+        if (file.size > 10 * 1024 * 1024) {
+            setError('File size exceeds 10MB limit');
             return;
         }
 

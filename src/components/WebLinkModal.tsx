@@ -10,7 +10,7 @@ interface WebLinkModalProps {
     onClose: () => void;
 }
 
-// YouTube 비디오 ID 추출 함수
+// YouTube 비디오 ID 추출 함수 - No longer used as YouTube links are disabled
 function extractYouTubeVideoId(url: string): string | null {
     const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})(\S*)?$/;
     const match = url.match(youtubeRegex);
@@ -83,10 +83,10 @@ export default function WebLinkModal({ isOpen, onClose }: WebLinkModalProps) {
         }
     };
 
-    // Detect if URL is from YouTube
+    // Detect if URL is from YouTube - Always returns false now as YouTube links are disabled
     const detectYouTube = (inputUrl: string) => {
-        const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})(\S*)?$/;
-        return youtubeRegex.test(inputUrl.trim());
+        // Disable YouTube link detection
+        return false;
     };
 
     // Handle URL input change
@@ -97,43 +97,17 @@ export default function WebLinkModal({ isOpen, onClose }: WebLinkModalProps) {
         setError(null);
     };
 
-    // 서버 API를 사용하여 YouTube 트랜스크립트 추출
-    const extractYouTubeTranscriptWithAPI = async (videoId: string): Promise<string> => {
-        try {
-            // 서버 API를 통해 트랜스크립트 가져오기
-            const response = await fetch(`/api/youtube-transcript?videoId=${encodeURIComponent(videoId)}`);
-
-            if (!response.ok) {
-                throw new Error(`트랜스크립트 API 응답 오류: ${response.status}`);
-            }
-
-            const data = await response.json();
-
-            if (!data.transcript) {
-                throw new Error('트랜스크립트를 찾을 수 없습니다');
-            }
-
-            // 비디오 정보
-            const title = data.title || 'YouTube Video';
-            const author = data.author || '';
-            const description = data.description || '';
-            const tags = data.tags || [];
-
-            // 태그 정보 포맷팅
-            const tagsText = tags.length > 0 ? `\n\nTags: ${tags.join(', ')}` : '';
-
-            // 마크다운 형식으로 변환
-            return `# ${title} ${author ? `- ${author}` : ''}\n\nSource: YouTube (https://www.youtube.com/watch?v=${videoId})\n\n${description ? `## Description\n\n${description}\n\n` : ''}${tagsText}\n\n## Transcript\n\n${data.transcript}`;
-        } catch (error) {
-            console.error('YouTube 트랜스크립트 추출 오류:', error);
-            throw error;
-        }
-    };
-
     // Extract content from URL
     const handleExtract = async () => {
         if (!url.trim()) {
             setError('URL을 입력해주세요.');
+            return;
+        }
+
+        // Check if URL is from YouTube
+        const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})(\S*)?$/;
+        if (youtubeRegex.test(url.trim())) {
+            setError('YouTube links are not supported. Please use a different web link.');
             return;
         }
 
@@ -142,40 +116,22 @@ export default function WebLinkModal({ isOpen, onClose }: WebLinkModalProps) {
         setProcessingStep('extracting');
 
         try {
-            // YouTube URL인 경우 클라이언트에서 직접 처리
-            if (isYouTube) {
-                const videoId = extractYouTubeVideoId(url.trim());
-                if (!videoId) {
-                    throw new Error('유효한 YouTube URL이 아닙니다.');
-                }
+            // Only process non-YouTube URLs
+            const response = await fetch('/api/extract-content', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ url: url.trim() }),
+            });
 
-                try {
-                    // 서버 API 사용 시도
-                    console.log('서버 API를 사용하여 YouTube 트랜스크립트 추출 시도');
-                    const transcript = await extractYouTubeTranscriptWithAPI(videoId);
-                    setExtractedText(transcript);
-                } catch (apiError) {
-                    console.error('YouTube 트랜스크립트 추출 실패:', apiError);
-                    throw new Error(`YouTube 트랜스크립트 추출 실패: ${apiError instanceof Error ? apiError.message : '알 수 없는 오류'}`);
-                }
-            } else {
-                // 일반 웹 URL은 기존 API 사용
-                const response = await fetch('/api/extract-content', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ url: url.trim() }),
-                });
-
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || '콘텐츠 추출에 실패했습니다.');
-                }
-
-                const data = await response.json();
-                setExtractedText(data.text);
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || '콘텐츠 추출에 실패했습니다.');
             }
+
+            const data = await response.json();
+            setExtractedText(data.text);
         } catch (error) {
             console.error('URL 콘텐츠 추출 오류:', error);
             setError(error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.');
@@ -349,7 +305,7 @@ export default function WebLinkModal({ isOpen, onClose }: WebLinkModalProps) {
                             <>
                                 <div className="mb-4">
                                     <p className="text-gray-700 mb-4">
-                                        Paste URL or YouTube link to generate AI notes.
+                                        Paste URL to generate AI notes. YouTube links are not supported.
                                     </p>
                                     <div className="relative">
                                         <input
@@ -362,13 +318,6 @@ export default function WebLinkModal({ isOpen, onClose }: WebLinkModalProps) {
                                             className="w-full p-3 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7969F7] focus:border-transparent"
                                             disabled={isLoading}
                                         />
-                                        {isYouTube && (
-                                            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                                                <svg className="w-6 h-6 text-red-600" viewBox="0 0 24 24" fill="currentColor">
-                                                    <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z" />
-                                                </svg>
-                                            </div>
-                                        )}
                                     </div>
                                     {error && (
                                         <p className="text-red-500 text-sm mt-2">{error}</p>

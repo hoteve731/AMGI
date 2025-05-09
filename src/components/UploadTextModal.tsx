@@ -1,3 +1,5 @@
+'use client'
+
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
@@ -23,7 +25,7 @@ export default function UploadTextModal({ isOpen, onClose }: UploadTextModalProp
     // Constants for text length validation
     const MIN_LENGTH = 50;
     const MAX_LENGTH = 20000;
-    
+
     // Language storage key - same as BottomSheet
     const LANGUAGE_STORAGE_KEY = 'amgi_selected_language';
 
@@ -97,10 +99,10 @@ export default function UploadTextModal({ isOpen, onClose }: UploadTextModalProp
     // Process text through markdown conversion
     const handleProcess = async () => {
         if (!text.trim() || !isLengthValid) {
-            setError(isLengthUnderMin 
-                ? `Text must be at least ${MIN_LENGTH} characters.` 
-                : isLengthOverMax 
-                    ? `Text cannot exceed ${MAX_LENGTH} characters.` 
+            setError(isLengthUnderMin
+                ? `Text must be at least ${MIN_LENGTH} characters.`
+                : isLengthOverMax
+                    ? `Text cannot exceed ${MAX_LENGTH} characters.`
                     : 'Please enter some text.');
             return;
         }
@@ -265,7 +267,7 @@ export default function UploadTextModal({ isOpen, onClose }: UploadTextModalProp
                                     value={text}
                                     onChange={(e) => setText(e.target.value)}
                                     onKeyDown={handleKeyDown}
-                                    placeholder="Upload anything..."
+                                    placeholder="Write or paste text..."
                                     className={`w-full p-3 border ${isLengthOverMax ? 'border-red-300' : 'border-gray-200'} rounded-lg resize-none focus:outline-none focus:border-[#7969F7] ${isLengthOverMax ? 'focus:border-red-500' : ''} min-h-[250px]`}
                                     disabled={isLoading}
                                 />
@@ -278,20 +280,17 @@ export default function UploadTextModal({ isOpen, onClose }: UploadTextModalProp
                             )}
                         </div>
 
-                        <div className="mb-8 mt-4 flex-shrink-0">
-                            <div className="flex items-center">
-                                <label htmlFor="language-select" className="text-base font-semibold text-gray-700 mr-2">🌐 Note Language</label>
-                                <select
-                                    id="language-select"
-                                    value={selectedLanguage}
-                                    onChange={handleLanguageChange}
-                                    className="text-base font-normal border border-gray-400 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[#5F4BB6]"
-                                >
-                                    <option value="English">English</option>
-                                    <option value="Korean">Korean</option>
-                                </select>
-                            </div>
-                            <span className="text-sm font-normal text-gray-500">Note will be generated in this language.</span>
+                        <div className="flex items-center mb-6 flex-shrink-0">
+                            <label className="text-gray-700 mr-3">Language:</label>
+                            <select
+                                value={selectedLanguage}
+                                onChange={handleLanguageChange}
+                                className="border border-gray-200 rounded-lg p-2 text-gray-700 focus:outline-none focus:border-[#7969F7]"
+                                disabled={isLoading}
+                            >
+                                <option value="English">English</option>
+                                <option value="Korean">한국어</option>
+                            </select>
                         </div>
 
                         <div className="flex justify-end pb-1 flex-shrink-0">
@@ -309,7 +308,7 @@ export default function UploadTextModal({ isOpen, onClose }: UploadTextModalProp
                                         Processing...
                                     </div>
                                 ) : (
-                                    'Generate Note'
+                                    'Process'
                                 )}
                             </button>
                         </div>
