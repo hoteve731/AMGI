@@ -547,11 +547,31 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
             if (target.closest('.snippet-selection-button') || markdownContainerRef.current?.contains(target)) return;
             clearSelection();
         };
+
+        // 모바일 터치 이벤트 핸들러 추가
+        const onTouchEnd = () => setTimeout(handleTextSelection, 0);
+        const onTouchStart = (e: TouchEvent) => {
+            const target = e.target as HTMLElement;
+            if (target.closest('.snippet-selection-button') || markdownContainerRef.current?.contains(target)) return;
+            clearSelection();
+        };
+
+        // 마우스 이벤트 리스너 (데스크톱)
         document.addEventListener('mouseup', onMouseUp);
         document.addEventListener('mousedown', onMouseDown);
+
+        // 터치 이벤트 리스너 (모바일)
+        document.addEventListener('touchend', onTouchEnd);
+        document.addEventListener('touchstart', onTouchStart);
+
         return () => {
+            // 마우스 이벤트 리스너 제거
             document.removeEventListener('mouseup', onMouseUp);
             document.removeEventListener('mousedown', onMouseDown);
+
+            // 터치 이벤트 리스너 제거
+            document.removeEventListener('touchend', onTouchEnd);
+            document.removeEventListener('touchstart', onTouchStart);
         };
     }, [activeTab, handleTextSelection, clearSelection]);
 
