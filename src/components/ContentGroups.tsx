@@ -91,7 +91,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
     const [selectedRange, setSelectedRange] = useState<Range | null>(null);
 
     // 현재 컨텐츠 ID를 저장하기 위한 상태
-    const [currentContentId, setCurrentContentId] = useState<string | undefined>(undefined);
+    const [currentContentId, setCurrentContentId] = useState<string | undefined>(content?.id);
 
     // 1. Add container ref and highlight state after existing state declarations
     const markdownContainerRef = useRef<HTMLDivElement | null>(null);
@@ -106,9 +106,10 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
     useEffect(() => {
         console.log('ContentGroups content prop updated:', content);
         // content 객체에서 ID 추출
-        if (content && content.groups && content.groups.length > 0) {
-            // 첫 번째 그룹의 content_id 사용
-            setCurrentContentId(content.groups[0].content_id);
+        if (content?.id) {
+            // content.id 사용 (직접 컨텐츠의 ID 사용)
+            setCurrentContentId(content.id);
+            console.log('Setting currentContentId to:', content.id);
         }
     }, [content]);
 
@@ -511,7 +512,11 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
         setHighlightRects(rects);
         setSelectedText(text);
         const first = range.getClientRects()[0];
-        setSelectionPosition({ x: first.left + first.width/2, y: first.top - 40 });
+        // 버튼 위치는 화면 하단 중앙으로 고정 (y값은 사용하지 않음)
+        setSelectionPosition({ 
+            x: window.innerWidth / 2, 
+            y: 0 // 실제로는 사용하지 않음, fixed bottom으로 처리
+        });
         setShowSelectionButton(true);
     }, []);
 
@@ -535,12 +540,22 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
     // 4. Update snippet creation to clear overlays
     const handleSnippetFromSelection = useCallback(() => {
         if (selectedText && currentContentId) {
+            console.log('Creating snippet from selection:', selectedText, 'for content ID:', currentContentId);
+            
             const snippetId = `sel-${Date.now()}`;
             setSelectedHeader({ text: selectedText, id: snippetId });
+            
+            // 바텀시트 열기
             setShowSnippetBottomSheet(true);
+            
+            // 선택 영역 초기화
             clearSelection();
+            
+            // 성공 메시지 표시
+            toast.success('스니펫 생성 준비 완료');
         } else {
             console.warn('Cannot create snippet: Text or Content ID missing', { selectedText, currentContentId });
+            toast.error('스니펫을 생성할 수 없습니다. 다시 시도해주세요.');
         }
     }, [selectedText, currentContentId, clearSelection]);
 
@@ -676,18 +691,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                                                     }}
                                                 />
                                             ))}
-                                            {showSelectionButton && selectionPosition && (
-                                                <div className="fixed snippet-selection-button z-50" style={{
-                                                    left: `${selectionPosition.x}px`,
-                                                    top: `${selectionPosition.y}px`,
-                                                    transform: 'translateX(-50%)',
-                                                    pointerEvents: 'auto'
-                                                }}>
-                                                    <button onClick={handleSnippetFromSelection} className="bg-purple-600 text-white px-3 py-1.5 rounded-full text-sm font-medium shadow-md hover:bg-purple-700 transition-colors flex items-center">
-                                                        <span className="mr-1">✨</span> 스니펫 생성
-                                                    </button>
-                                                </div>
-                                            )}
+                                            {/* 스니펫 버튼은 마크다운 컨테이너 내부에 렌더링하지 않고 createPortal로 document.body에 렌더링 */}
                                         </div>
                                     ) : (
                                         <div className="flex flex-col items-center justify-center py-8">
@@ -1069,7 +1073,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                 document.body
             )}
 
-            {/* 스니펫 바텀 시트 추가 */}
+            {/* 스니펫 바텀시트 */}
             {isMounted && createPortal(
                 <AnimatePresence mode="wait">
                     {showSnippetBottomSheet && (
@@ -1077,16 +1081,44 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                             isOpen={showSnippetBottomSheet}
                             onClose={() => {
                                 setShowSnippetBottomSheet(false);
+                                // 바텀시트가 닫힐 때 선택 영역 초기화
+                                clearSelection();
                                 // 바텀시트가 닫힐 때 이벤트 핸들러를 다시 등록
                                 setTimeout(() => {
                                     registerSnippetIconClickHandlers(handleSnippetIconClick);
                                 }, 100);
                             }}
                             headerText={selectedHeader.text}
-                            contentId={content.id}
+                            contentId={currentContentId || content.id}
                         />
                     )}
                 </AnimatePresence>,
+                document.body
+            )}
+            
+            {/* 스니펫 생성 플로팅 버튼 - document.body에 포털로 렌더링 */}
+            {isMounted && showSelectionButton && createPortal(
+                <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[9999] snippet-selection-button" style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '12px',
+                    width: '90%',
+                    maxWidth: '450px'
+                }}>
+                    {/* 선택된 텍스트 미리보기 */}
+                    <div className="bg-white p-4 rounded-xl shadow-lg w-full max-h-32 overflow-y-auto">
+                        <p className="text-gray-700 line-clamp-3 text-base">{selectedText}</p>
+                    </div>
+                    
+                    {/* 스니펫 생성 버튼 */}
+                    <button 
+                        onClick={handleSnippetFromSelection} 
+                        className="bg-purple-600 text-white px-6 py-3 rounded-full font-medium shadow-xl hover:bg-purple-700 transition-colors flex items-center justify-center w-full"
+                    >
+                        <span className="mr-2 text-lg">✨</span> 스니펫 생성
+                    </button>
+                </div>,
                 document.body
             )}
 
