@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@/utils/supabase/server'
+import { createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 
 export async function GET(request: NextRequest) {
     try {
-        const supabase = createServerClient(cookies())
+        const supabase = await createClient()
 
         // 사용자 인증 확인
         const { data: { session } } = await supabase.auth.getSession()
@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
     try {
-        const supabase = createServerClient(cookies())
+        const supabase = await createClient()
 
         // 사용자 인증 확인
         const { data: { session } } = await supabase.auth.getSession()
@@ -152,7 +152,7 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
     try {
-        const supabase = createServerClient(cookies())
+        const supabase = await createClient()
 
         // 사용자 인증 확인
         const { data: { session } } = await supabase.auth.getSession()
@@ -185,7 +185,7 @@ export async function DELETE(request: NextRequest) {
             }
 
             // 스니펫 소유권 확인
-            if (relation.snippets.user_id !== userId) {
+            if (relation.snippets[0].user_id !== userId) {
                 return NextResponse.json({ error: '이 태그 관계를 삭제할 권한이 없습니다.' }, { status: 403 })
             }
 

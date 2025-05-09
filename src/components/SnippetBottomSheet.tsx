@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { toast } from 'react-hot-toast'
+import { useRouter } from 'next/navigation'
 
 interface SnippetBottomSheetProps {
     isOpen: boolean
@@ -19,6 +20,7 @@ const SnippetBottomSheet: React.FC<SnippetBottomSheetProps> = ({
     headerText,
     contentId
 }) => {
+    const router = useRouter()
     const [snippetType, setSnippetType] = useState<SnippetType>('summary')
     const [customQuery, setCustomQuery] = useState('')
     const [isCreating, setIsCreating] = useState(false)
@@ -56,8 +58,11 @@ const SnippetBottomSheet: React.FC<SnippetBottomSheetProps> = ({
             const data = await response.json()
             toast.success('스니펫이 생성되었습니다!')
             onClose()
+
+            // 홈 페이지로 이동 후 스니펫 탭으로 전환하기 위해 쿼리 파라미터 추가
+            router.push('/?tab=snippets')
         } catch (error) {
-            console.error('스니펫 생성 오류:', error)
+            console.error('스니펗 생성 오류:', error)
             toast.error(error instanceof Error ? error.message : '스니펫 생성 중 오류가 발생했습니다.')
         } finally {
             setIsCreating(false)
@@ -173,8 +178,8 @@ const SnippetBottomSheet: React.FC<SnippetBottomSheetProps> = ({
                             onClick={createSnippet}
                             disabled={isCreating || (snippetType === 'custom' && !customQuery.trim())}
                             className={`flex-1 py-2 px-4 rounded-md text-white font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 ${isCreating || (snippetType === 'custom' && !customQuery.trim())
-                                    ? 'bg-gray-400 cursor-not-allowed'
-                                    : 'bg-purple-600 hover:bg-purple-700 focus:ring-purple-500'
+                                ? 'bg-gray-400 cursor-not-allowed'
+                                : 'bg-purple-600 hover:bg-purple-700 focus:ring-purple-500'
                                 }`}
                         >
                             {isCreating ? '생성 중...' : '스니펫 생성'}

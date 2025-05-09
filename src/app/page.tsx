@@ -2,12 +2,11 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/utils/supabase/server'
 import ShortcutButtons from '@/components/ShortcutButtons'
 import MenuButton from '@/components/MenuButton'
-import ContentList from '@/components/ContentList'
 import BottomSheet from '@/components/BottomSheet'
 import BetaBanner from '@/components/BetaBanner'
 import UnlimitedNotesButton from '@/components/UnlimitedNotesButton'
 import EnsureDefaultContent from '@/components/EnsureDefaultContent'
-import AnimatedTitle from '@/components/AnimatedTitle'
+import HomeTabs from '@/components/HomeTabs'
 
 export const dynamic = 'force-dynamic'
 
@@ -45,14 +44,8 @@ export default async function Home() {
         <ShortcutButtons userName={user?.user_metadata.full_name || user?.email} />
       </div>
 
-      {/* My Notes 타이틀 추가 */}
-      <div className="px-5 pt-10">
-        <AnimatedTitle>My Notes</AnimatedTitle>
-      </div>
-
-      <div className="flex-1 overflow-hidden">
-        <ContentList />
-      </div>
+      {/* 탭 컴포넌트 추가 */}
+      <HomeTabs />
 
       {/* <BottomSheet /> */}
     </main>

@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@/utils/supabase/server'
+import { createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 
 export async function GET(request: NextRequest) {
     try {
-        const supabase = createServerClient(cookies())
+        const supabase = await createClient()
 
         // 사용자 인증 확인
         const { data: { session } } = await supabase.auth.getSession()
@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
     try {
-        const supabase = createServerClient(cookies())
+        const supabase = await createClient()
 
         // 사용자 인증 확인
         const { data: { session } } = await supabase.auth.getSession()
@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
     try {
-        const supabase = createServerClient(cookies())
+        const supabase = await createClient()
 
         // 사용자 인증 확인
         const { data: { session } } = await supabase.auth.getSession()
@@ -174,7 +174,7 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
     try {
-        const supabase = createServerClient(cookies())
+        const supabase = await createClient()
 
         // 사용자 인증 확인
         const { data: { session } } = await supabase.auth.getSession()

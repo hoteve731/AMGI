@@ -174,8 +174,6 @@ export default function SnippetList() {
 
     return (
         <div className="w-full max-w-4xl mx-auto p-4">
-            <h1 className="text-2xl font-bold mb-6">내 스니펫</h1>
-
             {/* 검색 및 필터 */}
             <div className="flex flex-col md:flex-row gap-4 mb-6">
                 <Input

@@ -89,17 +89,20 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
     const [selectionPosition, setSelectionPosition] = useState<{ x: number; y: number } | null>(null);
     const [showSelectionButton, setShowSelectionButton] = useState(false);
     const [selectedRange, setSelectedRange] = useState<Range | null>(null);
+    // 모달 배경 표시 상태 추가
+    const [showModalBackground, setShowModalBackground] = useState(false);
 
     // 현재 컨텐츠 ID를 저장하기 위한 상태
     const [currentContentId, setCurrentContentId] = useState<string | undefined>(content?.id);
 
     // 1. Add container ref and highlight state after existing state declarations
     const markdownContainerRef = useRef<HTMLDivElement | null>(null);
-    const [highlightRects, setHighlightRects] = useState<{left:number;top:number;width:number;height:number;}[]>([]);
+    const [highlightRects, setHighlightRects] = useState<{ left: number; top: number; width: number; height: number; }[]>([]);
     const clearSelection = useCallback(() => {
-      setHighlightRects([]);
-      setShowSelectionButton(false);
-      setSelectionPosition(null);
+        setHighlightRects([]);
+        setShowSelectionButton(false);
+        setSelectionPosition(null);
+        setShowModalBackground(false); // 모달 배경 숨김
     }, []);
 
     console.log('ContentGroups rendering with content:', content);
@@ -495,12 +498,25 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
     // 2. Replace handleTextSelection with state-driven overlay logic
     const handleTextSelection = useCallback(() => {
         const sel = window.getSelection();
-        if (!sel || sel.isCollapsed || !sel.toString().trim()) return;
+        if (!sel || sel.rangeCount === 0 || sel.isCollapsed) {
+            clearSelection();
+            return;
+        }
+
         const range = sel.getRangeAt(0);
-        let parent = range.commonAncestorContainer;
+        let parent = range.commonAncestorContainer.parentNode;
+
+        // parent가 null인 경우 처리
+        if (!parent) return;
+
         if (parent.nodeType === Node.TEXT_NODE) parent = parent.parentNode!;
-        if (!(parent instanceof HTMLElement) || !markdownContainerRef.current?.contains(parent)) return;
+        if (!parent || !(parent instanceof HTMLElement) || !markdownContainerRef.current?.contains(parent)) return;
         const text = sel.toString().trim();
+        if (!text) {
+            clearSelection();
+            return;
+        }
+
         const container = markdownContainerRef.current!;
         const containerRect = container.getBoundingClientRect();
         const rects = Array.from(range.getClientRects()).map(r => ({
@@ -513,12 +529,13 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
         setSelectedText(text);
         const first = range.getClientRects()[0];
         // 버튼 위치는 화면 하단 중앙으로 고정 (y값은 사용하지 않음)
-        setSelectionPosition({ 
-            x: window.innerWidth / 2, 
+        setSelectionPosition({
+            x: window.innerWidth / 2,
             y: 0 // 실제로는 사용하지 않음, fixed bottom으로 처리
         });
         setShowSelectionButton(true);
-    }, []);
+        setShowModalBackground(true); // 모달 배경 표시
+    }, [clearSelection]);
 
     // 3. Simplify event listeners for selection and clearing
     useEffect(() => {
@@ -526,6 +543,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
         const onMouseUp = () => setTimeout(handleTextSelection, 0);
         const onMouseDown = (e: MouseEvent) => {
             const target = e.target as HTMLElement;
+            // 스니펫 선택 버튼이나 마크다운 컨테이너 내부를 클릭한 경우가 아니면 선택 초기화
             if (target.closest('.snippet-selection-button') || markdownContainerRef.current?.contains(target)) return;
             clearSelection();
         };
@@ -541,16 +559,16 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
     const handleSnippetFromSelection = useCallback(() => {
         if (selectedText && currentContentId) {
             console.log('Creating snippet from selection:', selectedText, 'for content ID:', currentContentId);
-            
+
             const snippetId = `sel-${Date.now()}`;
             setSelectedHeader({ text: selectedText, id: snippetId });
-            
+
             // 바텀시트 열기
             setShowSnippetBottomSheet(true);
-            
+
             // 선택 영역 초기화
             clearSelection();
-            
+
             // 성공 메시지 표시
             toast.success('스니펫 생성 준비 완료');
         } else {
@@ -1095,30 +1113,72 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                 </AnimatePresence>,
                 document.body
             )}
-            
+
             {/* 스니펫 생성 플로팅 버튼 - document.body에 포털로 렌더링 */}
-            {isMounted && showSelectionButton && createPortal(
-                <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[9999] snippet-selection-button" style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: '12px',
-                    width: '90%',
-                    maxWidth: '450px'
-                }}>
-                    {/* 선택된 텍스트 미리보기 */}
-                    <div className="bg-white p-4 rounded-xl shadow-lg w-full max-h-32 overflow-y-auto">
-                        <p className="text-gray-700 line-clamp-3 text-base">{selectedText}</p>
-                    </div>
-                    
+            {isMounted && createPortal(
+                <AnimatePresence mode="wait">
+                    {/* 모달 스타일 배경 */}
+                    {showModalBackground && (
+                        <motion.div
+                            key="snippet-modal-background"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9998]"
+                            onClick={clearSelection}
+                        />
+                    )}
+
                     {/* 스니펫 생성 버튼 */}
-                    <button 
-                        onClick={handleSnippetFromSelection} 
-                        className="bg-purple-600 text-white px-6 py-3 rounded-full font-medium shadow-xl hover:bg-purple-700 transition-colors flex items-center justify-center w-full"
-                    >
-                        <span className="mr-2 text-lg">✨</span> 스니펫 생성
-                    </button>
-                </div>,
+                    {showSelectionButton && (
+                        <motion.div
+                            key="snippet-selection-ui"
+                            className="fixed bottom-8 left-0 right-0 mx-auto z-[9999] snippet-selection-button"
+                            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+                            transition={{
+                                type: "spring",
+                                damping: 25,
+                                stiffness: 300,
+                                duration: 0.3
+                            }}
+                            style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                gap: '12px',
+                                width: '90%',
+                                maxWidth: '450px',
+                                margin: '0 auto'
+                            }}
+                        >
+                            {/* 선택된 텍스트 미리보기 */}
+                            <motion.div
+                                className="bg-white p-4 rounded-xl shadow-lg w-full max-h-32 overflow-y-auto"
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.1 }}
+                            >
+                                <p className="text-gray-700 line-clamp-3 text-base">{selectedText}</p>
+                            </motion.div>
+
+                            {/* 스니펫 생성 버튼 */}
+                            <motion.button
+                                onClick={handleSnippetFromSelection}
+                                className="bg-purple-600 text-white px-6 py-3 rounded-full font-medium shadow-xl hover:bg-purple-700 transition-colors flex items-center justify-center w-full"
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.2 }}
+                                whileHover={{ scale: 1.03 }}
+                                whileTap={{ scale: 0.97 }}
+                            >
+                                <span className="mr-2 text-lg">✨</span> 스니펫 생성
+                            </motion.button>
+                        </motion.div>
+                    )}
+                </AnimatePresence>,
                 document.body
             )}
 
