@@ -139,104 +139,63 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: '커스텀 스니펫에는 쿼리가 필요합니다.' }, { status: 400 });
         }
 
-        // 프롬프트 생성
-        const prompt = getSnippetPrompt(header_text, snippet_type, custom_query);
+        // Google Cloud Function URL
+        const gcfUrl = process.env.NODE_ENV === 'production'
+            ? 'https://us-central1-amgi-app.cloudfunctions.net/process-pipeline'
+            : process.env.GCF_URL || 'http://localhost:8080';
 
-        // OpenAI API 호출
-        const completion = await openai.chat.completions.create({
-            model: "gpt-4.1-nano-2025-04-14",
-            messages: [
-                { role: "system", content: "당신은 학습 자료에서 중요한 개념을 추출하고 설명하는 전문가입니다. 마크다운 형식으로 깔끔하게 응답해주세요." },
-                { role: "user", content: prompt }
-            ],
-            temperature: 0.7,
-        });
+        console.log('스니펫 생성 GCF 호출:', gcfUrl);
+        console.log('요청 데이터:', { userId, header_text, content_id, snippet_type, custom_query });
 
-        // 응답 텍스트 추출
-        const snippetContent = completion.choices[0].message.content || '';
-
-        // 태그 추출
-        const tagsPrompt = getTagsPrompt(header_text, snippetContent);
-        const tagsCompletion = await openai.chat.completions.create({
-            model: "gpt-4.1-nano-2025-04-14",
-            messages: [
-                { role: "system", content: "당신은 텍스트에서 중요한 키워드나 태그를 추출하는 AI 어시스턴트입니다. 태그만 간결하게 반환해주세요." },
-                { role: "user", content: tagsPrompt }
-            ],
-            temperature: 0.5,
-        });
-
-        const tagsText = tagsCompletion.choices[0].message.content || '';
-        const tags = tagsText.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
-
-        // 스니펫 DB에 저장
-        const { data: snippet, error: snippetError } = await supabase
-            .from('snippets')
-            .insert({
-                user_id: userId,
+        // GCF 호출
+        const response = await fetch(gcfUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                processType: 'snippet',
+                userId,
+                header_text,
                 content_id: content_id || null,
-                header_text: header_text,
-                snippet_type: snippet_type,
-                custom_query: custom_query || null,
-                markdown_content: snippetContent
-            })
-            .select()
-            .single();
+                snippet_type,
+                custom_query: custom_query || null
+            }),
+        });
 
-        if (snippetError) {
-            console.error('스니펫 저장 오류:', snippetError);
-            return NextResponse.json({ error: '스니펫 저장 중 오류가 발생했습니다.' }, { status: 500 });
-        }
+        // 응답 확인
+        if (!response.ok) {
+            console.error('GCF 오류 응답:', response.status, response.statusText);
 
-        // 태그 처리
-        for (const tagName of tags) {
-            // 기존 태그 확인 또는 새 태그 생성
-            const { data: existingTag, error: tagError } = await supabase
-                .from('snippet_tags')
-                .select('*')
-                .eq('name', tagName)
-                .eq('user_id', userId)
-                .maybeSingle();
+            // 응답 본문 확인 시도
+            try {
+                const errorData = await response.text();
+                console.error('GCF 오류 응답 본문:', errorData);
 
-            if (tagError) {
-                console.error('태그 조회 중 오류:', tagError);
-                continue;
-            }
-
-            let tagId;
-            if (existingTag) {
-                tagId = existingTag.id;
-            } else {
-                const { data: newTag, error: createTagError } = await supabase
-                    .from('snippet_tags')
-                    .insert({
-                        name: tagName,
-                        user_id: userId
-                    })
-                    .select()
-                    .single();
-
-                if (createTagError) {
-                    console.error('태그 생성 중 오류:', createTagError);
-                    continue;
+                // JSON 파싱 시도
+                try {
+                    const errorJson = JSON.parse(errorData);
+                    return NextResponse.json({
+                        error: errorJson.error || '스니펫 생성 중 오류가 발생했습니다.'
+                    }, { status: response.status });
+                } catch (e) {
+                    // JSON 파싱 실패 시 텍스트 응답 그대로 반환
+                    return NextResponse.json({
+                        error: '스니펫 생성 중 오류가 발생했습니다.',
+                        details: errorData
+                    }, { status: response.status });
                 }
-                tagId = newTag.id;
-            }
-
-            // 스니펫-태그 관계 생성
-            const { error: relationError } = await supabase
-                .from('snippet_tag_relations')
-                .insert({
-                    snippet_id: snippet.id,
-                    tag_id: tagId
-                });
-
-            if (relationError) {
-                console.error('스니펫-태그 관계 생성 중 오류:', relationError);
+            } catch (e) {
+                // 응답 본문 읽기 실패
+                return NextResponse.json({
+                    error: '스니펫 생성 중 오류가 발생했습니다.'
+                }, { status: response.status });
             }
         }
 
-        return NextResponse.json({ success: true, snippet });
+        // 성공 응답 파싱
+        const result = await response.json();
+        return NextResponse.json(result);
     } catch (error) {
         console.error('스니펫 생성 오류:', error);
         return NextResponse.json({ error: '스니펫 생성 중 오류가 발생했습니다.' }, { status: 500 });

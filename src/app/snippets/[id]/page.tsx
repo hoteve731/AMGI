@@ -57,8 +57,35 @@ export default function SnippetDetailPage() {
                 setSnippet(data.snippet)
 
                 // 태그 정보 설정
-                if (data.snippet.tags) {
-                    setTags(data.snippet.tags)
+                if (data.snippet.snippet_tag_relations) {
+                    // 태그 관계가 배열인지 확인 (단일 객체일 수도 있음)
+                    const relations = Array.isArray(data.snippet.snippet_tag_relations)
+                        ? data.snippet.snippet_tag_relations
+                        : [data.snippet.snippet_tag_relations];
+
+                    // 태그 관계 타입 정의
+                    type TagRelation = {
+                        id: string;
+                        snippet_tags: {
+                            id: string;
+                            name: string;
+                        };
+                    };
+
+                    // 태그 추출
+                    const extractedTags = relations
+                        .filter((relation: TagRelation) => relation.snippet_tags)
+                        .map((relation: TagRelation) => ({
+                            id: relation.snippet_tags.id,
+                            name: relation.snippet_tags.name,
+                            relation_id: relation.id
+                        }));
+
+                    console.log('추출된 태그:', extractedTags);
+                    setTags(extractedTags);
+                } else {
+                    console.log('스니펫에 태그 관계가 없습니다:', data.snippet);
+                    setTags([]);
                 }
 
                 // 연결된 콘텐츠가 있으면 콘텐츠 정보 로드
@@ -181,18 +208,40 @@ export default function SnippetDetailPage() {
 
     return (
         <div className="max-w-4xl mx-auto p-4 pb-16">
-            {/* 뒤로가기 버튼 */}
-            <button
-                className="flex items-center text-gray-600 hover:text-purple-600 mb-6"
-                onClick={() => router.push('/?tab=snippets')}
-            >
-                <ArrowLeft size={16} className="mr-1" />
-                <span>Back</span>
-            </button>
+            {/* 네비게이션 바 - 뒤로가기 버튼과 편집/삭제 버튼 */}
+            <div className="flex items-center justify-between mb-6">
+                <button
+                    className="flex items-center text-gray-600 hover:text-purple-600"
+                    onClick={() => router.push('/?tab=snippets')}
+                >
+                    <ArrowLeft size={16} className="mr-1" />
+                    <span>Back</span>
+                </button>
+
+                <div className="flex items-center gap-2">
+                    <button
+                        className="p-2 text-gray-600 hover:text-purple-600 transition-colors"
+                        onClick={() => router.push(`/snippets/${snippet.id}/edit`)}
+                    >
+                        <Edit2 size={18} />
+                    </button>
+                    <button
+                        className="p-2 text-gray-600 hover:text-red-600 transition-colors"
+                        onClick={deleteSnippet}
+                        disabled={isDeleting}
+                    >
+                        {isDeleting ? (
+                            <div className="w-4 h-4 border-2 border-gray-300 border-t-transparent rounded-full animate-spin mx-1"></div>
+                        ) : (
+                            <Trash2 size={18} />
+                        )}
+                    </button>
+                </div>
+            </div>
 
             {/* 헤더 섹션 */}
             <div className="mb-6">
-                <div className="flex flex-wrap items-start justify-between gap-4 mb-2">
+                <div className="flex flex-wrap items-start gap-4 mb-2">
                     <div>
                         <h1 className="text-2xl font-bold text-gray-800">{snippet.header_text}</h1>
                         <p className="text-sm text-gray-500 mt-1">
@@ -200,45 +249,9 @@ export default function SnippetDetailPage() {
                             {snippet.updated_at !== snippet.created_at && ` · Updated: ${formatDate(snippet.updated_at)}`}
                         </p>
 
-                        {/* 스니펫 타입 배지 - 타임스탬프 아래로 이동 */}
                         <div className="mt-2">
                             {getSnippetTypeBadge(snippet.snippet_type)}
                         </div>
-
-                        {/* 태그 섹션 */}
-                        {tags.length > 0 && (
-                            <div className="flex flex-wrap gap-2 mt-2">
-                                {tags.map(tag => (
-                                    <div
-                                        key={tag.id}
-                                        className="flex items-center bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full text-xs"
-                                    >
-                                        <TagIcon size={12} className="mr-1" />
-                                        <span>{tag.name}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                        <button
-                            className="p-2 text-gray-600 hover:text-purple-600 transition-colors"
-                            onClick={() => router.push(`/snippets/${snippet.id}/edit`)}
-                        >
-                            <Edit2 size={18} />
-                        </button>
-                        <button
-                            className="p-2 text-gray-600 hover:text-red-600 transition-colors"
-                            onClick={deleteSnippet}
-                            disabled={isDeleting}
-                        >
-                            {isDeleting ? (
-                                <div className="w-4 h-4 border-2 border-gray-300 border-t-transparent rounded-full animate-spin mx-1"></div>
-                            ) : (
-                                <Trash2 size={18} />
-                            )}
-                        </button>
                     </div>
                 </div>
 
@@ -258,6 +271,25 @@ export default function SnippetDetailPage() {
                     dangerouslySetInnerHTML={{ __html: marked(snippet.markdown_content) }}
                 />
             </div>
+
+            {/* 태그 섹션 */}
+            {tags.length > 0 && (
+                <div className="mb-8">
+                    <h2 className="text-lg font-semibold mb-2">Tags</h2>
+                    <div className="flex flex-wrap gap-2">
+                        {tags.map(tag => (
+                            <div
+                                key={tag.id}
+                                className="flex items-center px-3 py-1.5 rounded-full bg-gray-200 text-gray-700 text-sm cursor-pointer hover:bg-gray-300"
+                                onClick={() => router.push(`/?tab=snippets&tag=${tag.id}`)}
+                            >
+                                <TagIcon size={14} className="mr-1.5" />
+                                <span>{tag.name}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {/* 출처 섹션 */}
             {sourceContent && (

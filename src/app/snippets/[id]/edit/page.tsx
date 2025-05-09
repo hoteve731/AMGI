@@ -374,11 +374,11 @@ export default function EditSnippetPage() {
                                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
                                 required
                             >
-                                <option value="" disabled>선택하세요</option>
-                                <option value="summary">요약</option>
-                                <option value="question">질문</option>
-                                <option value="explanation">설명</option>
-                                <option value="custom">커스텀</option>
+                                <option value="" disabled>Change type</option>
+                                <option value="summary">Summary</option>
+                                <option value="question">Question</option>
+                                <option value="explanation">Explanation</option>
+                                <option value="custom">Custom</option>
                             </select>
                         </div>
 
@@ -391,7 +391,7 @@ export default function EditSnippetPage() {
                                     type="text"
                                     value={customQuery}
                                     onChange={(e) => setCustomQuery(e.target.value)}
-                                    placeholder="예: 이 내용의 핵심 아이디어는 무엇인가요?"
+                                    placeholder="example: How can I apply this in my career?"
                                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
                                     required
                                 />
@@ -432,7 +432,7 @@ export default function EditSnippetPage() {
                 </div>
 
                 <div className="bg-white rounded-lg shadow-sm p-6">
-                    <h2 className="text-lg font-medium text-gray-800 mb-4">태그 관리</h2>
+                    <h2 className="text-lg font-medium text-gray-800 mb-4">Manage Tags</h2>
 
                     <div className="flex flex-wrap gap-2 mb-4">
                         {tags.length > 0 ? (
@@ -468,7 +468,7 @@ export default function EditSnippetPage() {
                                     className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
                                     disabled={filteredAvailableTags.length === 0}
                                 >
-                                    <option value="">태그를 선택하세요</option>
+                                    <option value="">Select a tag</option>
                                     {filteredAvailableTags.map(tag => (
                                         <option key={tag.id} value={tag.id}>{tag.name}</option>
                                     ))}

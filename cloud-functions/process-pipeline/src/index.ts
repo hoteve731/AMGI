@@ -13,6 +13,7 @@ import { Readable } from 'stream';
 import { finished } from 'stream/promises';
 import fileUpload from 'express-fileupload';
 import express from 'express';
+import { processSnippet } from './snippet_processor';
 
 // @types/express-fileupload 패키지가 이미 Express.Request에 files 속성을 정의하고 있으므로
 // 별도의 타입 확장이 필요하지 않습니다.
@@ -31,7 +32,9 @@ interface SegmentResult { success: boolean; segmentId: string; error?: string; }
 let supabase: SupabaseClient;
 let openai: OpenAI;
 let isInitialized = false;
-try {
+
+// 클라이언트 초기화 함수
+function initializeClients() {
     const supabaseUrl = process.env.SUPABASE_URL;
     const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     const openaiApiKey = process.env.OPENAI_API_KEY;
@@ -52,7 +55,11 @@ try {
     openai = new OpenAI({ apiKey: openaiApiKey });
 
     isInitialized = true;
-    console.log("Clients initialized successfully.");
+    console.log("Clients initialized successfully");
+}
+
+try {
+    initializeClients();
 } catch (initError) {
     console.error("Failed to initialize clients:", initError);
 }
@@ -306,49 +313,44 @@ export const processTextPipeline = functions.http('processTextPipeline', async (
     res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.set('Access-Control-Allow-Headers', 'Content-Type');
 
+    // OPTIONS 요청 처리
     if (req.method === 'OPTIONS') {
         res.status(204).send('');
         return;
     }
 
+    // POST 요청 아닌 경우 오류 반환
     if (req.method !== 'POST') {
-        return res.status(405).send('Method Not Allowed');
+        res.status(405).send('Method Not Allowed');
+        return;
     }
 
+    // 초기화 확인
     if (!isInitialized) {
-        console.error("GCF Handler - Clients failed to initialize!");
-        return res.status(500).send('Internal Server Error: Client initialization failed.');
+        try {
+            console.log("Initializing clients...");
+            initializeClients();
+        } catch (error) {
+            console.error("Initialization error:", error);
+            res.status(500).send('Server configuration error');
+            return;
+        }
     }
 
-    let contentId: string | null = null;
-
+    let contentId = '';
     try {
         console.log("Request body:", JSON.stringify(req.body));
 
         const { contentId: reqContentId, text, userId, additionalMemory, title: reqTitle, processType = 'markdown', language = 'English' } = req.body;
         contentId = reqContentId as string;
 
-        console.log(`[Main][${contentId}] Language: ${language}`);
-
-        // 필수 파라미터 검증
-        if (!contentId || !text || !userId) {
-            console.error(`[Main] Missing required parameters: contentId=${contentId}, text=${!!text}, userId=${userId}`);
-            return res.status(400).send('Missing required parameters: contentId, text, or userId');
-        }
-
-        // 제목 설정
-        const title = reqTitle || 'Untitled Content';
-
-        // 콘텐츠 상태 업데이트
-        await updateContentStatus(supabase, contentId, 'received');
-
-        // processType에 따라 다른 처리 로직 수행
+        // processType에 따라 다른 처리 로직 실행
         if (processType === 'markdown') {
-            // 마크다운 변환 처리
+            // 마크다운 변환 처리 로직 (기존과 동일)
             console.log(`[Main][${contentId}] Processing type: markdown conversion`);
 
             // 콘텐츠 상태 업데이트
-            await updateContentStatus(supabase, contentId, 'title_generated');
+            await updateContentStatus(supabase, contentId, 'received');
 
             // 마크다운 변환 실행
             const markdownResult = await convertTextToMarkdown(supabase, openai, contentId, text, language);
@@ -366,7 +368,7 @@ export const processTextPipeline = functions.http('processTextPipeline', async (
                 processType: 'markdown'
             });
         } else if (processType === 'groups') {
-            // 그룹 및 청크 생성 처리 로직 (간소화됨)
+            // 그룹 및 청크 생성 처리 로직 (기존과 동일)
             console.log(`[Main][${contentId}] Processing type: groups and chunks (simplified)`);
 
             // 콘텐츠 마크다운 텍스트와 언어 설정 가져오기
@@ -475,23 +477,43 @@ export const processTextPipeline = functions.http('processTextPipeline', async (
                 groupsCount: 1, // 항상 1개의 그룹
                 chunksCount: 0 // 실제 청크 수는 계산하지 않음 (간소화)
             });
+        } else if (processType === 'snippet') {
+            // 스니펫 생성 처리 로직
+            console.log(`[Main] Processing type: snippet creation`);
+
+            // 필수 필드 검증
+            const { userId, header_text, snippet_type } = req.body;
+
+            if (!userId || !header_text || !snippet_type) {
+                return res.status(400).send({
+                    success: false,
+                    error: '필수 필드가 누락되었습니다. userId, header_text, snippet_type이 필요합니다.'
+                });
+            }
+
+            // 스니펫 처리 함수 호출
+            const result = await processSnippet(req.body);
+
+            // 성공 응답
+            return res.status(200).send(result);
         } else {
-            return res.status(400).send(`Invalid processType: ${processType}. Must be 'markdown' or 'groups'`);
+            return res.status(400).send(`Invalid processType: ${processType}. Must be 'markdown', 'groups', or 'snippet'`);
         }
-    } catch (error) {
+    } catch (error: any) {
         console.error(`[Main][${contentId}] Pipeline error:`, error);
 
         // 에러 발생 시 상태 업데이트 시도
         if (contentId) {
             try {
                 await updateContentStatus(supabase, contentId, 'failed');
-            } catch (statusError) {
-                console.error(`[Main][${contentId}] Failed to update status to 'failed':`, statusError);
+            } catch (updateError) {
+                console.error(`[Main][${contentId}] Failed to update content status:`, updateError);
             }
         }
 
-        res.status(500).json({
-            error: `Pipeline failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+        return res.status(500).send({
+            success: false,
+            error: error.message || 'An error occurred during processing'
         });
     }
 });
@@ -632,6 +654,69 @@ export const processAudioTranscription = functions.http('processAudioTranscripti
         return res.status(500).send({
             success: false,
             error: error.message || 'Unknown server error'
+        });
+    }
+});
+
+// === 스니펫 생성 엔드포인트 ===
+export const processSnippetCreation = functions.http('processSnippetCreation', async (req, res) => {
+    // CORS 설정
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type');
+
+    // OPTIONS 요청 처리
+    if (req.method === 'OPTIONS') {
+        res.status(204).send('');
+        return;
+    }
+
+    // POST 요청 아닌 경우 오류 반환
+    if (req.method !== 'POST') {
+        res.status(405).send('Method Not Allowed');
+        return;
+    }
+
+    // 초기화 확인
+    if (!isInitialized) {
+        try {
+            console.log("Initializing clients for snippet creation...");
+            initializeClients();
+        } catch (error) {
+            console.error("Initialization error:", error);
+            res.status(500).send('Server configuration error');
+            return;
+        }
+    }
+
+    console.log("Processing snippet creation request");
+
+    try {
+        // 요청 본문 로깅
+        console.log("Request body:", JSON.stringify(req.body));
+
+        // 필수 필드 검증
+        const { userId, header_text, snippet_type } = req.body;
+
+        if (!userId || !header_text || !snippet_type) {
+            return res.status(400).send({
+                success: false,
+                error: '필수 필드가 누락되었습니다. userId, header_text, snippet_type이 필요합니다.'
+            });
+        }
+
+        // 스니펫 처리 함수 호출
+        const result = await processSnippet(req.body);
+
+        // 성공 응답
+        return res.status(200).send(result);
+    } catch (error: any) {
+        console.error("Snippet creation error:", error);
+
+        // 오류 응답
+        return res.status(500).send({
+            success: false,
+            error: error.message || '스니펫 생성 중 오류가 발생했습니다.'
         });
     }
 });

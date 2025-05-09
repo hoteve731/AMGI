@@ -44,8 +44,40 @@ export default function SnippetList() {
             const data = await response.json()
 
             if (data.snippets) {
-                setSnippets(data.snippets)
-                setFilteredSnippets(data.snippets)
+                // 태그 정보 처리
+                const processedSnippets = data.snippets.map((snippet: any) => {
+                    // 태그 관계가 있는 경우 처리
+                    if (snippet.snippet_tag_relations) {
+                        // 태그 관계가 배열인지 확인 (단일 객체일 수도 있음)
+                        const relations = Array.isArray(snippet.snippet_tag_relations)
+                            ? snippet.snippet_tag_relations
+                            : [snippet.snippet_tag_relations];
+
+                        // 태그 추출
+                        const extractedTags = relations
+                            .filter((relation: any) => relation.snippet_tags)
+                            .map((relation: any) => ({
+                                id: relation.snippet_tags.id,
+                                name: relation.snippet_tags.name,
+                                relation_id: relation.id
+                            }));
+
+                        // 스니펫에 태그 정보 추가
+                        return {
+                            ...snippet,
+                            tags: extractedTags
+                        };
+                    }
+
+                    // 태그 관계가 없는 경우 빈 배열 설정
+                    return {
+                        ...snippet,
+                        tags: []
+                    };
+                });
+
+                setSnippets(processedSnippets);
+                setFilteredSnippets(processedSnippets);
             }
         } catch (error) {
             console.error('스니펫 조회 중 오류:', error)
@@ -140,6 +172,14 @@ export default function SnippetList() {
     useEffect(() => {
         fetchSnippets()
         fetchTags()
+
+        // URL에서 태그 ID 가져오기
+        const urlParams = new URLSearchParams(window.location.search);
+        const tagId = urlParams.get('tag');
+
+        if (tagId) {
+            setSelectedTags([tagId]);
+        }
     }, [])
 
     // 필터링 적용
@@ -222,26 +262,29 @@ export default function SnippetList() {
                         <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg z-10 border border-gray-200">
                             <div className="p-2 max-h-60 overflow-y-auto">
                                 {tags.length > 0 ? (
-                                    tags.map((tag) => (
-                                        <div
-                                            key={tag.id}
-                                            className="flex items-center justify-between px-3 py-2 hover:bg-gray-100 rounded cursor-pointer"
-                                            onClick={() => toggleTag(tag.id)}
-                                        >
-                                            <div className="flex items-center">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={selectedTags.includes(tag.id)}
-                                                    onChange={() => { }}
-                                                    className="mr-2"
-                                                />
-                                                <span>{tag.name}</span>
+                                    // Filter out tags with no associated snippets
+                                    tags
+                                        .filter(tag => tag.snippets_count > 0)
+                                        .map((tag) => (
+                                            <div
+                                                key={tag.id}
+                                                className="flex items-center justify-between px-3 py-2 hover:bg-gray-100 rounded cursor-pointer"
+                                                onClick={() => toggleTag(tag.id)}
+                                            >
+                                                <div className="flex items-center">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selectedTags.includes(tag.id)}
+                                                        onChange={() => { }}
+                                                        className="mr-2"
+                                                    />
+                                                    <span>{tag.name}</span>
+                                                </div>
+                                                <span className="px-1.5 py-0.5 text-xs bg-gray-200 rounded-full">
+                                                    {tag.snippets_count}
+                                                </span>
                                             </div>
-                                            <span className="px-1.5 py-0.5 text-xs bg-gray-200 rounded-full">
-                                                {tag.snippets_count}
-                                            </span>
-                                        </div>
-                                    ))
+                                        ))
                                 ) : (
                                     <div className="px-3 py-2 text-gray-500">No tags available</div>
                                 )}

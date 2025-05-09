@@ -1194,7 +1194,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                                 whileHover={{ scale: 1.03 }}
                                 whileTap={{ scale: 0.97 }}
                             >
-                                <span className="mr-2 text-lg">✨</span> 스니펫 생성
+                                <span className="mr-2 text-lg">✨</span> Create Snippet
                             </motion.button>
                         </motion.div>
                     )}
