@@ -13,6 +13,9 @@ import DOMPurify from 'isomorphic-dompurify';
 import EditNoteModal from './EditNoteModal'
 import { PencilIcon } from '@heroicons/react/24/outline'
 import { marked } from 'marked';
+import SnippetBottomSheet from './SnippetBottomSheet'
+import { renderMarkdownWithSnippetIcons, registerSnippetIconClickHandlers, removeSnippetIconClickHandlers } from '@/utils/markdown';
+import toast from 'react-hot-toast';
 
 type Content = {
     id: string
@@ -77,9 +80,36 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
     const [generationProgress, setGenerationProgress] = useState<number>(0);
     const [processedGroups, setProcessedGroups] = useState<any[]>([]);
 
+    // 스니펫 관련 상태 추가
+    const [showSnippetBottomSheet, setShowSnippetBottomSheet] = useState(false);
+    const [selectedHeader, setSelectedHeader] = useState({ text: '', id: '' });
+
+    // 선택된 텍스트 관련 상태 추가
+    const [selectedText, setSelectedText] = useState('');
+    const [selectionPosition, setSelectionPosition] = useState<{ x: number; y: number } | null>(null);
+    const [showSelectionButton, setShowSelectionButton] = useState(false);
+    const [selectedRange, setSelectedRange] = useState<Range | null>(null);
+
+    // 현재 컨텐츠 ID를 저장하기 위한 상태
+    const [currentContentId, setCurrentContentId] = useState<string | undefined>(undefined);
+
+    // 1. Add container ref and highlight state after existing state declarations
+    const markdownContainerRef = useRef<HTMLDivElement | null>(null);
+    const [highlightRects, setHighlightRects] = useState<{left:number;top:number;width:number;height:number;}[]>([]);
+    const clearSelection = useCallback(() => {
+      setHighlightRects([]);
+      setShowSelectionButton(false);
+      setSelectionPosition(null);
+    }, []);
+
     console.log('ContentGroups rendering with content:', content);
     useEffect(() => {
         console.log('ContentGroups content prop updated:', content);
+        // content 객체에서 ID 추출
+        if (content && content.groups && content.groups.length > 0) {
+            // 첫 번째 그룹의 content_id 사용
+            setCurrentContentId(content.groups[0].content_id);
+        }
     }, [content]);
 
     useEffect(() => {
@@ -454,6 +484,66 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
         return maskedText.replace(/\*\*(.*?)\*\*/g, '<span class="font-bold text-black">$1</span>');
     };
 
+    // 스니펫 아이콘 클릭 핸들러
+    const handleSnippetIconClick = (headerText: string, headerId: string, contentId: string) => {
+        console.log('스니펫 아이콘 클릭:', { headerText, headerId, contentId });
+        setSelectedHeader({ text: headerText, id: headerId });
+        setShowSnippetBottomSheet(true);
+    };
+
+    // 2. Replace handleTextSelection with state-driven overlay logic
+    const handleTextSelection = useCallback(() => {
+        const sel = window.getSelection();
+        if (!sel || sel.isCollapsed || !sel.toString().trim()) return;
+        const range = sel.getRangeAt(0);
+        let parent = range.commonAncestorContainer;
+        if (parent.nodeType === Node.TEXT_NODE) parent = parent.parentNode!;
+        if (!(parent instanceof HTMLElement) || !markdownContainerRef.current?.contains(parent)) return;
+        const text = sel.toString().trim();
+        const container = markdownContainerRef.current!;
+        const containerRect = container.getBoundingClientRect();
+        const rects = Array.from(range.getClientRects()).map(r => ({
+            left: r.left - containerRect.left + container.scrollLeft,
+            top: r.top - containerRect.top + container.scrollTop,
+            width: r.width,
+            height: r.height
+        }));
+        setHighlightRects(rects);
+        setSelectedText(text);
+        const first = range.getClientRects()[0];
+        setSelectionPosition({ x: first.left + first.width/2, y: first.top - 40 });
+        setShowSelectionButton(true);
+    }, []);
+
+    // 3. Simplify event listeners for selection and clearing
+    useEffect(() => {
+        if (activeTab !== 'notes') return;
+        const onMouseUp = () => setTimeout(handleTextSelection, 0);
+        const onMouseDown = (e: MouseEvent) => {
+            const target = e.target as HTMLElement;
+            if (target.closest('.snippet-selection-button') || markdownContainerRef.current?.contains(target)) return;
+            clearSelection();
+        };
+        document.addEventListener('mouseup', onMouseUp);
+        document.addEventListener('mousedown', onMouseDown);
+        return () => {
+            document.removeEventListener('mouseup', onMouseUp);
+            document.removeEventListener('mousedown', onMouseDown);
+        };
+    }, [activeTab, handleTextSelection, clearSelection]);
+
+    // 4. Update snippet creation to clear overlays
+    const handleSnippetFromSelection = useCallback(() => {
+        if (selectedText && currentContentId) {
+            const snippetId = `sel-${Date.now()}`;
+            setSelectedHeader({ text: selectedText, id: snippetId });
+            setShowSnippetBottomSheet(true);
+            clearSelection();
+        } else {
+            console.warn('Cannot create snippet: Text or Content ID missing', { selectedText, currentContentId });
+        }
+    }, [selectedText, currentContentId, clearSelection]);
+
     return (
         <main className="flex min-h-screen flex-col bg-[#F3F5FD] pb-12 p-4">
             {/* 일반 로딩 오버레이 */}
@@ -564,13 +654,40 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                             <div className="py-2 bg-white/80 backdrop-blur-md rounded-xl border border-white/20">
                                 <div className="w-full">
                                     {content.markdown_text ? (
-                                        <div className="flex-1 overflow-y-auto p-4">
+                                        <div className="flex-1 overflow-y-auto p-4 relative" ref={markdownContainerRef}>
                                             <div
                                                 className="markdown-body"
                                                 dangerouslySetInnerHTML={{
-                                                    __html: DOMPurify.sanitize(marked(content.markdown_text))
+                                                    __html: DOMPurify.sanitize(renderMarkdownWithSnippetIcons(content.markdown_text!, content.id))
                                                 }}
                                             />
+                                            {highlightRects.map((r, i) => (
+                                                <div key={i}
+                                                    className="selection-highlight-overlay"
+                                                    style={{
+                                                        position: 'absolute',
+                                                        left: `${r.left}px`,
+                                                        top: `${r.top}px`,
+                                                        width: `${r.width}px`,
+                                                        height: `${r.height}px`,
+                                                        backgroundColor: 'rgba(147, 51, 234, 0.2)',
+                                                        pointerEvents: 'none',
+                                                        borderRadius: '2px'
+                                                    }}
+                                                />
+                                            ))}
+                                            {showSelectionButton && selectionPosition && (
+                                                <div className="fixed snippet-selection-button z-50" style={{
+                                                    left: `${selectionPosition.x}px`,
+                                                    top: `${selectionPosition.y}px`,
+                                                    transform: 'translateX(-50%)',
+                                                    pointerEvents: 'auto'
+                                                }}>
+                                                    <button onClick={handleSnippetFromSelection} className="bg-purple-600 text-white px-3 py-1.5 rounded-full text-sm font-medium shadow-md hover:bg-purple-700 transition-colors flex items-center">
+                                                        <span className="mr-1">✨</span> 스니펫 생성
+                                                    </button>
+                                                </div>
+                                            )}
                                         </div>
                                     ) : (
                                         <div className="flex flex-col items-center justify-center py-8">
@@ -715,7 +832,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                                     </div>
 
                                     {/* 이전/다음 버튼 */}
-                                    <div className="flex w-full max-w-md mt-6">
+                                    <div className="flex w-full max-w-md">
                                         <div className="flex-1 flex justify-start">
                                             {currentFlashcardIndex > 0 && (
                                                 <button
@@ -807,7 +924,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                                             className="px-6 py-2.5 bg-gray-400 text-white rounded-full font-medium cursor-not-allowed shadow-sm flex items-center"
                                         >
                                             <svg className="w-5 h-5 mr-2 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                             </svg>
                                             Create notes first
                                         </button>
@@ -947,6 +1064,27 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                                 </div>
                             </motion.div>
                         </motion.div>
+                    )}
+                </AnimatePresence>,
+                document.body
+            )}
+
+            {/* 스니펫 바텀 시트 추가 */}
+            {isMounted && createPortal(
+                <AnimatePresence mode="wait">
+                    {showSnippetBottomSheet && (
+                        <SnippetBottomSheet
+                            isOpen={showSnippetBottomSheet}
+                            onClose={() => {
+                                setShowSnippetBottomSheet(false);
+                                // 바텀시트가 닫힐 때 이벤트 핸들러를 다시 등록
+                                setTimeout(() => {
+                                    registerSnippetIconClickHandlers(handleSnippetIconClick);
+                                }, 100);
+                            }}
+                            headerText={selectedHeader.text}
+                            contentId={content.id}
+                        />
                     )}
                 </AnimatePresence>,
                 document.body
