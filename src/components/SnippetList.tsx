@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Badge, Button, Card, Chip, Dropdown, DropdownItem, DropdownMenu, DropdownTrigger, Input, Spinner } from '@nextui-org/react'
-import { Search, Tag, Filter, X, Edit2, Trash2, ChevronDown } from 'lucide-react'
+import { Search, Tag as TagIcon, Filter, X, Edit2, Trash2, ChevronDown } from 'lucide-react'
 import { toast } from 'react-hot-toast'
+import { marked } from 'marked'
 
 type Snippet = {
     id: string
@@ -34,6 +34,7 @@ export default function SnippetList() {
     const [searchQuery, setSearchQuery] = useState('')
     const [isLoading, setIsLoading] = useState(true)
     const [isDeleting, setIsDeleting] = useState<{ [key: string]: boolean }>({})
+    const [showTagDropdown, setShowTagDropdown] = useState(false)
 
     // 스니펫 목록 조회
     const fetchSnippets = async () => {
@@ -150,15 +151,15 @@ export default function SnippetList() {
     const getSnippetTypeBadge = (type: string) => {
         switch (type) {
             case 'summary':
-                return <Badge color="primary">요약</Badge>
+                return <span className="px-2 py-0.5 text-xs rounded-full bg-purple-100 text-purple-800">요약</span>
             case 'question':
-                return <Badge color="secondary">질문</Badge>
+                return <span className="px-2 py-0.5 text-xs rounded-full bg-blue-100 text-blue-800">질문</span>
             case 'explanation':
-                return <Badge color="success">설명</Badge>
+                return <span className="px-2 py-0.5 text-xs rounded-full bg-green-100 text-green-800">설명</span>
             case 'custom':
-                return <Badge color="warning">커스텀</Badge>
+                return <span className="px-2 py-0.5 text-xs rounded-full bg-amber-100 text-amber-800">커스텀</span>
             default:
-                return <Badge>기타</Badge>
+                return <span className="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-800">기타</span>
         }
     }
 
@@ -172,61 +173,91 @@ export default function SnippetList() {
         })
     }
 
+    // 마크다운 렌더링
+    const renderMarkdown = (content: string) => {
+        return { __html: marked(content) }
+    }
+
     return (
         <div className="w-full max-w-4xl mx-auto p-4">
             {/* 검색 및 필터 */}
             <div className="flex flex-col md:flex-row gap-4 mb-6">
-                <Input
-                    placeholder="스니펫 검색..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    startContent={<Search size={18} />}
-                    clearable
-                    className="flex-1"
-                />
-
-                <Dropdown>
-                    <DropdownTrigger>
-                        <Button
-                            variant="flat"
-                            startContent={<Filter size={18} />}
-                            endContent={<ChevronDown size={18} />}
+                <div className="relative flex-1">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Search size={18} className="text-gray-400" />
+                    </div>
+                    <input
+                        type="text"
+                        placeholder="스니펫 검색..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                    {searchQuery && (
+                        <button
+                            onClick={() => setSearchQuery('')}
+                            className="absolute inset-y-0 right-0 pr-3 flex items-center"
                         >
-                            태그 필터
-                            {selectedTags.length > 0 && (
-                                <Badge content={selectedTags.length} color="primary" shape="circle" size="sm" />
-                            )}
-                        </Button>
-                    </DropdownTrigger>
-                    <DropdownMenu
-                        aria-label="태그 필터"
-                        selectionMode="multiple"
-                        selectedKeys={new Set(selectedTags)}
-                        onSelectionChange={(keys) => setSelectedTags(Array.from(keys as Set<string>))}
+                            <X size={16} className="text-gray-400 hover:text-gray-600" />
+                        </button>
+                    )}
+                </div>
+
+                <div className="relative">
+                    <button
+                        onClick={() => setShowTagDropdown(!showTagDropdown)}
+                        className="flex items-center px-4 py-2 border border-gray-300 rounded-md bg-white hover:bg-gray-50"
                     >
-                        {tags.length > 0 ? (
-                            tags.map((tag) => (
-                                <DropdownItem key={tag.id} textValue={tag.name}>
-                                    <div className="flex items-center justify-between">
-                                        <span>{tag.name}</span>
-                                        <Badge size="sm" content={tag.snippets_count} />
-                                    </div>
-                                </DropdownItem>
-                            ))
-                        ) : (
-                            <DropdownItem isDisabled>태그가 없습니다</DropdownItem>
+                        <Filter size={18} className="mr-2 text-gray-600" />
+                        <span>태그 필터</span>
+                        {selectedTags.length > 0 && (
+                            <span className="ml-2 w-5 h-5 flex items-center justify-center bg-purple-600 text-white text-xs rounded-full">
+                                {selectedTags.length}
+                            </span>
                         )}
-                    </DropdownMenu>
-                </Dropdown>
+                        <ChevronDown size={16} className="ml-2 text-gray-600" />
+                    </button>
+
+                    {showTagDropdown && (
+                        <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg z-10 border border-gray-200">
+                            <div className="p-2 max-h-60 overflow-y-auto">
+                                {tags.length > 0 ? (
+                                    tags.map((tag) => (
+                                        <div
+                                            key={tag.id}
+                                            className="flex items-center justify-between px-3 py-2 hover:bg-gray-100 rounded cursor-pointer"
+                                            onClick={() => toggleTag(tag.id)}
+                                        >
+                                            <div className="flex items-center">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedTags.includes(tag.id)}
+                                                    onChange={() => { }}
+                                                    className="mr-2"
+                                                />
+                                                <span>{tag.name}</span>
+                                            </div>
+                                            <span className="px-1.5 py-0.5 text-xs bg-gray-200 rounded-full">
+                                                {tag.snippets_count}
+                                            </span>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="px-3 py-2 text-gray-500">태그가 없습니다</div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
 
                 {(searchQuery || selectedTags.length > 0) && (
-                    <Button
-                        variant="light"
-                        startContent={<X size={18} />}
+                    <button
+                        className="flex items-center px-4 py-2 text-gray-600 hover:text-gray-800"
                         onClick={resetFilters}
                     >
-                        초기화
-                    </Button>
+                        <X size={18} className="mr-1" />
+                        <span>초기화</span>
+                    </button>
                 )}
             </div>
 
@@ -236,15 +267,19 @@ export default function SnippetList() {
                     {selectedTags.map(tagId => {
                         const tag = tags.find(t => t.id === tagId)
                         return tag ? (
-                            <Chip
+                            <div
                                 key={tag.id}
-                                onClose={() => toggleTag(tag.id)}
-                                variant="flat"
-                                color="primary"
-                                startContent={<Tag size={14} />}
+                                className="flex items-center bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-sm"
                             >
-                                {tag.name}
-                            </Chip>
+                                <TagIcon size={12} className="mr-1" />
+                                <span>{tag.name}</span>
+                                <button
+                                    onClick={() => toggleTag(tag.id)}
+                                    className="ml-1 text-purple-600 hover:text-purple-800"
+                                >
+                                    <X size={14} />
+                                </button>
+                            </div>
                         ) : null
                     })}
                 </div>
@@ -253,16 +288,17 @@ export default function SnippetList() {
             {/* 스니펫 목록 */}
             {isLoading ? (
                 <div className="flex justify-center items-center py-12">
-                    <Spinner size="lg" label="스니펫을 불러오는 중..." />
+                    <div className="w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
+                    <span className="ml-2 text-gray-600">스니펫을 불러오는 중...</span>
                 </div>
             ) : filteredSnippets.length > 0 ? (
                 <div className="grid grid-cols-1 gap-4">
                     {filteredSnippets.map(snippet => (
-                        <Card key={snippet.id} className="p-4">
+                        <div key={snippet.id} className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
                             <div className="flex flex-col gap-2">
                                 <div className="flex justify-between items-start">
                                     <div className="flex flex-col">
-                                        <h3 className="text-lg font-semibold">{snippet.header_text}</h3>
+                                        <h3 className="text-lg font-semibold text-gray-800">{snippet.header_text}</h3>
                                         <div className="flex items-center gap-2 mt-1">
                                             {getSnippetTypeBadge(snippet.snippet_type)}
                                             <span className="text-xs text-gray-500">
@@ -271,62 +307,64 @@ export default function SnippetList() {
                                         </div>
                                     </div>
                                     <div className="flex gap-2">
-                                        <Button
-                                            isIconOnly
-                                            size="sm"
-                                            variant="light"
+                                        <button
+                                            className="p-1 text-gray-500 hover:text-purple-600 transition-colors"
                                             onClick={() => router.push(`/snippets/${snippet.id}/edit`)}
                                         >
                                             <Edit2 size={16} />
-                                        </Button>
-                                        <Button
-                                            isIconOnly
-                                            size="sm"
-                                            variant="light"
-                                            color="danger"
-                                            isLoading={isDeleting[snippet.id]}
+                                        </button>
+                                        <button
+                                            className="p-1 text-gray-500 hover:text-red-600 transition-colors"
                                             onClick={() => {
                                                 if (confirm('정말로 이 스니펫을 삭제하시겠습니까?')) {
                                                     deleteSnippet(snippet.id)
                                                 }
                                             }}
+                                            disabled={isDeleting[snippet.id]}
                                         >
-                                            <Trash2 size={16} />
-                                        </Button>
+                                            {isDeleting[snippet.id] ? (
+                                                <div className="w-4 h-4 border-2 border-gray-300 border-t-transparent rounded-full animate-spin"></div>
+                                            ) : (
+                                                <Trash2 size={16} />
+                                            )}
+                                        </button>
                                     </div>
                                 </div>
 
-                                <p className="text-sm text-gray-700 mt-2 line-clamp-3">
-                                    {snippet.markdown_content}
-                                </p>
+                                <div
+                                    className="text-sm text-gray-700 mt-2 line-clamp-3 markdown-body"
+                                    dangerouslySetInnerHTML={{ __html: marked(snippet.markdown_content) }}
+                                />
 
                                 {snippet.tags && snippet.tags.length > 0 && (
                                     <div className="flex flex-wrap gap-1 mt-2">
                                         {snippet.tags.map(tag => (
-                                            <Chip
+                                            <div
                                                 key={tag.id}
-                                                size="sm"
-                                                variant="flat"
-                                                startContent={<Tag size={12} />}
+                                                className="flex items-center bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full text-xs cursor-pointer hover:bg-purple-100 hover:text-purple-800"
                                                 onClick={() => toggleTag(tag.id)}
-                                                className="cursor-pointer"
                                             >
-                                                {tag.name}
-                                            </Chip>
+                                                <TagIcon size={10} className="mr-1" />
+                                                <span>{tag.name}</span>
+                                            </div>
                                         ))}
                                     </div>
                                 )}
                             </div>
-                        </Card>
+                        </div>
                     ))}
                 </div>
             ) : (
-                <div className="text-center py-12 border rounded-lg">
-                    <p className="text-gray-500">
-                        {searchQuery || selectedTags.length > 0
-                            ? '검색 결과가 없습니다.'
-                            : '저장된 스니펫이 없습니다. 마크다운 헤더 옆의 ✨ 아이콘을 클릭하여 스니펫을 생성해보세요.'}
-                    </p>
+                <div className="flex flex-col items-center justify-center py-12 text-gray-500">
+                    <p className="mb-2">검색 결과가 없습니다.</p>
+                    {(searchQuery || selectedTags.length > 0) && (
+                        <button
+                            className="text-purple-600 hover:text-purple-800 underline"
+                            onClick={resetFilters}
+                        >
+                            모든 스니펫 보기
+                        </button>
+                    )}
                 </div>
             )}
         </div>
