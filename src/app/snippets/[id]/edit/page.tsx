@@ -146,7 +146,7 @@ export default function EditSnippetPage() {
 
             if (response.ok) {
                 toast.success('스니펫이 업데이트되었습니다.')
-                router.push('/?tab=snippets')
+                router.push(`/snippets/${id}`)
             } else {
                 const data = await response.json()
                 toast.error(data.error || '스니펫 업데이트 중 오류가 발생했습니다.')
@@ -324,7 +324,7 @@ export default function EditSnippetPage() {
             <div className="flex justify-center items-center min-h-screen bg-[#F3F5FD]">
                 <div className="flex flex-col items-center">
                     <div className="w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
-                    <p className="mt-2 text-gray-600">스니펫을 불러오는 중...</p>
+                    <p className="mt-2 text-gray-600">Loading...</p>
                 </div>
             </div>
         )
@@ -344,16 +344,16 @@ export default function EditSnippetPage() {
                         onClick={() => router.push('/?tab=snippets')}
                     >
                         <ArrowLeft size={18} className="mr-1" />
-                        <span>돌아가기</span>
+                        <span>Back</span>
                     </button>
-                    <h1 className="text-2xl font-bold ml-4 text-gray-800">스니펫 편집</h1>
+                    <h1 className="text-2xl font-bold ml-4 text-gray-800">Edit Snippet</h1>
                 </div>
 
                 <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
                     <div className="space-y-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                헤더 텍스트
+                                Title
                             </label>
                             <input
                                 type="text"
@@ -366,7 +366,7 @@ export default function EditSnippetPage() {
 
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                스니펫 타입
+                                Type
                             </label>
                             <select
                                 value={snippetType}
@@ -385,7 +385,7 @@ export default function EditSnippetPage() {
                         {snippetType === 'custom' && (
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    커스텀 쿼리
+                                    Custom Query
                                 </label>
                                 <input
                                     type="text"
@@ -400,7 +400,7 @@ export default function EditSnippetPage() {
 
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                마크다운 내용
+                                Content
                             </label>
                             <textarea
                                 value={markdownContent}
@@ -419,12 +419,12 @@ export default function EditSnippetPage() {
                             {isSaving ? (
                                 <>
                                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                                    저장 중...
+                                    Saving...
                                 </>
                             ) : (
                                 <>
                                     <Save size={16} className="mr-2" />
-                                    변경사항 저장
+                                    Save Changes
                                 </>
                             )}
                         </button>
@@ -459,7 +459,7 @@ export default function EditSnippetPage() {
                     <div className="space-y-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                태그 선택
+                                Add Tag
                             </label>
                             <div className="flex space-x-2">
                                 <select
@@ -489,12 +489,12 @@ export default function EditSnippetPage() {
 
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                새 태그 생성
+                                Create New Tag
                             </label>
                             <div className="flex space-x-2">
                                 <input
                                     type="text"
-                                    placeholder="새 태그 이름"
+                                    placeholder="Type tag name"
                                     value={newTagName}
                                     onChange={(e) => setNewTagName(e.target.value)}
                                     className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"

@@ -59,8 +59,13 @@ const SnippetBottomSheet: React.FC<SnippetBottomSheetProps> = ({
             toast.success('스니펫이 생성되었습니다!')
             onClose()
 
-            // 홈 페이지로 이동 후 스니펫 탭으로 전환하기 위해 쿼리 파라미터 추가
-            router.push('/?tab=snippets')
+            // 스니펫 생성 후 해당 스니펫의 상세 페이지로 이동
+            if (data.snippet && data.snippet.id) {
+                router.push(`/snippets/${data.snippet.id}`)
+            } else {
+                // 스니펫 ID를 받지 못한 경우 스니펫 목록 페이지로 이동
+                router.push('/?tab=snippets')
+            }
         } catch (error) {
             console.error('스니펗 생성 오류:', error)
             toast.error(error instanceof Error ? error.message : '스니펫 생성 중 오류가 발생했습니다.')
@@ -159,7 +164,7 @@ const SnippetBottomSheet: React.FC<SnippetBottomSheetProps> = ({
                     {snippetType === 'custom' && (
                         <div className="mb-4">
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                커스텀 쿼리
+                                Custom Query
                             </label>
                             <textarea
                                 value={customQuery}
