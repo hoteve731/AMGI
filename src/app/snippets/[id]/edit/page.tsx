@@ -1,10 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { Button, Card, Input, Select, SelectItem, Textarea, Spinner, Chip } from '@nextui-org/react'
-import { Save, ArrowLeft, Tag as TagIcon, Plus, X } from 'lucide-react'
+import { useRouter, useParams } from 'next/navigation'
 import { toast } from 'react-hot-toast'
+import { ArrowLeft, Save, Tag as TagIcon, Plus, X } from 'lucide-react'
 
 type Snippet = {
     id: string
@@ -24,9 +23,10 @@ type Tag = {
     relation_id: string
 }
 
-export default function EditSnippetPage({ params }: { params: { id: string } }) {
+export default function EditSnippetPage() {
     const router = useRouter()
-    const { id } = params
+    const params = useParams()
+    const id = params?.id as string
 
     const [snippet, setSnippet] = useState<Snippet | null>(null)
     const [headerText, setHeaderText] = useState('')
@@ -146,6 +146,7 @@ export default function EditSnippetPage({ params }: { params: { id: string } }) 
 
             if (response.ok) {
                 toast.success('스니펫이 업데이트되었습니다.')
+                router.push('/?tab=snippets')
             } else {
                 const data = await response.json()
                 toast.error(data.error || '스니펫 업데이트 중 오류가 발생했습니다.')
@@ -203,6 +204,39 @@ export default function EditSnippetPage({ params }: { params: { id: string } }) 
         }
     }
 
+    // 태그 ID로 직접 태그 추가 (내부 함수)
+    const addTagDirectly = async (tagId: string) => {
+        try {
+            // 이미 추가된 태그인지 확인
+            if (tags.some(tag => tag.id === tagId)) {
+                return // 이미 추가된 태그면 무시
+            }
+
+            const response = await fetch('/api/snippet-tag-relations', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    snippet_id: id,
+                    tag_id: tagId
+                }),
+            })
+
+            if (response.ok) {
+                const data = await response.json()
+                setTags(prev => [...prev, data])
+                toast.success('태그가 추가되었습니다.')
+            } else {
+                const data = await response.json()
+                toast.error(data.error || '태그 추가 중 오류가 발생했습니다.')
+            }
+        } catch (error) {
+            console.error('태그 추가 중 오류:', error)
+            toast.error('태그 추가 중 오류가 발생했습니다.')
+        }
+    }
+
     // 새 태그 생성
     const createTag = async () => {
         try {
@@ -234,15 +268,17 @@ export default function EditSnippetPage({ params }: { params: { id: string } }) 
                     setAvailableTags(prev => [...prev, tag])
                 }
 
-                // 선택된 태그로 설정
-                setSelectedTagId(tag.id)
+                // 새 태그 입력 필드 초기화
                 setNewTagName('')
 
                 if (response.ok) {
                     toast.success('새 태그가 생성되었습니다.')
                 } else {
-                    toast.info('이미 존재하는 태그입니다.')
+                    toast.success('이미 존재하는 태그입니다.')
                 }
+
+                // 태그 생성 후 바로 스니펫에 추가
+                await addTagDirectly(tag.id)
             } else {
                 toast.error(data.error || '태그 생성 중 오류가 발생했습니다.')
             }
@@ -276,15 +312,20 @@ export default function EditSnippetPage({ params }: { params: { id: string } }) 
 
     // 초기 데이터 로드
     useEffect(() => {
-        fetchSnippet()
-        fetchSnippetTags()
-        fetchAvailableTags()
+        if (id) {
+            fetchSnippet()
+            fetchSnippetTags()
+            fetchAvailableTags()
+        }
     }, [id])
 
     if (isLoading) {
         return (
-            <div className="flex justify-center items-center min-h-screen">
-                <Spinner size="lg" label="스니펫을 불러오는 중..." />
+            <div className="flex justify-center items-center min-h-screen bg-[#F3F5FD]">
+                <div className="flex flex-col items-center">
+                    <div className="w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
+                    <p className="mt-2 text-gray-600">스니펫을 불러오는 중...</p>
+                </div>
             </div>
         )
     }
@@ -295,160 +336,185 @@ export default function EditSnippetPage({ params }: { params: { id: string } }) 
     )
 
     return (
-        <div className="w-full max-w-4xl mx-auto p-4">
-            <div className="flex items-center mb-6">
-                <Button
-                    variant="light"
-                    startContent={<ArrowLeft size={18} />}
-                    onClick={() => router.push('/snippets')}
-                >
-                    스니펫 목록으로
-                </Button>
-                <h1 className="text-2xl font-bold ml-4">스니펫 편집</h1>
-            </div>
+        <div className="min-h-screen bg-[#F3F5FD] py-8">
+            <div className="max-w-2xl mx-auto px-4">
+                <div className="flex items-center mb-6">
+                    <button
+                        className="flex items-center text-gray-600 hover:text-purple-600 transition-colors"
+                        onClick={() => router.push('/?tab=snippets')}
+                    >
+                        <ArrowLeft size={18} className="mr-1" />
+                        <span>돌아가기</span>
+                    </button>
+                    <h1 className="text-2xl font-bold ml-4 text-gray-800">스니펫 편집</h1>
+                </div>
 
-            <Card className="p-6 mb-6">
-                <div className="grid grid-cols-1 gap-4">
-                    <div>
-                        <Input
-                            label="헤더 텍스트"
-                            value={headerText}
-                            onChange={(e) => setHeaderText(e.target.value)}
-                            isRequired
-                            fullWidth
-                        />
-                    </div>
-
-                    <div>
-                        <Select
-                            label="스니펫 타입"
-                            value={snippetType}
-                            onChange={(e) => setSnippetType(e.target.value)}
-                            isRequired
-                        >
-                            <SelectItem key="summary" value="summary">요약</SelectItem>
-                            <SelectItem key="question" value="question">질문</SelectItem>
-                            <SelectItem key="explanation" value="explanation">설명</SelectItem>
-                            <SelectItem key="custom" value="custom">커스텀</SelectItem>
-                        </Select>
-                    </div>
-
-                    {snippetType === 'custom' && (
+                <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+                    <div className="space-y-4">
                         <div>
-                            <Input
-                                label="커스텀 쿼리"
-                                value={customQuery}
-                                onChange={(e) => setCustomQuery(e.target.value)}
-                                placeholder="예: 이 내용의 핵심 아이디어는 무엇인가요?"
-                                isRequired
-                                fullWidth
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                헤더 텍스트
+                            </label>
+                            <input
+                                type="text"
+                                value={headerText}
+                                onChange={(e) => setHeaderText(e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                required
                             />
                         </div>
-                    )}
 
-                    <div>
-                        <Textarea
-                            label="마크다운 내용"
-                            value={markdownContent}
-                            onChange={(e) => setMarkdownContent(e.target.value)}
-                            minRows={8}
-                            isRequired
-                            fullWidth
-                        />
-                    </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                스니펫 타입
+                            </label>
+                            <select
+                                value={snippetType}
+                                onChange={(e) => setSnippetType(e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                required
+                            >
+                                <option value="" disabled>선택하세요</option>
+                                <option value="summary">요약</option>
+                                <option value="question">질문</option>
+                                <option value="explanation">설명</option>
+                                <option value="custom">커스텀</option>
+                            </select>
+                        </div>
 
-                    <div>
-                        <Button
-                            color="primary"
-                            startContent={<Save size={18} />}
+                        {snippetType === 'custom' && (
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    커스텀 쿼리
+                                </label>
+                                <input
+                                    type="text"
+                                    value={customQuery}
+                                    onChange={(e) => setCustomQuery(e.target.value)}
+                                    placeholder="예: 이 내용의 핵심 아이디어는 무엇인가요?"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                    required
+                                />
+                            </div>
+                        )}
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                마크다운 내용
+                            </label>
+                            <textarea
+                                value={markdownContent}
+                                onChange={(e) => setMarkdownContent(e.target.value)}
+                                rows={8}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                required
+                            />
+                        </div>
+
+                        <button
                             onClick={updateSnippet}
-                            isLoading={isSaving}
-                            fullWidth
+                            disabled={isSaving}
+                            className="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded-md transition-colors flex items-center justify-center"
                         >
-                            변경사항 저장
-                        </Button>
-                    </div>
-                </div>
-            </Card>
-
-            <Card className="p-6">
-                <h2 className="text-xl font-semibold mb-4">태그 관리</h2>
-
-                <div className="flex flex-wrap gap-2 mb-4">
-                    {tags.length > 0 ? (
-                        tags.map(tag => (
-                            <Chip
-                                key={tag.relation_id}
-                                onClose={() => removeTag(tag.relation_id)}
-                                variant="flat"
-                                color="primary"
-                                startContent={<TagIcon size={14} />}
-                            >
-                                {tag.name}
-                            </Chip>
-                        ))
-                    ) : (
-                        <p className="text-gray-500 text-sm">아직 태그가 없습니다. 아래에서 태그를 추가해보세요.</p>
-                    )}
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <Select
-                            label="태그 선택"
-                            placeholder="태그를 선택하세요"
-                            value={selectedTagId}
-                            onChange={(e) => setSelectedTagId(e.target.value)}
-                            startContent={<TagIcon size={16} />}
-                            isDisabled={filteredAvailableTags.length === 0}
-                        >
-                            {filteredAvailableTags.map(tag => (
-                                <SelectItem key={tag.id} value={tag.id}>{tag.name}</SelectItem>
-                            ))}
-                        </Select>
-                    </div>
-
-                    <div className="flex items-end">
-                        <Button
-                            color="primary"
-                            startContent={<Plus size={18} />}
-                            onClick={addTag}
-                            isLoading={isAddingTag}
-                            isDisabled={!selectedTagId}
-                            fullWidth
-                        >
-                            태그 추가
-                        </Button>
+                            {isSaving ? (
+                                <>
+                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                                    저장 중...
+                                </>
+                            ) : (
+                                <>
+                                    <Save size={16} className="mr-2" />
+                                    변경사항 저장
+                                </>
+                            )}
+                        </button>
                     </div>
                 </div>
 
-                <div className="mt-4">
-                    <h3 className="text-md font-medium mb-2">새 태그 생성</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-white rounded-lg shadow-sm p-6">
+                    <h2 className="text-lg font-medium text-gray-800 mb-4">태그 관리</h2>
+
+                    <div className="flex flex-wrap gap-2 mb-4">
+                        {tags.length > 0 ? (
+                            tags.map(tag => (
+                                <div
+                                    key={tag.relation_id}
+                                    className="flex items-center bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-sm"
+                                >
+                                    <TagIcon size={12} className="mr-1" />
+                                    <span>{tag.name}</span>
+                                    <button
+                                        onClick={() => removeTag(tag.relation_id)}
+                                        className="ml-1 text-purple-600 hover:text-purple-800"
+                                    >
+                                        <X size={14} />
+                                    </button>
+                                </div>
+                            ))
+                        ) : (
+                            <p className="text-gray-500 text-sm">아직 태그가 없습니다. 아래에서 태그를 추가해보세요.</p>
+                        )}
+                    </div>
+
+                    <div className="space-y-4">
                         <div>
-                            <Input
-                                placeholder="새 태그 이름"
-                                value={newTagName}
-                                onChange={(e) => setNewTagName(e.target.value)}
-                                startContent={<TagIcon size={16} />}
-                            />
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                태그 선택
+                            </label>
+                            <div className="flex space-x-2">
+                                <select
+                                    value={selectedTagId}
+                                    onChange={(e) => setSelectedTagId(e.target.value)}
+                                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                    disabled={filteredAvailableTags.length === 0}
+                                >
+                                    <option value="">태그를 선택하세요</option>
+                                    {filteredAvailableTags.map(tag => (
+                                        <option key={tag.id} value={tag.id}>{tag.name}</option>
+                                    ))}
+                                </select>
+                                <button
+                                    onClick={addTag}
+                                    disabled={!selectedTagId || isAddingTag}
+                                    className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md transition-colors disabled:bg-purple-300"
+                                >
+                                    {isAddingTag ? (
+                                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                    ) : (
+                                        <Plus size={16} />
+                                    )}
+                                </button>
+                            </div>
                         </div>
 
-                        <div className="flex items-end">
-                            <Button
-                                color="secondary"
-                                startContent={<Plus size={18} />}
-                                onClick={createTag}
-                                isLoading={isCreatingTag}
-                                isDisabled={!newTagName.trim()}
-                                fullWidth
-                            >
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
                                 새 태그 생성
-                            </Button>
+                            </label>
+                            <div className="flex space-x-2">
+                                <input
+                                    type="text"
+                                    placeholder="새 태그 이름"
+                                    value={newTagName}
+                                    onChange={(e) => setNewTagName(e.target.value)}
+                                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                />
+                                <button
+                                    onClick={createTag}
+                                    disabled={!newTagName.trim() || isCreatingTag}
+                                    className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md transition-colors disabled:bg-gray-300"
+                                >
+                                    {isCreatingTag ? (
+                                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                    ) : (
+                                        <Plus size={16} />
+                                    )}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </Card>
+            </div>
         </div>
     )
 }
