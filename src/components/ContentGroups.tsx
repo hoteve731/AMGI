@@ -16,6 +16,7 @@ import { marked } from 'marked';
 import SnippetBottomSheet from './SnippetBottomSheet'
 import { renderMarkdownWithSnippetIcons, registerSnippetIconClickHandlers, removeSnippetIconClickHandlers } from '@/utils/markdown';
 import toast from 'react-hot-toast';
+import { Tag as TagIcon } from 'lucide-react';
 
 type Content = {
     id: string
@@ -54,7 +55,7 @@ type ContentWithGroups = Content & {
 
 export default function ContentGroups({ content }: { content: ContentWithGroups }) {
     const searchParams = useSearchParams();
-    const [activeTab, setActiveTab] = useState<'notes' | 'flashcards' | 'text'>('notes');
+    const [activeTab, setActiveTab] = useState<'notes' | 'snippets' | 'flashcards' | 'text'>('notes');
     const [showOriginalText, setShowOriginalText] = useState(false);
     const [showAdditionalMemory, setShowAdditionalMemory] = useState(false);
     const [editingChunkId, setEditingChunkId] = useState<string | null>(null);
@@ -83,6 +84,8 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
     // 스니펫 관련 상태 추가
     const [showSnippetBottomSheet, setShowSnippetBottomSheet] = useState(false);
     const [selectedHeader, setSelectedHeader] = useState({ text: '', id: '' });
+    const [contentSnippets, setContentSnippets] = useState<any[]>([]);
+    const [isLoadingSnippets, setIsLoadingSnippets] = useState(false);
 
     // 선택된 텍스트 관련 상태 추가
     const [selectedText, setSelectedText] = useState('');
@@ -147,7 +150,9 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
         const tabParam = searchParams.get('tab');
         const storedTab = typeof window !== 'undefined' ? localStorage.getItem(`content-${content.id}-activeTab`) : null;
         if (tabParam === 'flashcards') setActiveTab('flashcards');
+        else if (tabParam === 'snippets') setActiveTab('snippets');
         else if (storedTab === 'flashcards') setActiveTab('flashcards');
+        else if (storedTab === 'snippets') setActiveTab('snippets');
     }, [content.id, searchParams]);
 
     // Helper function to format bold text
@@ -597,6 +602,98 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
         }
     }, [selectedText, currentContentId, clearSelection]);
 
+    // 스니펫 가져오기
+    const fetchContentSnippets = async () => {
+        if (!content?.id) return;
+        
+        try {
+            setIsLoadingSnippets(true);
+            // 모든 스니펫을 가져온 다음 현재 콘텐츠 ID와 일치하는 것만 필터링
+            const response = await fetch('/api/snippets');
+            const data = await response.json();
+            
+            if (data.snippets) {
+                // 현재 콘텐츠 ID와 일치하는 스니펫만 필터링
+                const filteredSnippets = data.snippets.filter((snippet: any) => 
+                    snippet.content_id === content.id
+                );
+                
+                // 태그 정보 처리
+                const processedSnippets = filteredSnippets.map((snippet: any) => {
+                    // 태그 관계가 있는 경우 처리
+                    if (snippet.snippet_tag_relations) {
+                        // 태그 관계가 배열인지 확인 (단일 객체일 수도 있음)
+                        const relations = Array.isArray(snippet.snippet_tag_relations)
+                            ? snippet.snippet_tag_relations
+                            : [snippet.snippet_tag_relations];
+
+                        // 태그 추출
+                        const extractedTags = relations
+                            .filter((relation: any) => relation.snippet_tags)
+                            .map((relation: any) => ({
+                                id: relation.snippet_tags.id,
+                                name: relation.snippet_tags.name,
+                                relation_id: relation.id
+                            }));
+
+                        // 스니펫에 태그 정보 추가
+                        return {
+                            ...snippet,
+                            tags: extractedTags
+                        };
+                    }
+
+                    // 태그 관계가 없는 경우 빈 배열 설정
+                    return {
+                        ...snippet,
+                        tags: []
+                    };
+                });
+
+                setContentSnippets(processedSnippets);
+                console.log(`Found ${processedSnippets.length} snippets for content ID ${content.id}`);
+            }
+        } catch (error) {
+            console.error('스니펫 조회 중 오류:', error);
+            toast.error('스니펫을 불러오는 중 오류가 발생했습니다.');
+        } finally {
+            setIsLoadingSnippets(false);
+        }
+    };
+
+    // 스니펫 탭 선택 시 스니펫 데이터 로드
+    useEffect(() => {
+        if (activeTab === 'snippets') {
+            fetchContentSnippets();
+        }
+    }, [activeTab, content?.id]);
+
+    // 스니펫 타입에 따른 배지 색상
+    const getSnippetTypeBadge = (type: string) => {
+        switch (type) {
+            case 'summary':
+                return <span className="px-2 py-0.5 text-xs rounded-full bg-purple-100 text-purple-800">Summary</span>
+            case 'question':
+                return <span className="px-2 py-0.5 text-xs rounded-full bg-blue-100 text-blue-800">Question</span>
+            case 'explanation':
+                return <span className="px-2 py-0.5 text-xs rounded-full bg-green-100 text-green-800">Explanation</span>
+            case 'custom':
+                return <span className="px-2 py-0.5 text-xs rounded-full bg-amber-100 text-amber-800">Custom</span>
+            default:
+                return <span className="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-800">Other</span>
+        }
+    }
+
+    // 날짜 포맷팅
+    const formatDate = (dateString: string) => {
+        const date = new Date(dateString)
+        return date.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+        })
+    }
+
     return (
         <main className="flex min-h-screen flex-col bg-[#F3F5FD] pb-12 p-4">
             {/* 일반 로딩 오버레이 */}
@@ -655,6 +752,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                         <div className="relative flex w-full justify-between bg-white/70 backdrop-blur-xl rounded-full p-1 [box-shadow:0_1px_4px_rgba(0,0,0,0.05)] ring-1 ring-gray-200/70 ring-inset">
                             {[
                                 { id: 'notes', label: 'Notes' },
+                                { id: 'snippets', label: 'Snippets' },
                                 { id: 'flashcards', label: 'Flashcards' }
                             ].map((tab) => {
                                 const isActive = activeTab === tab.id;
@@ -673,7 +771,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                                         )}
                                         <button
                                             onClick={() => {
-                                                setActiveTab(tab.id as 'notes' | 'flashcards');
+                                                setActiveTab(tab.id as 'notes' | 'snippets' | 'flashcards');
                                                 localStorage.setItem(`content-${content.id}-activeTab`, tab.id);
                                             }}
                                             className={`
@@ -792,6 +890,78 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                                     </svg>
                                     <span className="font-medium text-gray-600">Full Transcript</span>
                                 </button>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
+                <AnimatePresence mode="wait">
+                    {activeTab === 'snippets' && (
+                        <motion.div
+                            key="snippets"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.2, ease: "easeInOut" }}
+                        >
+                            <div className="py-2 bg-white/80 backdrop-blur-md rounded-xl border border-white/20">
+                                <div className="w-full">
+                                    {isLoadingSnippets ? (
+                                        <div className="flex justify-center items-center py-12">
+                                            <div className="w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
+                                            <span className="ml-2 text-gray-600">Loading snippets...</span>
+                                        </div>
+                                    ) : contentSnippets.length > 0 ? (
+                                        <div className="grid grid-cols-1 gap-4 p-4">
+                                            {contentSnippets.map(snippet => (
+                                                <div key={snippet.id} className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
+                                                    <div className="flex flex-col gap-2">
+                                                        <div className="flex justify-between items-start">
+                                                            <div className="flex flex-col">
+                                                                <h3
+                                                                    className="text-lg font-semibold text-gray-800 hover:text-purple-700 cursor-pointer"
+                                                                    onClick={() => router.push(`/snippets/${snippet.id}`)}
+                                                                >
+                                                                    {snippet.header_text}
+                                                                </h3>
+                                                                <div className="flex items-center gap-2 mt-1">
+                                                                    {getSnippetTypeBadge(snippet.snippet_type)}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        <div
+                                                            className="text-sm text-gray-700 mt-2 line-clamp-3 markdown-body cursor-pointer opacity-80"
+                                                            dangerouslySetInnerHTML={{ __html: marked(snippet.markdown_content) }}
+                                                            onClick={() => router.push(`/snippets/${snippet.id}`)}
+                                                        />
+
+                                                        {snippet.tags && snippet.tags.length > 0 && (
+                                                            <div className="flex flex-wrap gap-1 mt-2">
+                                                                {snippet.tags.map((tag: { id: string; name: string; relation_id: string }) => (
+                                                                    <div
+                                                                        key={tag.id}
+                                                                        className="flex items-center bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full text-xs"
+                                                                    >
+                                                                        <TagIcon size={10} className="mr-1" />
+                                                                        <span>{tag.name}</span>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="flex flex-col items-center justify-center py-12 text-gray-500">
+                                            <p className="mb-2">No snippets found for this content.</p>
+                                            <p className="text-sm text-gray-400">
+                                                Select text in the Notes tab and create snippets to see them here.
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </motion.div>
                     )}

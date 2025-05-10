@@ -140,9 +140,10 @@ export async function POST(request: NextRequest) {
         }
 
         // Google Cloud Function URL
-        const gcfUrl = process.env.NODE_ENV === 'production'
-            ? 'https://us-central1-amgi-app.cloudfunctions.net/process-pipeline'
-            : process.env.GCF_URL || 'http://localhost:8080';
+        const isProduction = process.env.NODE_ENV === 'development' ? false : true;
+        const gcfUrl = isProduction
+            ? 'https://us-central1-amgi-454605.cloudfunctions.net/process-pipeline'
+            : process.env.GCF_PROCESS_PIPELINE_URL || 'http://localhost:8080';
 
         console.log('스니펫 생성 GCF 호출:', gcfUrl);
         console.log('요청 데이터:', { userId, header_text, content_id, snippet_type, custom_query });
