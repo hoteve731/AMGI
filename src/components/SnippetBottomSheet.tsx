@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { toast } from 'react-hot-toast'
 import { useRouter } from 'next/navigation'
@@ -28,6 +28,22 @@ const SnippetBottomSheet: React.FC<SnippetBottomSheetProps> = ({
     const [snippetType, setSnippetType] = useState<SnippetType>('summary')
     const [customQuery, setCustomQuery] = useState('')
     const [isCreating, setIsCreating] = useState(false)
+    
+    // 선택된 텍스트 길이 제한 (150자)
+    const MAX_TEXT_LENGTH = 150;
+    
+    // 텍스트 길이 검사 및 경고 메시지
+    const { isTextTooLong, textLengthWarning } = useMemo(() => {
+        const textLength = snippetText.length;
+        const isTextTooLong = textLength > MAX_TEXT_LENGTH;
+        let textLengthWarning = '';
+        
+        if (isTextTooLong) {
+            textLengthWarning = `Selected text is too long (${textLength}/${MAX_TEXT_LENGTH} characters). Please select a shorter text.`;
+        }
+        
+        return { isTextTooLong, textLengthWarning };
+    }, [snippetText]);
 
     // 스니펫 생성 함수
     const createSnippet = async () => {
@@ -36,7 +52,7 @@ const SnippetBottomSheet: React.FC<SnippetBottomSheetProps> = ({
 
             // 커스텀 타입인데 쿼리가 비어있는 경우 검증
             if (snippetType === 'custom' && !customQuery.trim()) {
-                toast.error('커스텀 쿼리를 입력해주세요.')
+                toast.error('Please enter a custom query.')
                 return
             }
 
@@ -55,20 +71,20 @@ const SnippetBottomSheet: React.FC<SnippetBottomSheetProps> = ({
             })
 
             if (!response.ok) {
-                let errorMessage = '스니펫 생성 중 오류가 발생했습니다.'
+                let errorMessage = 'Error creating snippet.'
                 try {
                     const errorText = await response.text()
                     try {
                         const errorData = JSON.parse(errorText)
                         errorMessage = errorData.error || errorMessage
                     } catch (jsonError) {
-                        // JSON 파싱 실패 시 텍스트 그대로 사용
-                        console.error('JSON 파싱 오류:', jsonError)
-                        // 504 타임아웃 오류인 경우 스니펫은 생성되었을 가능성이 높음
+                        // JSON parsing error
+                        console.error('JSON parsing error:', jsonError)
+                        // 504 timeout error
                         if (response.status === 504) {
-                            toast.success('스니펫이 생성되었습니다!')
+                            toast.success('Snippet created successfully!')
                             onClose()
-                            // 스니펫 ID를 추출하려고 시도
+                            // try to extract snippet ID
                             try {
                                 const match = errorText.match(/"id":\s*"([^"]+)"/);
                                 if (match && match[1]) {
@@ -103,12 +119,12 @@ const SnippetBottomSheet: React.FC<SnippetBottomSheetProps> = ({
             try {
                 data = await response.json()
             } catch (jsonError) {
-                console.error('응답 JSON 파싱 오류:', jsonError)
-                // 파싱 오류가 발생해도 스니펫은 생성되었을 가능성이 높음
-                toast.success('스니펫이 생성되었습니다!')
+                console.error('Response JSON parsing error:', jsonError)
+                // parsing error even though snippet was created
+                toast.success('Snippet created successfully!')
                 onClose()
                 
-                // 응답 텍스트에서 스니펫 ID를 추출하려고 시도
+                // try to extract snippet ID from response text
                 try {
                     const responseText = await response.text();
                     const match = responseText.match(/"id":\s*"([^"]+)"/);
@@ -126,10 +142,10 @@ const SnippetBottomSheet: React.FC<SnippetBottomSheetProps> = ({
                 return
             }
 
-            toast.success('스니펫이 생성되었습니다!')
+            toast.success('Snippet created successfully!')
             onClose()
 
-            // 스니펫 생성 후 해당 스니펫의 상세 페이지로 이동
+            // navigate to snippet detail page
             if (data.snippet && data.snippet.id) {
                 router.push(`/snippets/${data.snippet.id}`)
             } else {
@@ -185,6 +201,21 @@ const SnippetBottomSheet: React.FC<SnippetBottomSheetProps> = ({
                         <p className="text-gray-800 text-lg leading-relaxed">
                             <span className="font-semibold">{snippetText}</span>
                         </p>
+                        
+                        {/* 텍스트 길이 경고 메시지 */}
+                        {isTextTooLong && (
+                            <div className="mt-3 p-2 bg-amber-50 border border-amber-200 rounded-md">
+                                <p className="text-amber-600 text-sm flex items-center">
+                                    <svg className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                    </svg>
+                                    {textLengthWarning}
+                                </p>
+                                <p className="text-amber-500 text-xs mt-1 ml-5">
+                                    스니펫은 위키 항목처럼 짧고 정확한 정보를 담고 있어야 합니다.
+                                </p>
+                            </div>
+                        )}
                     </div>
 
                     {/* 스니펫 타입 선택 - 2x2 배열 버튼 */}
@@ -272,7 +303,7 @@ const SnippetBottomSheet: React.FC<SnippetBottomSheetProps> = ({
                         </button>
                         <button
                             onClick={createSnippet}
-                            disabled={isCreating || (snippetType === 'custom' && !customQuery.trim())}
+                            disabled={isCreating || isTextTooLong || (snippetType === 'custom' && !customQuery.trim())}
                             className={`py-2.5 px-6 rounded-md text-white font-bold shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all ${isCreating || (snippetType === 'custom' && !customQuery.trim())
                                 ? 'bg-gray-400 cursor-not-allowed'
                                 : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 hover:scale-105 focus:ring-purple-500'
