@@ -88,7 +88,7 @@ export default function SnippetSelectionModal({
             className="bg-white rounded-lg shadow-xl w-full max-w-md z-10 max-h-[80vh] flex flex-col"
           >
             <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-white rounded-t-lg">
-              <h3 className="text-lg font-semibold">"{title}" 스니펫 선택</h3>
+              <h3 className="text-lg font-semibold">{title}</h3>
               <button
                 onClick={onClose}
                 className="p-1 rounded-full hover:bg-gray-100"
@@ -99,7 +99,7 @@ export default function SnippetSelectionModal({
             
             <div className="overflow-y-auto p-4 flex-1">
               <p className="text-sm text-gray-500 mb-4">
-                동일한 제목의 스니펫이 여러 개 있습니다. 확인하려는 스니펫을 선택하세요.
+                Select the snippet you want to view.
               </p>
               
               <div className="space-y-3">

@@ -549,7 +549,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
         setIsSnippetBottomSheetOpen(true);
     };
 
-    // 2. Replace handleTextSelection with state-driven overlay logic
+    // 2. 텍스트 선택 시 바로 스니펫 생성 모달을 띄우는 로직
     const handleTextSelection = useCallback(() => {
         const sel = window.getSelection();
         if (!sel || sel.rangeCount === 0 || sel.isCollapsed) {
@@ -581,14 +581,16 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
         }));
         setHighlightRects(rects);
         setSelectedText(text);
-        const first = range.getClientRects()[0];
-        // 버튼 위치는 화면 하단 중앙으로 고정 (y값은 사용하지 않음)
-        setSelectionPosition({
-            x: window.innerWidth / 2,
-            y: 0 // 실제로는 사용하지 않음, fixed bottom으로 처리
-        });
-        setShowSelectionButton(true);
-    }, []);
+        
+        // 선택한 텍스트가 있고 현재 콘텐츠 ID가 있으면 바로 스니펫 생성 모달 열기
+        if (text && currentContentId) {
+            const snippetId = `sel-${Date.now()}`;
+            setSelectedHeader({ text: text, id: snippetId });
+            setIsSnippetBottomSheetOpen(true);
+            // 선택 영역 초기화 (하이라이트는 유지)
+            setShowSelectionButton(false);
+        }
+    }, [currentContentId]);
 
     // 3. Simplify event listeners for selection and clearing
     useEffect(() => {

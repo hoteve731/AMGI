@@ -212,7 +212,7 @@ export default function SnippetDetailPage() {
             <div className="flex items-center justify-between mb-6">
                 <button
                     className="flex items-center text-gray-600 hover:text-purple-600"
-                    onClick={() => router.push('/?tab=snippets')}
+                    onClick={() => router.back()}
                 >
                     <ArrowLeft size={16} className="mr-1" />
                     <span>Back</span>

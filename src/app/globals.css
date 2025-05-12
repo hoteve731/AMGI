@@ -1181,6 +1181,28 @@ body {
       /* 모바일에서 더 큰 터치 영역 */
     }
   }
+
+  /* 스니펫 링크 스타일 */
+  .snippet-link {
+    color: #0969da;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  .snippet-link:hover {
+    text-decoration: underline;
+  }
+
+  /* 중복 스니펫 모달 트리거 스타일 */
+  .snippet-modal-trigger {
+    color: #0969da;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  .snippet-modal-trigger:hover {
+    text-decoration: underline;
+  }
 }
 
 @layer utilities {
