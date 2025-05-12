@@ -318,16 +318,45 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
 
         setIsDeletingContent(true)
         try {
-            const response = await fetch('/api/contents', {
+            // 먼저 API 호출 없이 삭제 시도
+            let response = await fetch(`/api/contents?id=${content.id}`, {
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ id: content.id }),
+                }
             })
 
+            // 연결된 스니펫이 있어서 삭제 실패한 경우
+            if (!response.ok && response.status === 400) {
+                const errorData = await response.json();
+                
+                // 스니펫이 있어서 삭제할 수 없는 경우
+                if (errorData.error === 'Cannot delete content with associated snippets.') {
+                    // 사용자에게 스니펫을 유지하면서 콘텐츠를 삭제할지 확인
+                    const keepSnippets = confirm(
+                        `This content has ${errorData.snippetsCount} associated snippets. ` +
+                        `Only content will be deleted and snippets will be kept. Do you want to continue?`
+                    );
+                    
+                    if (keepSnippets) {
+                        // 스니펫 유지하면서 콘텐츠만 삭제
+                        response = await fetch(`/api/contents?id=${content.id}&keepSnippets=true`, {
+                            method: 'DELETE',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            }
+                        });
+                    } else {
+                        // 사용자가 취소함
+                        setIsDeletingContent(false);
+                        return;
+                    }
+                }
+            }
+
             if (!response.ok) {
-                throw new Error('콘텐츠 삭제 중 오류가 발생했습니다.')
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Error deleting content.');
             }
 
             // SWR 캐시 업데이트
@@ -341,8 +370,8 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                 window.location.href = '/'
             }, 300)
         } catch (error) {
-            console.error('콘텐츠 삭제 중 오류:', error)
-            alert('콘텐츠 삭제 중 오류가 발생했습니다.')
+            console.error('Content deletion error:', error)
+            alert(error instanceof Error ? error.message : 'Error deleting content.')
         } finally {
             setIsDeletingContent(false)
         }

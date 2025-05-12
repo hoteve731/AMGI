@@ -201,11 +201,13 @@ export async function GET(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    const { id } = await request.json()
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    const keepSnippets = searchParams.get('keepSnippets') === 'true';
 
     if (!id) {
       return NextResponse.json(
-        { error: '콘텐츠 ID가 필요합니다.' },
+        { error: 'Content ID is required.' },
         { status: 400 }
       )
     }
@@ -216,7 +218,7 @@ export async function DELETE(request: Request) {
     const { data: { user }, error: userError } = await supabase.auth.getUser()
     if (userError || !user) {
       return NextResponse.json(
-        { error: '인증되지 않은 사용자입니다.' },
+        { error: 'Unauthorized user.' },
         { status: 401 }
       )
     }
@@ -229,80 +231,111 @@ export async function DELETE(request: Request) {
       .single()
 
     if (contentError) {
-      console.error('콘텐츠 조회 중 오류:', contentError)
+      console.error('Content lookup error:', contentError)
       return NextResponse.json(
-        { error: '콘텐츠를 찾을 수 없습니다.' },
+        { error: 'Content not found.' },
         { status: 404 }
       )
     }
 
     if (contentData.user_id !== user.id) {
       return NextResponse.json(
-        { error: '이 콘텐츠를 삭제할 권한이 없습니다.' },
+        { error: 'You do not have permission to delete this content.' },
         { status: 403 }
       )
     }
 
-    // 1. 콘텐츠에 속한 그룹 ID 가져오기
-    const { data: groupsData, error: groupsError } = await supabase
-      .from('content_groups')
-      .select('id')
-      .eq('content_id', id)
+    try {
+      // 1. 콘텐츠에 연결된 스니펫 처리
+      if (keepSnippets) {
+        // 스니펫은 유지하고 content_id만 null로 설정
+        const { error: snippetsUpdateError } = await supabase
+          .from('snippets')
+          .update({ content_id: null })
+          .eq('content_id', id)
 
-    if (groupsError) {
-      console.error('그룹 조회 중 오류:', groupsError)
-      // 그룹 조회 실패해도 계속 진행 (그룹이 없을 수 있음)
-    }
+        if (snippetsUpdateError) {
+          throw new Error(`Failed to update snippets: ${snippetsUpdateError.message}`)
+        }
+      } else {
+        // 스니펫이 있는지 확인
+        const { count, error: snippetsCountError } = await supabase
+          .from('snippets')
+          .select('id', { count: 'exact', head: true })
+          .eq('content_id', id)
 
-    // 그룹 ID 배열 생성
-    const groupIds = (groupsData || []).map(group => group.id)
+        if (snippetsCountError) {
+          throw new Error(`Failed to count snippets: ${snippetsCountError.message}`)
+        }
 
-    // 2. 그룹에 속한 청크 삭제
-    if (groupIds.length > 0) {
-      const { error: chunksDeleteError } = await supabase
-        .from('content_chunks')
-        .delete()
-        .in('group_id', groupIds)
-
-      if (chunksDeleteError) {
-        console.error('청크 삭제 중 오류:', chunksDeleteError)
-        // 청크 삭제 실패해도 계속 진행
+        // 스니펫이 있으면 삭제 불가
+        if (count && count > 0) {
+          return NextResponse.json(
+            { 
+              error: 'Cannot delete content with associated snippets.', 
+              snippetsCount: count,
+              solution: 'Use keepSnippets=true parameter to keep snippets while deleting the content.'
+            },
+            { status: 400 }
+          )
+        }
       }
-    }
 
-    // 3. 그룹 삭제
-    if (groupIds.length > 0) {
+      // 2. 콘텐츠에 연결된 그룹 ID 가져오기
+      const { data: groupsData, error: groupsError } = await supabase
+        .from('content_groups')
+        .select('id')
+        .eq('content_id', id)
+
+      if (groupsError) {
+        throw new Error(`Failed to get group IDs: ${groupsError.message}`)
+      }
+
+      // 그룹 ID 배열 생성
+      const groupIds = (groupsData || []).map(group => group.id)
+
+      // 청크 삭제 (그룹이 있는 경우에만)
+      if (groupIds.length > 0) {
+        const { error: chunksDeleteError } = await supabase
+          .from('content_chunks')
+          .delete()
+          .in('group_id', groupIds)
+          
+        if (chunksDeleteError) {
+          throw new Error(`Failed to delete chunks: ${chunksDeleteError.message}`)
+        }
+      }
+
+
+
+      // 3. 콘텐츠에 연결된 그룹 삭제
       const { error: groupsDeleteError } = await supabase
         .from('content_groups')
         .delete()
-        .in('id', groupIds)
+        .eq('content_id', id)
 
       if (groupsDeleteError) {
-        console.error('그룹 삭제 중 오류:', groupsDeleteError)
-        // 그룹 삭제 실패해도 계속 진행
+        throw new Error(`Failed to delete groups: ${groupsDeleteError.message}`)
       }
+
+      // 4. 콘텐츠 삭제
+      const { error: contentDeleteError } = await supabase
+        .from('contents')
+        .delete()
+        .eq('id', id)
+
+      if (contentDeleteError) {
+        throw new Error(`Failed to delete content: ${contentDeleteError.message}`)
+      }
+
+      return NextResponse.json({ success: true })
+    } catch (error) {
+      throw error
     }
-
-    // 4. 콘텐츠 삭제
-    const { error: contentDeleteError } = await supabase
-      .from('contents')
-      .delete()
-      .eq('id', id)
-
-    if (contentDeleteError) {
-      console.error('콘텐츠 삭제 중 오류:', contentDeleteError)
-      return NextResponse.json(
-        { error: '콘텐츠 삭제 중 오류가 발생했습니다.' },
-        { status: 500 }
-      )
-    }
-
-    return NextResponse.json({ success: true })
-
   } catch (error) {
-    console.error('예상치 못한 오류:', error)
+    console.error('Unexpected error:', error)
     return NextResponse.json(
-      { error: '서버 오류가 발생했습니다.' },
+      { error: error instanceof Error ? error.message : 'Server error occurred.' },
       { status: 500 }
     )
   }
