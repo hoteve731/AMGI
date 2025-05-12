@@ -62,9 +62,22 @@ const SnippetBottomSheet: React.FC<SnippetBottomSheetProps> = ({
                         console.error('JSON 파싱 오류:', jsonError)
                         // 504 타임아웃 오류인 경우 스니펫은 생성되었을 가능성이 높음
                         if (response.status === 504) {
-                            toast.success('스니펫이 생성되었습니다! 목록 페이지로 이동합니다.')
+                            toast.success('스니펫이 생성되었습니다!')
                             onClose()
-                            router.push('/?tab=snippets')
+                            // 스니펫 ID를 추출하려고 시도
+                            try {
+                                const match = errorText.match(/"id":\s*"([^"]+)"/);
+                                if (match && match[1]) {
+                                    // ID가 추출되면 해당 스니펫 페이지로 이동
+                                    router.push(`/snippets/${match[1]}`)
+                                } else {
+                                    // ID를 찾을 수 없으면 스니펫 목록으로 이동
+                                    router.push('/?tab=snippets')
+                                }
+                            } catch (e) {
+                                // 오류 발생 시 스니펫 목록으로 이동
+                                router.push('/?tab=snippets')
+                            }
                             return
                         }
                     }
@@ -72,8 +85,9 @@ const SnippetBottomSheet: React.FC<SnippetBottomSheetProps> = ({
                     console.error('응답 텍스트 읽기 오류:', textError)
                     // 응답 읽기 실패 시에도 스니펫은 생성되었을 가능성이 있음
                     if (response.status === 504) {
-                        toast.success('스니펫이 생성되었습니다! 목록 페이지로 이동합니다.')
+                        toast.success('스니펫이 생성되었습니다!')
                         onClose()
+                        // 응답을 읽을 수 없으므로 스니펫 목록으로 이동
                         router.push('/?tab=snippets')
                         return
                     }
@@ -87,9 +101,24 @@ const SnippetBottomSheet: React.FC<SnippetBottomSheetProps> = ({
             } catch (jsonError) {
                 console.error('응답 JSON 파싱 오류:', jsonError)
                 // 파싱 오류가 발생해도 스니펫은 생성되었을 가능성이 높음
-                toast.success('스니펫이 생성되었습니다! 목록 페이지로 이동합니다.')
+                toast.success('스니펫이 생성되었습니다!')
                 onClose()
-                router.push('/?tab=snippets')
+                
+                // 응답 텍스트에서 스니펫 ID를 추출하려고 시도
+                try {
+                    const responseText = await response.text();
+                    const match = responseText.match(/"id":\s*"([^"]+)"/);
+                    if (match && match[1]) {
+                        // ID가 추출되면 해당 스니펫 페이지로 이동
+                        router.push(`/snippets/${match[1]}`)
+                    } else {
+                        // ID를 찾을 수 없으면 스니펫 목록으로 이동
+                        router.push('/?tab=snippets')
+                    }
+                } catch (e) {
+                    // 오류 발생 시 스니펫 목록으로 이동
+                    router.push('/?tab=snippets')
+                }
                 return
             }
 

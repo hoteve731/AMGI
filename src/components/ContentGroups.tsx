@@ -752,8 +752,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                         <div className="relative flex w-full justify-between bg-white/70 backdrop-blur-xl rounded-full p-1 [box-shadow:0_1px_4px_rgba(0,0,0,0.05)] ring-1 ring-gray-200/70 ring-inset">
                             {[
                                 { id: 'notes', label: 'Notes' },
-                                { id: 'snippets', label: 'Snippets' },
-                                { id: 'flashcards', label: 'Flashcards' }
+                                { id: 'snippets', label: 'Snippets' }
                             ].map((tab) => {
                                 const isActive = activeTab === tab.id;
                                 return (
@@ -793,6 +792,40 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                     </div>
                 </div>
 
+                {/* 추가 기능 버튼들 - 스크롤 시 고정되지 않음 */}
+                <div className="mt-4 mb-6 flex flex-wrap gap-2">
+                    <button
+                        onClick={() => {
+                            setActiveTab('flashcards');
+                            localStorage.setItem(`content-${content.id}-activeTab`, 'flashcards');
+                        }}
+                        className={`
+                            flex-1 py-2.5 rounded-lg text-center font-medium transition-all duration-200 min-w-[100px]
+                            ${activeTab === 'flashcards'
+                                ? 'bg-[#7969F7] text-white shadow-md'
+                                : 'bg-white/80 text-gray-700 border border-gray-200 hover:bg-gray-50'}
+                        `}
+                    >
+                        🃏 Flashcards ({allChunks.length})
+                    </button>
+                    
+                    <button
+                        className="flex-1 py-2.5 rounded-lg text-center font-medium transition-all duration-200 min-w-[100px]
+                            bg-white/80 text-gray-700 border border-gray-200 hover:bg-gray-50"
+                        onClick={() => {}}
+                    >
+                    💯 Quiz
+                    </button>
+                    
+                    <button
+                        className="flex-1 py-2.5 rounded-lg text-center font-medium transition-all duration-200 min-w-[100px]
+                            bg-white/80 text-gray-700 border border-gray-200 hover:bg-gray-50"
+                        onClick={() => {}}
+                    >
+                        🗺️ Visual map
+                    </button>
+                </div>
+                
                 <AnimatePresence mode="wait">
                     {activeTab === 'notes' && (
                         <motion.div
