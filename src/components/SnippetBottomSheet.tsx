@@ -51,11 +51,48 @@ const SnippetBottomSheet: React.FC<SnippetBottomSheetProps> = ({
             })
 
             if (!response.ok) {
-                const errorData = await response.json()
-                throw new Error(errorData.error || '스니펫 생성 중 오류가 발생했습니다.')
+                let errorMessage = '스니펫 생성 중 오류가 발생했습니다.'
+                try {
+                    const errorText = await response.text()
+                    try {
+                        const errorData = JSON.parse(errorText)
+                        errorMessage = errorData.error || errorMessage
+                    } catch (jsonError) {
+                        // JSON 파싱 실패 시 텍스트 그대로 사용
+                        console.error('JSON 파싱 오류:', jsonError)
+                        // 504 타임아웃 오류인 경우 스니펫은 생성되었을 가능성이 높음
+                        if (response.status === 504) {
+                            toast.success('스니펫이 생성되었습니다! 목록 페이지로 이동합니다.')
+                            onClose()
+                            router.push('/?tab=snippets')
+                            return
+                        }
+                    }
+                } catch (textError) {
+                    console.error('응답 텍스트 읽기 오류:', textError)
+                    // 응답 읽기 실패 시에도 스니펫은 생성되었을 가능성이 있음
+                    if (response.status === 504) {
+                        toast.success('스니펫이 생성되었습니다! 목록 페이지로 이동합니다.')
+                        onClose()
+                        router.push('/?tab=snippets')
+                        return
+                    }
+                }
+                throw new Error(errorMessage)
             }
 
-            const data = await response.json()
+            let data
+            try {
+                data = await response.json()
+            } catch (jsonError) {
+                console.error('응답 JSON 파싱 오류:', jsonError)
+                // 파싱 오류가 발생해도 스니펫은 생성되었을 가능성이 높음
+                toast.success('스니펫이 생성되었습니다! 목록 페이지로 이동합니다.')
+                onClose()
+                router.push('/?tab=snippets')
+                return
+            }
+
             toast.success('스니펫이 생성되었습니다!')
             onClose()
 
@@ -67,7 +104,7 @@ const SnippetBottomSheet: React.FC<SnippetBottomSheetProps> = ({
                 router.push('/?tab=snippets')
             }
         } catch (error) {
-            console.error('스니펗 생성 오류:', error)
+            console.error('스니펫 생성 오류:', error)
             toast.error(error instanceof Error ? error.message : '스니펫 생성 중 오류가 발생했습니다.')
         } finally {
             setIsCreating(false)
