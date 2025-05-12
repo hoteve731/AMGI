@@ -89,14 +89,20 @@ const SnippetBottomSheet: React.FC<SnippetBottomSheetProps> = ({
                                 const match = errorText.match(/"id":\s*"([^"]+)"/);
                                 if (match && match[1]) {
                                     // ID가 추출되면 해당 스니펫 페이지로 이동
-                                    router.push(`/snippets/${match[1]}`)
+                                    setTimeout(() => {
+                                        router.replace(`/snippets/${match[1]}`)
+                                    }, 300)
                                 } else {
                                     // ID를 찾을 수 없으면 스니펫 목록으로 이동
-                                    router.push('/?tab=snippets')
+                                    setTimeout(() => {
+                                        router.replace('/?tab=snippets')
+                                    }, 300)
                                 }
                             } catch (e) {
                                 // 오류 발생 시 스니펫 목록으로 이동
-                                router.push('/?tab=snippets')
+                                setTimeout(() => {
+                                    router.replace('/?tab=snippets')
+                                }, 300)
                             }
                             return
                         }
@@ -108,7 +114,9 @@ const SnippetBottomSheet: React.FC<SnippetBottomSheetProps> = ({
                         toast.success('스니펫이 생성되었습니다!')
                         onClose()
                         // 응답을 읽을 수 없으므로 스니펫 목록으로 이동
-                        router.push('/?tab=snippets')
+                        setTimeout(() => {
+                            router.replace('/?tab=snippets')
+                        }, 300)
                         return
                     }
                 }
@@ -130,14 +138,20 @@ const SnippetBottomSheet: React.FC<SnippetBottomSheetProps> = ({
                     const match = responseText.match(/"id":\s*"([^"]+)"/);
                     if (match && match[1]) {
                         // ID가 추출되면 해당 스니펫 페이지로 이동
-                        router.push(`/snippets/${match[1]}`)
+                        setTimeout(() => {
+                            router.replace(`/snippets/${match[1]}`)
+                        }, 300)
                     } else {
                         // ID를 찾을 수 없으면 스니펫 목록으로 이동
-                        router.push('/?tab=snippets')
+                        setTimeout(() => {
+                            router.replace('/?tab=snippets')
+                        }, 300)
                     }
                 } catch (e) {
                     // 오류 발생 시 스니펫 목록으로 이동
-                    router.push('/?tab=snippets')
+                    setTimeout(() => {
+                        router.replace('/?tab=snippets')
+                    }, 300)
                 }
                 return
             }
@@ -147,10 +161,14 @@ const SnippetBottomSheet: React.FC<SnippetBottomSheetProps> = ({
 
             // navigate to snippet detail page
             if (data.snippet && data.snippet.id) {
-                router.push(`/snippets/${data.snippet.id}`)
+                setTimeout(() => {
+                    router.replace(`/snippets/${data.snippet.id}`)
+                }, 300)
             } else {
                 // 스니펫 ID를 받지 못한 경우 스니펫 목록 페이지로 이동
-                router.push('/?tab=snippets')
+                setTimeout(() => {
+                    router.replace('/?tab=snippets')
+                }, 300)
             }
         } catch (error) {
             console.error('스니펫 생성 오류:', error)

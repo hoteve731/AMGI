@@ -137,7 +137,9 @@ export default function SnippetDetailPage() {
 
             if (response.ok) {
                 toast.success('스니펫이 삭제되었습니다')
-                router.push('/?tab=snippets')
+                setTimeout(() => {
+                    router.back()
+                }, 300)
             } else {
                 const data = await response.json()
                 toast.error(data.error || '스니펫 삭제 중 오류가 발생했습니다')
