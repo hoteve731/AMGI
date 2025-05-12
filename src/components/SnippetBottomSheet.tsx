@@ -8,8 +8,9 @@ import { useRouter } from 'next/navigation'
 interface SnippetBottomSheetProps {
     isOpen: boolean
     onClose: () => void
-    headerText: string
+    headerText?: string
     contentId: string
+    selectedText?: string
 }
 
 type SnippetType = 'summary' | 'question' | 'explanation' | 'custom'
@@ -18,8 +19,11 @@ const SnippetBottomSheet: React.FC<SnippetBottomSheetProps> = ({
     isOpen,
     onClose,
     headerText,
-    contentId
+    contentId,
+    selectedText
 }) => {
+    // selectedText가 있으면 그것을 사용하고, 없으면 headerText 사용
+    const snippetText = selectedText || headerText || '';
     const router = useRouter()
     const [snippetType, setSnippetType] = useState<SnippetType>('summary')
     const [customQuery, setCustomQuery] = useState('')
@@ -43,7 +47,7 @@ const SnippetBottomSheet: React.FC<SnippetBottomSheetProps> = ({
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    header_text: headerText,
+                    header_text: snippetText,
                     content_id: contentId,
                     snippet_type: snippetType,
                     custom_query: snippetType === 'custom' ? customQuery : undefined
@@ -177,11 +181,13 @@ const SnippetBottomSheet: React.FC<SnippetBottomSheetProps> = ({
                 {/* 내용 */}
                 <div className="p-4">
                     {/* 헤더 텍스트 표시 */}
-                    <div className="mb-4">
-                        <h3 className="text-sm font-medium text-gray-500 mb-1">Selected Text</h3>
-                        <div className="p-3 bg-gray-50 rounded-lg">
-                            <p className="font-medium text-gray-800">{headerText}</p>
-                        </div>
+                    <div className="p-4 border-b border-gray-200">
+                        <h3 className="text-lg font-semibold mb-1">
+                            스니펫 생성
+                        </h3>
+                        <p className="text-gray-600 text-sm mb-0">
+                            <span className="font-medium">"{snippetText}"</span>
+                        </p>
                     </div>
 
                     {/* 스니펫 타입 선택 */}

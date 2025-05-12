@@ -14,9 +14,11 @@ import EditNoteModal from './EditNoteModal'
 import { PencilIcon } from '@heroicons/react/24/outline'
 import { marked } from 'marked';
 import SnippetBottomSheet from './SnippetBottomSheet'
-import { renderMarkdownWithSnippetIcons, registerSnippetIconClickHandlers, removeSnippetIconClickHandlers } from '@/utils/markdown';
+import { renderMarkdownWithSnippetIcons, renderMarkdownWithSnippetLinks, registerSnippetIconClickHandlers, removeSnippetIconClickHandlers } from '@/utils/markdown';
 import toast from 'react-hot-toast';
 import { Tag as TagIcon } from 'lucide-react';
+import { fetchAllSnippets, Snippet } from '@/utils/snippetUtils';
+import SnippetSelectionModal from './SnippetSelectionModal';
 
 type Content = {
     id: string
@@ -58,7 +60,6 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
     const [activeTab, setActiveTab] = useState<'notes' | 'snippets' | 'flashcards' | 'text'>('notes');
     const [showOriginalText, setShowOriginalText] = useState(false);
     const [showAdditionalMemory, setShowAdditionalMemory] = useState(false);
-    const [editingChunkId, setEditingChunkId] = useState<string | null>(null);
     const [isDeletingChunk, setIsDeletingChunk] = useState<string | null>(null);
     const [groupOriginalTextVisibility, setGroupOriginalTextVisibility] = useState<Record<string, boolean>>({});
     const [currentFlashcardIndex, setCurrentFlashcardIndex] = useState(0);
@@ -80,32 +81,80 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
     const [generationStatus, setGenerationStatus] = useState<'title' | 'content' | 'group' | 'chunk' | 'complete'>('title');
     const [generationProgress, setGenerationProgress] = useState<number>(0);
     const [processedGroups, setProcessedGroups] = useState<any[]>([]);
-
-    // 스니펫 관련 상태 추가
-    const [showSnippetBottomSheet, setShowSnippetBottomSheet] = useState(false);
-    const [selectedHeader, setSelectedHeader] = useState({ text: '', id: '' });
-    const [contentSnippets, setContentSnippets] = useState<any[]>([]);
-    const [isLoadingSnippets, setIsLoadingSnippets] = useState(false);
-
-    // 선택된 텍스트 관련 상태 추가
-    const [selectedText, setSelectedText] = useState('');
-    const [selectionPosition, setSelectionPosition] = useState<{ x: number; y: number } | null>(null);
-    const [showSelectionButton, setShowSelectionButton] = useState(false);
-    const [selectedRange, setSelectedRange] = useState<Range | null>(null);
-    // 모달 배경 표시 상태 추가
-    const [showModalBackground, setShowModalBackground] = useState(false);
-
-    // 현재 컨텐츠 ID를 저장하기 위한 상태
-    const [currentContentId, setCurrentContentId] = useState<string | undefined>(content?.id);
-
-    // 1. Add container ref and highlight state after existing state declarations
-    const markdownContainerRef = useRef<HTMLDivElement | null>(null);
-    const [highlightRects, setHighlightRects] = useState<{ left: number; top: number; width: number; height: number; }[]>([]);
+    const [selectedGroup, setSelectedGroup] = useState<ContentGroup | null>(null)
+    const [isModalOpen, setIsModalOpen] = useState(false)
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+    const [isVisible, setIsVisible] = useState(false)
+    const [isFlashcardsEnabled, setIsFlashcardsEnabled] = useState(false)
+    const [isSnippetBottomSheetOpen, setIsSnippetBottomSheetOpen] = useState(false)
+    const [selectedText, setSelectedText] = useState('')
+    const [selectionRange, setSelectionRange] = useState<Range | null>(null)
+    const [highlightRects, setHighlightRects] = useState<{ left: number; top: number; width: number; height: number; }[]>([])
+    const [snippetButtonPosition, setSnippetButtonPosition] = useState({ top: 0, left: 0 })
+    const [snippets, setSnippets] = useState<Snippet[]>([])
+    const [isSnippetSelectionModalOpen, setIsSnippetSelectionModalOpen] = useState(false)
+    const [selectedSnippets, setSelectedSnippets] = useState<Snippet[]>([])
+    const [selectedSnippetTitle, setSelectedSnippetTitle] = useState('')
+    const [currentContentId, setCurrentContentId] = useState<string>('')
+    const [selectedHeader, setSelectedHeader] = useState({ text: '', id: '' })
+    const [showModalBackground, setShowModalBackground] = useState(false)
+    const [showSelectionButton, setShowSelectionButton] = useState(false)
+    const [isLoadingSnippets, setIsLoadingSnippets] = useState(false)
+    const [contentSnippets, setContentSnippets] = useState<any[]>([])
+    const [selectionPosition, setSelectionPosition] = useState<{ x: number; y: number } | null>(null)
+    const [editingChunkId, setEditingChunkId] = useState<string | null>(null)
+    const markdownContainerRef = useRef<HTMLDivElement>(null)
+    
+    // 선택 영역 초기화 함수
     const clearSelection = useCallback(() => {
         setHighlightRects([]);
         setShowSelectionButton(false);
         setSelectionPosition(null);
-        setShowModalBackground(false); // 모달 배경 숨김
+        setShowModalBackground(false);
+    }, []);
+
+    // 스니펫 모달 트리거 클릭 이벤트 핸들러 등록
+    useEffect(() => {
+        const handleSnippetTriggerClick = (e: Event) => {
+            const target = e.target as HTMLElement;
+
+            if (target.classList.contains('snippet-modal-trigger')) {
+                const snippetIds = target.getAttribute('data-snippet-ids')?.split(',') || [];
+                const title = target.getAttribute('data-snippet-title') || '';
+
+                // 선택된 스니펫 목록 설정
+                const selected = snippets.filter(s => snippetIds.includes(s.id));
+                setSelectedSnippets(selected);
+                setSelectedSnippetTitle(title);
+                setIsSnippetSelectionModalOpen(true);
+            } else if (target.classList.contains('snippet-link')) {
+                // 단일 스니펫 링크는 기본 동작 (href를 통한 이동) 사용
+                // 추가 처리가 필요하면 여기에 구현
+            }
+        };
+
+        // 이벤트 리스너 등록
+        const contentElement = markdownContainerRef.current;
+        if (contentElement) {
+            contentElement.addEventListener('click', handleSnippetTriggerClick);
+        }
+
+        // 클린업 함수
+        return () => {
+            if (contentElement) {
+                contentElement.removeEventListener('click', handleSnippetTriggerClick);
+            }
+        };
+    }, [snippets]);
+
+    // 스니펫 데이터 로드
+    useEffect(() => {
+        const loadSnippets = async () => {
+            const snippetsData = await fetchAllSnippets();
+            setSnippets(snippetsData);
+        };
+
+        loadSnippets();
     }, []);
 
     console.log('ContentGroups rendering with content:', content);
@@ -497,7 +546,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
     const handleSnippetIconClick = (headerText: string, headerId: string, contentId: string) => {
         console.log('스니펫 아이콘 클릭:', { headerText, headerId, contentId });
         setSelectedHeader({ text: headerText, id: headerId });
-        setShowSnippetBottomSheet(true);
+        setIsSnippetBottomSheetOpen(true);
     };
 
     // 2. Replace handleTextSelection with state-driven overlay logic
@@ -539,8 +588,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
             y: 0 // 실제로는 사용하지 않음, fixed bottom으로 처리
         });
         setShowSelectionButton(true);
-        setShowModalBackground(true); // 모달 배경 표시
-    }, [clearSelection]);
+    }, []);
 
     // 3. Simplify event listeners for selection and clearing
     useEffect(() => {
@@ -578,7 +626,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
             document.removeEventListener('touchend', onTouchEnd);
             document.removeEventListener('touchstart', onTouchStart);
         };
-    }, [activeTab, handleTextSelection, clearSelection]);
+    }, [activeTab, handleTextSelection]);
 
     // 4. Update snippet creation to clear overlays
     const handleSnippetFromSelection = useCallback(() => {
@@ -589,7 +637,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
             setSelectedHeader({ text: selectedText, id: snippetId });
 
             // 바텀시트 열기
-            setShowSnippetBottomSheet(true);
+            setIsSnippetBottomSheetOpen(true);
 
             // 선택 영역 초기화
             clearSelection();
@@ -600,24 +648,24 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
             console.warn('Cannot create snippet: Text or Content ID missing', { selectedText, currentContentId });
             toast.error('스니펫을 생성할 수 없습니다. 다시 시도해주세요.');
         }
-    }, [selectedText, currentContentId, clearSelection]);
+    }, [selectedText, currentContentId]);
 
     // 스니펫 가져오기
     const fetchContentSnippets = async () => {
         if (!content?.id) return;
-        
+
         try {
             setIsLoadingSnippets(true);
             // 모든 스니펫을 가져온 다음 현재 콘텐츠 ID와 일치하는 것만 필터링
             const response = await fetch('/api/snippets');
             const data = await response.json();
-            
+
             if (data.snippets) {
                 // 현재 콘텐츠 ID와 일치하는 스니펫만 필터링
-                const filteredSnippets = data.snippets.filter((snippet: any) => 
+                const filteredSnippets = data.snippets.filter((snippet: any) =>
                     snippet.content_id === content.id
                 );
-                
+
                 // 태그 정보 처리
                 const processedSnippets = filteredSnippets.map((snippet: any) => {
                     // 태그 관계가 있는 경우 처리
@@ -808,7 +856,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                     >
                         🃏 Flashcards ({allChunks.length})
                     </button>
-                    
+
                     <button
                         className="flex-1 py-2.5 rounded-lg text-center font-medium transition-all duration-200 min-w-[100px]
                             bg-white/80 text-gray-700 border border-gray-200 hover:bg-gray-50"
@@ -816,7 +864,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                     >
                     💯 Quiz
                     </button>
-                    
+
                     <button
                         className="flex-1 py-2.5 rounded-lg text-center font-medium transition-all duration-200 min-w-[100px]
                             bg-white/80 text-gray-700 border border-gray-200 hover:bg-gray-50"
@@ -825,7 +873,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                         🗺️ Visual map
                     </button>
                 </div>
-                
+
                 <AnimatePresence mode="wait">
                     {activeTab === 'notes' && (
                         <motion.div
@@ -841,8 +889,9 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                                         <div className="flex-1 overflow-y-auto p-4 relative" ref={markdownContainerRef}>
                                             <div
                                                 className="markdown-body"
+                                                ref={markdownContainerRef}
                                                 dangerouslySetInnerHTML={{
-                                                    __html: DOMPurify.sanitize(renderMarkdownWithSnippetIcons(content.markdown_text!, content.id))
+                                                    __html: DOMPurify.sanitize(renderMarkdownWithSnippetLinks(content.markdown_text!, snippets))
                                                 }}
                                             />
                                             {highlightRects.map((r, i) => (
@@ -1315,27 +1364,22 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
             )}
 
             {/* 스니펫 바텀시트 */}
-            {isMounted && createPortal(
-                <AnimatePresence mode="wait">
-                    {showSnippetBottomSheet && (
-                        <SnippetBottomSheet
-                            isOpen={showSnippetBottomSheet}
-                            onClose={() => {
-                                setShowSnippetBottomSheet(false);
-                                // 바텀시트가 닫힐 때 선택 영역 초기화
-                                clearSelection();
-                                // 바텀시트가 닫힐 때 이벤트 핸들러를 다시 등록
-                                setTimeout(() => {
-                                    registerSnippetIconClickHandlers(handleSnippetIconClick);
-                                }, 100);
-                            }}
-                            headerText={selectedHeader.text}
-                            contentId={currentContentId || content.id}
-                        />
-                    )}
-                </AnimatePresence>,
-                document.body
+            {isSnippetBottomSheetOpen && (
+                <SnippetBottomSheet
+                    isOpen={isSnippetBottomSheetOpen}
+                    onClose={() => setIsSnippetBottomSheetOpen(false)}
+                    selectedText={selectedText}
+                    contentId={content.id}
+                />
             )}
+            
+            {/* 스니펫 선택 모달 */}
+            <SnippetSelectionModal
+                isOpen={isSnippetSelectionModalOpen}
+                onClose={() => setIsSnippetSelectionModalOpen(false)}
+                snippets={selectedSnippets}
+                title={selectedSnippetTitle}
+            />
 
             {/* 스니펫 생성 플로팅 버튼 - document.body에 포털로 렌더링 */}
             {isMounted && createPortal(
