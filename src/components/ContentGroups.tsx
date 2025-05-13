@@ -871,37 +871,46 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                     </div>
                 </div>
 
-                {/* 추가 기능 버튼들 - 스크롤 시 고정되지 않음 */}
-                <div className="mt-4 mb-6 flex flex-wrap gap-2">
+                {/* 추가 기능 버튼들 - 세로 배치 */}
+                <div className="mt-4 mb-6 flex flex-col gap-4">
                     <button
                         onClick={() => {
                             setActiveTab('flashcards');
                             localStorage.setItem(`content-${content.id}-activeTab`, 'flashcards');
                         }}
                         className={`
-                            flex-1 py-2.5 rounded-lg text-center font-medium transition-all duration-200 min-w-[100px]
+                            flex items-center justify-between w-full py-5 px-4 rounded-2xl font-semibold transition-all duration-200
                             ${activeTab === 'flashcards'
                                 ? 'bg-[#7969F7] text-white shadow-md'
-                                : 'bg-white/80 text-gray-700 border border-gray-200 hover:bg-gray-50'}
+                                : 'bg-white/80 text-[#7969F7] hover:bg-gray-50'}
                         `}
                     >
-                        🃏 Flashcards ({allChunks.length})
+                        <span className="flex items-center text-lg">🃏 Flashcards ({allChunks.length})</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M9 18l6-6-6-6"/>
+                        </svg>
                     </button>
 
                     <button
-                        className="flex-1 py-2.5 rounded-lg text-center font-medium transition-all duration-200 min-w-[100px]
-                            bg-white/80 text-gray-700 border border-gray-200 hover:bg-gray-50"
-                        onClick={() => {}}
+                        className="flex items-center justify-between w-full py-5 px-4 rounded-2xl font-semibold transition-all duration-200
+                            bg-white/80 text-[#7969F7] opacity-50 cursor-not-allowed"
+                        disabled
                     >
-                    💯 Quiz
+                        <span className="flex items-center text-lg">💯 Quiz</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M9 18l6-6-6-6"/>
+                        </svg>
                     </button>
 
                     <button
-                        className="flex-1 py-2.5 rounded-lg text-center font-medium transition-all duration-200 min-w-[100px]
-                            bg-white/80 text-gray-700 border border-gray-200 hover:bg-gray-50"
-                        onClick={() => {}}
+                        className="flex items-center justify-between w-full py-5 px-4 rounded-2xl font-semibold transition-all duration-200
+                            bg-white/80 text-[#7969F7] opacity-50 cursor-not-allowed"
+                        disabled
                     >
-                        🗺️ Visual map
+                        <span className="flex items-center text-lg">🗺️ Visual map</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M9 18l6-6-6-6"/>
+                        </svg>
                     </button>
                 </div>
 
@@ -1049,19 +1058,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                                                             onClick={() => router.push(`/snippets/${snippet.id}`)}
                                                         />
 
-                                                        {snippet.tags && snippet.tags.length > 0 && (
-                                                            <div className="flex flex-wrap gap-1 mt-2">
-                                                                {snippet.tags.map((tag: { id: string; name: string; relation_id: string }) => (
-                                                                    <div
-                                                                        key={tag.id}
-                                                                        className="flex items-center bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full text-xs"
-                                                                    >
-                                                                        <TagIcon size={10} className="mr-1" />
-                                                                        <span>{tag.name}</span>
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        )}
+                                                        {/* 태그 표시 부분 제거됨 */}
                                                     </div>
                                                 </div>
                                             ))}

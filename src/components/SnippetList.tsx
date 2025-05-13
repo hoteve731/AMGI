@@ -350,7 +350,7 @@ export default function SnippetList() {
             ) : filteredSnippets.length > 0 ? (
                 <div className="grid grid-cols-1 gap-4">
                     {filteredSnippets.map(snippet => (
-                        <div key={snippet.id} className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
+                        <div key={snippet.id} className="bg-white rounded-lg shadow-sm p-4">
                             <div className="flex flex-col gap-2">
                                 <div className="flex justify-between items-start">
                                     <div className="flex flex-col">
@@ -372,20 +372,7 @@ export default function SnippetList() {
                                     onClick={() => router.push(`/snippets/${snippet.id}`)}
                                 />
 
-                                {snippet.tags && snippet.tags.length > 0 && (
-                                    <div className="flex flex-wrap gap-1 mt-2">
-                                        {snippet.tags.map(tag => (
-                                            <div
-                                                key={tag.id}
-                                                className="flex items-center bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full text-xs cursor-pointer hover:bg-purple-100 hover:text-purple-800"
-                                                onClick={() => toggleTag(tag.id)}
-                                            >
-                                                <TagIcon size={10} className="mr-1" />
-                                                <span>{tag.name}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
+                                {/* 태그 표시 부분 제거됨 */}
                             </div>
                         </div>
                     ))}

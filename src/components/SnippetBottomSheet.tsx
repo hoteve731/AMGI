@@ -45,6 +45,14 @@ const SnippetBottomSheet: React.FC<SnippetBottomSheetProps> = ({
         return { isTextTooLong, textLengthWarning };
     }, [snippetText]);
 
+    // 임시 ID 생성 함수 (UUID v4 형식)
+    const generateTempId = () => {
+        return 'temp-' + 
+            ([1e7] as any + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, 
+            (c: any) => (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+        );
+    }
+
     // 스니펫 생성 함수
     const createSnippet = async () => {
         try {
@@ -56,124 +64,96 @@ const SnippetBottomSheet: React.FC<SnippetBottomSheetProps> = ({
                 return
             }
 
+            // 스니펫 생성 요청 데이터
+            const snippetData = {
+                header_text: snippetText,
+                content_id: contentId,
+                snippet_type: snippetType,
+                custom_query: snippetType === 'custom' ? customQuery : undefined
+            }
+
+            // 로컬 스토리지에 요청 데이터 저장 (폴링 시 사용)
+            const tempId = generateTempId()
+            localStorage.setItem(`snippet_request_${tempId}`, JSON.stringify({
+                ...snippetData,
+                timestamp: new Date().toISOString(),
+                status: 'pending'
+            }))
+
             // 스니펫 생성 API 호출
             const response = await fetch('/api/snippets', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
-                    header_text: snippetText,
-                    content_id: contentId,
-                    snippet_type: snippetType,
-                    custom_query: snippetType === 'custom' ? customQuery : undefined
-                }),
+                body: JSON.stringify(snippetData),
             })
 
-            if (!response.ok) {
-                let errorMessage = 'Error creating snippet.'
+            let snippetId = null
+
+            // 응답 처리
+            if (response.ok) {
+                try {
+                    const data = await response.json()
+                    if (data.snippet && data.snippet.id) {
+                        snippetId = data.snippet.id
+                        // 성공 시 로컬 스토리지 업데이트
+                        localStorage.setItem(`snippet_request_${tempId}`, JSON.stringify({
+                            ...snippetData,
+                            id: snippetId,
+                            timestamp: new Date().toISOString(),
+                            status: 'success'
+                        }))
+                    }
+                } catch (jsonError) {
+                    console.error('Response JSON parsing error:', jsonError)
+                    // 응답 텍스트에서 ID 추출 시도
+                    try {
+                        const responseText = await response.text()
+                        const match = responseText.match(/"id":\s*"([^"]+)"/)
+                        if (match && match[1]) {
+                            snippetId = match[1]
+                        }
+                    } catch (e) {
+                        console.error('응답 텍스트 읽기 오류:', e)
+                    }
+                }
+            } else {
+                // 오류 응답 처리
                 try {
                     const errorText = await response.text()
-                    try {
-                        const errorData = JSON.parse(errorText)
-                        errorMessage = errorData.error || errorMessage
-                    } catch (jsonError) {
-                        // JSON parsing error
-                        console.error('JSON parsing error:', jsonError)
-                        // 504 timeout error
-                        if (response.status === 504) {
-                            toast.success('Snippet created successfully!')
-                            onClose()
-                            // try to extract snippet ID
-                            try {
-                                const match = errorText.match(/"id":\s*"([^"]+)"/);
-                                if (match && match[1]) {
-                                    // ID가 추출되면 해당 스니펫 페이지로 이동
-                                    setTimeout(() => {
-                                        router.replace(`/snippets/${match[1]}`)
-                                    }, 300)
-                                } else {
-                                    // ID를 찾을 수 없으면 스니펫 목록으로 이동
-                                    setTimeout(() => {
-                                        router.replace('/?tab=snippets')
-                                    }, 300)
-                                }
-                            } catch (e) {
-                                // 오류 발생 시 스니펫 목록으로 이동
-                                setTimeout(() => {
-                                    router.replace('/?tab=snippets')
-                                }, 300)
-                            }
-                            return
-                        }
+                    // 응답 텍스트에서 ID 추출 시도
+                    const match = errorText.match(/"id":\s*"([^"]+)"/)
+                    if (match && match[1]) {
+                        snippetId = match[1]
+                    }
+                    
+                    // 504 Gateway Timeout 오류인 경우에도 스니펫이 생성되었을 수 있음
+                    if (response.status === 504) {
+                        console.log('504 Gateway Timeout, but snippet might be created')
                     }
                 } catch (textError) {
                     console.error('응답 텍스트 읽기 오류:', textError)
-                    // 응답 읽기 실패 시에도 스니펫은 생성되었을 가능성이 있음
-                    if (response.status === 504) {
-                        toast.success('스니펫이 생성되었습니다!')
-                        onClose()
-                        // 응답을 읽을 수 없으므로 스니펫 목록으로 이동
-                        setTimeout(() => {
-                            router.replace('/?tab=snippets')
-                        }, 300)
-                        return
-                    }
                 }
-                throw new Error(errorMessage)
             }
 
-            let data
-            try {
-                data = await response.json()
-            } catch (jsonError) {
-                console.error('Response JSON parsing error:', jsonError)
-                // parsing error even though snippet was created
-                toast.success('Snippet created successfully!')
-                onClose()
-                
-                // try to extract snippet ID from response text
-                try {
-                    const responseText = await response.text();
-                    const match = responseText.match(/"id":\s*"([^"]+)"/);
-                    if (match && match[1]) {
-                        // ID가 추출되면 해당 스니펫 페이지로 이동
-                        setTimeout(() => {
-                            router.replace(`/snippets/${match[1]}`)
-                        }, 300)
-                    } else {
-                        // ID를 찾을 수 없으면 스니펫 목록으로 이동
-                        setTimeout(() => {
-                            router.replace('/?tab=snippets')
-                        }, 300)
-                    }
-                } catch (e) {
-                    // 오류 발생 시 스니펫 목록으로 이동
-                    setTimeout(() => {
-                        router.replace('/?tab=snippets')
-                    }, 300)
-                }
-                return
-            }
-
+            // 성공 메시지 표시 및 바텀시트 닫기
             toast.success('Snippet created successfully!')
             onClose()
 
-            // navigate to snippet detail page
-            if (data.snippet && data.snippet.id) {
-                setTimeout(() => {
-                    router.replace(`/snippets/${data.snippet.id}`)
-                }, 300)
-            } else {
-                // 스니펫 ID를 받지 못한 경우 스니펫 목록 페이지로 이동
-                setTimeout(() => {
-                    router.replace('/?tab=snippets')
-                }, 300)
-            }
+            // 항상 스니펫 상세 페이지로 이동 (ID 추출 성공 여부와 관계없이)
+            setTimeout(() => {
+                if (snippetId) {
+                    // 실제 ID가 있으면 해당 ID로 이동
+                    router.replace(`/snippets/${snippetId}`)
+                } else {
+                    // ID를 추출하지 못했으면 임시 ID로 이동 (폴링으로 실제 데이터 확인)
+                    router.replace(`/snippets/${tempId}`)
+                }
+            }, 300)
         } catch (error) {
             console.error('스니펫 생성 오류:', error)
             toast.error(error instanceof Error ? error.message : '스니펫 생성 중 오류가 발생했습니다.')
-        } finally {
             setIsCreating(false)
         }
     }

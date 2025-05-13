@@ -41,12 +41,12 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
 
   // Animation variants for each button
   const buttonVariants = {
-    hidden: { opacity: 0, y: 20 },
+    hidden: { opacity: 0, y: 0 },
     visible: {
       opacity: 1,
       y: 0,
       transition: {
-        duration: 0.4,
+        duration: 0.5,
         ease: "easeOut"
       }
     }
@@ -154,9 +154,9 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
         New Note
       </motion.h3>
 
-      {/* 세로 레이아웃으로 변경 (3×1) */}
+      {/* 가로 레이아웃으로 변경 (1×3) */}
       <motion.div
-        className="flex flex-col w-full gap-3"
+        className="flex flex-row w-full gap-3"
         variants={containerVariants}
         initial="hidden"
         animate={isVisible ? "visible" : "hidden"}
@@ -165,63 +165,54 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
         <motion.button
           variants={buttonVariants}
           onClick={handleUploadText}
-          className="w-full flex flex-row items-center bg-white hover:bg-white/50 transition-colors duration-200 rounded-xl p-4"
+          className="w-full flex flex-col items-center justify-center transition-transform duration-200 rounded-xl p-4"
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
         >
           <Image
             src="/images/loopadocs.png"
-            alt="Upload text"
-            width={40}
-            height={40}
-            className="mr-4"
+            alt="Text"
+            width={64}
+            height={64}
+            className="mb-1"
           />
-          <div className="flex flex-col items-start">
-            <span className="text-base font-medium text-gray-800">Upload text</span>
-            <span className="text-sm text-gray-500">Write or paste text</span>
-          </div>
+          <span className="text-sm font-medium text-gray-800">Text</span>
         </motion.button>
 
         {/* Web link */}
         <motion.button
           variants={buttonVariants}
           onClick={handleWebLinkClick}
-          className="w-full flex flex-row items-center bg-white hover:bg-white/50 transition-colors duration-200 rounded-xl p-4"
+          className="w-full flex flex-col items-center justify-center transition-transform duration-200 rounded-xl p-4"
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
         >
           <Image
             src="/images/loopalink.png"
             alt="Web link"
-            width={40}
-            height={40}
-            className="mr-4"
+            width={64}
+            height={64}
+            className="mb-1"
           />
-          <div className="flex flex-col items-start">
-            <span className="text-base font-medium text-gray-800">Web link</span>
-            <span className="text-sm text-gray-500">Extract from URL</span>
-          </div>
+          <span className="text-sm font-medium text-gray-800">Web link</span>
         </motion.button>
 
         {/* Upload Audio */}
         <motion.button
           variants={buttonVariants}
           onClick={handleUploadAudioClick}
-          className="w-full flex flex-row items-center bg-white hover:bg-white/50 transition-colors duration-200 rounded-xl p-4"
+          className="w-full flex flex-col items-center justify-center transition-transform duration-200 rounded-xl p-4"
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
         >
           <Image
             src="/images/loopaaudio.png"
-            alt="Upload Audio"
-            width={40}
-            height={40}
-            className="mr-4"
+            alt="Audio"
+            width={64}
+            height={64}
+            className="mb-1"
           />
-          <div className="flex flex-col items-start">
-            <span className="text-base font-medium text-gray-800">Upload Audio</span>
-            <span className="text-sm text-gray-500">Transcribe audio file</span>
-          </div>
+          <span className="text-sm font-medium text-gray-800">Audio</span>
         </motion.button>
       </motion.div>
 

@@ -45,7 +45,7 @@ export default function HomeTabs() {
         <>
             {/* 탭 네비게이션 */}
             <motion.div 
-                className="px-4 mt-12"
+                className="px-4 mt-8"
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: isVisible ? 1 : 0, y: isVisible ? 0 : 15 }}
                 transition={{ duration: 0.4, ease: "easeOut" }}

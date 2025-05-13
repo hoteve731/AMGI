@@ -49,7 +49,7 @@ const getSnippetPrompt = (headerText: string, snippetType: string, contentMarkdo
             promptContent = 'Provide a concise explanation of what the **selected text** refers to, in Markdown format.';
     }
 
-    return `${langPrefix}\n\n${basePrompt}${promptContent}${contentContext}\n\nThe output text must be in ${language}.`;
+    return `${langPrefix}\n\n${basePrompt}${promptContent}${contentContext}\n\nThe output text must be in ${language}. do not wrap output text with \`\`\`markdown\`\`\``;
 };
 
 // 태그 추출 프롬프트
