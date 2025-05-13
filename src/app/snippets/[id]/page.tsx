@@ -52,7 +52,8 @@ export default function SnippetDetailPage() {
     const [isPolling, setIsPolling] = useState(false)
     const [pollingAttempts, setPollingAttempts] = useState(0)
     const [notFound, setNotFound] = useState(false)
-    
+    const [isUrlUpdated, setIsUrlUpdated] = useState(false)
+
     // 폴링 관련 상태를 관리하기 위한 ref
     const pollingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -64,7 +65,7 @@ export default function SnippetDetailPage() {
     // 로컬 스토리지에서 스니펫 요청 정보 가져오기
     const getSnippetRequestFromStorage = () => {
         if (!isTempId(id)) return null
-        
+
         try {
             const storedData = localStorage.getItem(`snippet_request_${id}`)
             if (!storedData) return null
@@ -75,10 +76,19 @@ export default function SnippetDetailPage() {
         }
     }
 
+    // URL 업데이트 함수
+    const updateUrl = (newId: string) => {
+        if (isUrlUpdated || !isTempId(id) || id === newId) return
+
+        console.log(`URL 업데이트: ${id} -> ${newId}`)
+        setIsUrlUpdated(true)
+        router.replace(`/snippets/${newId}`, { scroll: false })
+    }
+
     // 폴링 시작 함수
     const startPolling = () => {
         if (isPolling) return
-        
+
         setIsPolling(true)
         pollForSnippet()
     }
@@ -94,9 +104,9 @@ export default function SnippetDetailPage() {
 
     // 스니펫 폴링 함수
     const pollForSnippet = async () => {
-        // 최대 폴링 시도 횟수 (20회 = 약 30초)
-        const MAX_POLLING_ATTEMPTS = 20
-        
+        // 최대 폴링 시도 횟수 (10회 = 약 10초)
+        const MAX_POLLING_ATTEMPTS = 10
+
         if (pollingAttempts >= MAX_POLLING_ATTEMPTS) {
             stopPolling()
             setNotFound(true)
@@ -105,42 +115,43 @@ export default function SnippetDetailPage() {
         }
 
         try {
-            // 실제 스니펫 ID로 검색 시도
+            // 먼저 로컬 스토리지에서 실제 ID 확인
             const storedData = getSnippetRequestFromStorage()
             if (storedData?.id) {
                 // 저장된 실제 ID가 있으면 해당 ID로 검색
                 const response = await fetch(`/api/snippets?id=${storedData.id}`)
-                
+
                 if (response.ok) {
                     const data = await response.json()
                     if (data.snippet) {
                         setSnippet(data.snippet)
                         processSnippetData(data.snippet)
+                        updateUrl(storedData.id)
                         stopPolling()
                         return
                     }
                 }
             }
 
-            // 최근 생성된 스니펫 목록 가져오기 시도
-            const response = await fetch('/api/snippets?limit=10')
-            
+            // 최근 생성된 스니펫 목록 가져오기 시도 (최적화: 최근 5개만 조회)
+            const response = await fetch('/api/snippets?limit=5')
+
             if (response.ok) {
                 const data = await response.json()
                 if (data.snippets && Array.isArray(data.snippets)) {
                     // 저장된 요청 데이터와 일치하는 스니펫 찾기
                     const storedRequest = getSnippetRequestFromStorage()
                     if (storedRequest) {
-                        const matchingSnippet = data.snippets.find((s: Snippet) => 
-                            s.header_text === storedRequest.header_text && 
-                            s.snippet_type === storedRequest.snippet_type && 
+                        const matchingSnippet = data.snippets.find((s: Snippet) =>
+                            s.header_text === storedRequest.header_text &&
+                            s.snippet_type === storedRequest.snippet_type &&
                             s.content_id === storedRequest.content_id
                         )
 
                         if (matchingSnippet) {
                             setSnippet(matchingSnippet)
                             processSnippetData(matchingSnippet)
-                            
+
                             // 로컬 스토리지 업데이트
                             if (storedRequest) {
                                 localStorage.setItem(`snippet_request_${id}`, JSON.stringify({
@@ -149,7 +160,9 @@ export default function SnippetDetailPage() {
                                     status: 'success'
                                 }))
                             }
-                            
+
+                            // URL 업데이트
+                            updateUrl(matchingSnippet.id)
                             stopPolling()
                             return
                         }
@@ -157,10 +170,11 @@ export default function SnippetDetailPage() {
                 }
             }
 
-            // 스니펫을 찾지 못했으면 폴링 계속
+            // 스니펫을 찾지 못했으면 폴링 계속 (최적화: 간격을 점진적으로 늘림)
             setPollingAttempts(prev => prev + 1)
-            pollingTimeoutRef.current = setTimeout(pollForSnippet, 1500)
-            
+            const nextInterval = Math.min(1000 * (1 + pollingAttempts * 0.2), 2000) // 1초에서 시작해서 최대 2초까지 늘림
+            pollingTimeoutRef.current = setTimeout(pollForSnippet, nextInterval)
+
         } catch (error) {
             console.error('스니펫 폴링 중 오류:', error)
             setPollingAttempts(prev => prev + 1)
@@ -177,15 +191,6 @@ export default function SnippetDetailPage() {
                 ? snippetData.snippet_tag_relations
                 : [snippetData.snippet_tag_relations];
 
-            // 태그 관계 타입 정의
-            type TagRelation = {
-                id: string;
-                snippet_tags: {
-                    id: string;
-                    name: string;
-                };
-            };
-
             // 태그 추출
             const extractedTags = relations
                 .filter((relation: TagRelation) => relation.snippet_tags)
@@ -200,31 +205,19 @@ export default function SnippetDetailPage() {
             setTags([]);
         }
 
-        // 연결된 콘텐츠가 있으면 콘텐츠 정보 로드
+        // 소스 콘텐츠 정보 가져오기 (있는 경우)
         if (snippetData.content_id) {
-            fetchContentInfo(snippetData.content_id)
+            fetchSourceContent(snippetData.content_id);
         }
+
+        setIsLoading(false);
     }
 
     // 스니펫 데이터 로드
     const fetchSnippet = async () => {
         try {
             setIsLoading(true)
-            
-            // 임시 ID인 경우 폴링 시작
-            if (isTempId(id)) {
-                const storedRequest = getSnippetRequestFromStorage()
-                if (storedRequest) {
-                    startPolling()
-                    return
-                } else {
-                    // 임시 ID지만 로컬 스토리지에 정보가 없는 경우
-                    setNotFound(true)
-                    setIsLoading(false)
-                    return
-                }
-            }
-            
+
             // 실제 ID인 경우 일반적인 데이터 로드
             const response = await fetch(`/api/snippets?id=${id}`)
 
@@ -255,7 +248,7 @@ export default function SnippetDetailPage() {
     }
 
     // 연결된 콘텐츠 정보 로드
-    const fetchContentInfo = async (contentId: string) => {
+    const fetchSourceContent = async (contentId: string) => {
         try {
             const response = await fetch(`/api/contents?id=${contentId}`)
 
@@ -328,151 +321,158 @@ export default function SnippetDetailPage() {
         })
     }
 
-    // 초기 데이터 로드
     useEffect(() => {
-        if (id) {
+        // 임시 ID인 경우 폴링 시작
+        if (isTempId(id)) {
+            startPolling()
+        } else {
+            // 실제 ID인 경우 스니펫 데이터 가져오기
             fetchSnippet()
         }
-        
-        // 컴포넌트 언마운트 시 폴링 중단
+
         return () => {
-            if (pollingTimeoutRef.current) {
-                clearTimeout(pollingTimeoutRef.current)
-            }
+            stopPolling()
         }
     }, [id])
 
-    // 스켈레톤 로딩 UI 컴포넌트
-    const SkeletonUI = () => (
-        <div className="max-w-4xl mx-auto p-4 animate-pulse">
-            {/* 네비게이션 바 스켈레톤 */}
-            <div className="flex justify-between items-center mb-6">
-                <div className="h-10 w-24 bg-gray-200 rounded"></div>
-                <div className="flex space-x-2">
-                    <div className="h-10 w-10 bg-gray-200 rounded"></div>
-                    <div className="h-10 w-10 bg-gray-200 rounded"></div>
-                </div>
-            </div>
-            
-            {/* 헤더 스켈레톤 */}
-            <div className="mb-6">
-                <div className="h-8 w-3/4 bg-gray-200 rounded mb-2"></div>
-                <div className="h-5 w-1/3 bg-gray-200 rounded mb-2"></div>
-                <div className="flex space-x-2 mb-4">
-                    <div className="h-6 w-16 bg-gray-200 rounded"></div>
-                </div>
-                <div className="h-5 w-1/2 bg-gray-200 rounded"></div>
-            </div>
-            
-            {/* 콘텐츠 스켈레톤 */}
-            <div className="mb-8 space-y-3">
-                <div className="h-4 bg-gray-200 rounded w-full"></div>
-                <div className="h-4 bg-gray-200 rounded w-full"></div>
-                <div className="h-4 bg-gray-200 rounded w-5/6"></div>
-                <div className="h-4 bg-gray-200 rounded w-full"></div>
-                <div className="h-4 bg-gray-200 rounded w-4/5"></div>
-            </div>
-            
-            {/* 태그 스켈레톤 */}
-            <div className="mb-6">
-                <div className="h-6 w-24 bg-gray-200 rounded mb-2"></div>
-                <div className="flex space-x-2">
-                    <div className="h-8 w-20 bg-gray-200 rounded"></div>
-                    <div className="h-8 w-24 bg-gray-200 rounded"></div>
-                </div>
-            </div>
-            
-            {/* 소스 스켈레톤 */}
-            <div>
-                <div className="h-6 w-32 bg-gray-200 rounded mb-2"></div>
-                <div className="h-10 w-full bg-gray-200 rounded"></div>
-            </div>
-        </div>
-    )
-    
-    // 폴링 중 UI
-    const PollingUI = () => (
-        <div className="flex flex-col items-center justify-center min-h-screen p-4">
-            <div className="w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
-            <span className="mt-4 text-gray-600">스니펫 데이터를 가져오는 중...</span>
-            <p className="mt-2 text-sm text-gray-500">잠시만 기다려주세요. 서버에서 스니펫을 처리하고 있습니다.</p>
-        </div>
-    )
-
-    if (isLoading) {
-        return isTempId(id) ? <PollingUI /> : <SkeletonUI />
-    }
-    
-    if (isPolling) {
-        return <PollingUI />
-    }
-
-    if (notFound || !snippet) {
-        return (
-            <div className="flex flex-col items-center justify-center min-h-screen p-4">
-                <p className="text-gray-600">스니펫을 찾을 수 없습니다.</p>
+    // 스켈레톤 로딩 컴포넌트
+    const SkeletonLoading = () => (
+        <div className="max-w-3xl mx-auto p-4">
+            {/* 네비게이션 바 */}
+            <div className="flex items-center justify-between mb-6">
                 <button
-                    className="mt-4 px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
-                    onClick={() => router.push('/?tab=snippets')}
+                    className="p-2 text-gray-600 hover:text-gray-900 rounded-full hover:bg-gray-100 transition-colors"
                 >
-                    스니펫 목록으로 돌아가기
+                    <ArrowLeft size={20} />
+                </button>
+                <div className="flex space-x-2">
+                    <div className="w-10 h-10 rounded-full bg-gray-200"></div>
+                    <div className="w-10 h-10 rounded-full bg-gray-200"></div>
+                </div>
+            </div>
+
+            {/* 헤더 섹션 스켈레톤 */}
+            <div className="mb-6">
+                <div className="h-8 bg-gray-200 rounded w-3/4 mb-2"></div>
+                <div className="h-5 bg-gray-200 rounded w-1/3 mb-3"></div>
+                <div className="flex space-x-2 mb-4">
+                    <div className="h-6 bg-gray-200 rounded w-20"></div>
+                </div>
+                <div className="flex flex-wrap gap-2 mb-4">
+                    <div className="h-7 bg-gray-200 rounded-full w-16"></div>
+                    <div className="h-7 bg-gray-200 rounded-full w-24"></div>
+                </div>
+            </div>
+
+            {/* 마크다운 콘텐츠 스켈레톤 */}
+            <div className="mb-8 space-y-3">
+                <div className="h-5 bg-gray-200 rounded w-full"></div>
+                <div className="h-5 bg-gray-200 rounded w-full"></div>
+                <div className="h-5 bg-gray-200 rounded w-5/6"></div>
+                <div className="h-5 bg-gray-200 rounded w-full"></div>
+                <div className="h-5 bg-gray-200 rounded w-4/5"></div>
+            </div>
+
+            {/* 소스 섹션 스켈레톤 */}
+            <div className="mt-8 border-t pt-6">
+                <div className="h-6 bg-gray-200 rounded w-40 mb-3"></div>
+                <div className="flex justify-between items-center p-4 border border-gray-200 rounded-lg">
+                    <div>
+                        <p className="font-medium"></p>
+                        <p className="text-sm text-gray-500 truncate"></p>
+                    </div>
+                    <div className="h-8 bg-gray-200 rounded w-24"></div>
+                </div>
+            </div>
+        </div>
+    )
+
+    if (notFound) {
+        return (
+            <div className="max-w-3xl mx-auto p-4">
+                <div className="flex items-center mb-6">
+                    <button
+                        onClick={() => router.push('/?tab=snippets')}
+                        className="p-2 text-gray-600 hover:text-gray-900 rounded-full hover:bg-gray-100 transition-colors"
+                    >
+                        <ArrowLeft size={20} />
+                    </button>
+                    <h1 className="text-xl font-bold ml-2">Snippet Not Found</h1>
+                </div>
+                <p className="text-gray-600">
+                    The snippet you're looking for could not be found. It may have been deleted or is still being created.
+                </p>
+                <button
+                    onClick={() => router.push('/?tab=snippets')}
+                    className="mt-4 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                >
+                    Go to Snippets
                 </button>
             </div>
         )
     }
 
+    if (isLoading) {
+        return <SkeletonLoading />
+    }
+
+    if (!snippet) {
+        return <SkeletonLoading />
+    }
+
     return (
-        <div className="max-w-4xl mx-auto p-4 pb-16">
-            {/* 네비게이션 바 - 뒤로가기 버튼과 편집/삭제 버튼 */}
+        <div className="max-w-3xl mx-auto p-4">
+            {/* 네비게이션 바 */}
             <div className="flex items-center justify-between mb-6">
                 <button
-                    className="flex items-center text-gray-600 hover:text-purple-600"
-                    onClick={() => router.back()}
+                    onClick={() => router.push('/?tab=snippets')}
+                    className="p-2 text-gray-600 hover:text-gray-900 rounded-full hover:bg-gray-100 transition-colors"
                 >
-                    <ArrowLeft size={16} className="mr-1" />
-                    <span>Back</span>
+                    <ArrowLeft size={20} />
                 </button>
 
-                <div className="flex items-center gap-2">
-                    <button
-                        className="p-2 text-gray-600 hover:text-purple-600 transition-colors"
-                        onClick={() => router.push(`/snippets/${snippet.id}/edit`)}
-                    >
-                        <Edit2 size={18} />
-                    </button>
-                    <button
-                        className="p-2 text-gray-600 hover:text-red-600 transition-colors"
-                        onClick={deleteSnippet}
-                        disabled={isDeleting}
-                    >
-                        {isDeleting ? (
-                            <div className="w-4 h-4 border-2 border-gray-300 border-t-transparent rounded-full animate-spin mx-1"></div>
-                        ) : (
-                            <Trash2 size={18} />
-                        )}
-                    </button>
-                </div>
+                {snippet && (
+                    <div className="flex space-x-2">
+                        <button
+                            onClick={() => router.push(`/snippets/${snippet.id}/edit`)}
+                            className="p-2 text-gray-600 hover:text-gray-900 rounded-full hover:bg-gray-100 transition-colors"
+                        >
+                            <Edit2 size={20} />
+                        </button>
+                        <button
+                            onClick={deleteSnippet}
+                            className="p-2 text-gray-600 hover:text-red-600 rounded-full hover:bg-gray-100 transition-colors"
+                            disabled={isDeleting}
+                        >
+                            {isDeleting ? (
+                                <div className="w-5 h-5 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                                <Trash2 size={20} />
+                            )}
+                        </button>
+                    </div>
+                )}
             </div>
 
             {/* 헤더 섹션 */}
             <div className="mb-6">
                 <div className="flex flex-wrap items-start gap-4 mb-2">
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-800">{snippet.header_text}</h1>
+                        <h1 className="text-2xl font-bold text-gray-800">{snippet?.header_text}</h1>
                         <div className="flex items-center space-x-2 text-sm text-gray-500">
-                            <span>{formatDate(snippet.created_at)}</span>
-                            {snippet.created_at !== snippet.updated_at && (
-                                <span>(수정됨: {formatDate(snippet.updated_at)})</span>
+                            <span>{formatDate(snippet?.created_at)}</span>
+                            {snippet?.created_at !== snippet?.updated_at && (
+                                <span>(수정됨: {formatDate(snippet?.updated_at)})</span>
                             )}
                         </div>
-                        
+
                         {/* 스니펫 타입 배지 */}
                         <div className="mt-1">
-                            {getSnippetTypeBadge(snippet.snippet_type)}
+                            {getSnippetTypeBadge(snippet?.snippet_type)}
                         </div>
-                        
+
                         {/* 임시 ID인 경우 알림 표시 */}
-                        {isTempId(id) && snippet.id !== id && (
+                        {isTempId(id) && snippet?.id !== id && (
                             <div className="mt-2 p-2 bg-yellow-50 text-yellow-700 text-sm rounded border border-yellow-200">
                                 현재 URL이 임시 ID를 사용하고 있습니다. 북마크하시려면 새로고침 후 현재 URL을 사용하세요.
                             </div>
@@ -480,10 +480,10 @@ export default function SnippetDetailPage() {
                     </div>
                 </div>
 
-                {snippet.custom_query && (
+                {snippet?.custom_query && (
                     <div className="mt-2 p-3 bg-gray-50 border border-gray-200 rounded-md">
                         <p className="text-sm text-gray-700">
-                            <span className="font-medium">Custom Query:</span> {snippet.custom_query}
+                            <span className="font-medium">Custom Query:</span> {snippet?.custom_query}
                         </p>
                     </div>
                 )}
@@ -493,7 +493,7 @@ export default function SnippetDetailPage() {
             <div className="mb-8 p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
                 <div
                     className="prose prose-sm max-w-none markdown-body"
-                    dangerouslySetInnerHTML={{ __html: marked(snippet.markdown_content) }}
+                    dangerouslySetInnerHTML={{ __html: marked(snippet?.markdown_content) }}
                 />
             </div>
 
@@ -517,9 +517,9 @@ export default function SnippetDetailPage() {
             )}
 
             {/* 임시 ID인 경우 새로고침 버튼 */}
-            {isTempId(id) && snippet.id !== id && (
+            {isTempId(id) && snippet?.id !== id && (
                 <div className="mt-4">
-                    <button 
+                    <button
                         className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors"
                         onClick={() => router.replace(`/snippets/${snippet.id}`)}
                     >
@@ -527,7 +527,7 @@ export default function SnippetDetailPage() {
                     </button>
                 </div>
             )}
-            
+
             {/* 소스 콘텐츠 정보 */}
             {sourceContent && (
                 <div className="mt-8 border-t pt-6">
@@ -539,7 +539,7 @@ export default function SnippetDetailPage() {
                                 <p className="text-sm text-gray-500 truncate">{sourceContent.url}</p>
                             )}
                         </div>
-                        <button 
+                        <button
                             className="px-3 py-1 text-sm text-purple-600 hover:text-purple-800 flex items-center gap-1"
                             onClick={() => router.push(`/content/${sourceContent.id}/groups`)}
                         >

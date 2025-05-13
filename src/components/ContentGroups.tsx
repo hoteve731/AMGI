@@ -1098,7 +1098,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                                     </div>
 
                                     {/* 카드 표시 영역 */}
-                                    <div className="w-full overflow-hidden">
+                                    <div className="w-full overflow-hidden mb-6">
                                         <AnimatePresence mode="wait" key={`${allChunks[currentFlashcardIndex]?.id}-${isFlashcardFlipped ? 'flipped' : 'front'}`}>
                                             {allChunks[currentFlashcardIndex] && (
                                                 <motion.div
