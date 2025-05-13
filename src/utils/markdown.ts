@@ -81,7 +81,8 @@ export const renderMarkdownWithSnippetLinks = (
               if (matchingSnippets.length === 1) {
                 // 단일 스니펫인 경우 직접 링크 사용
                 const link = document.createElement('a');
-                link.href = `/snippets/${matchingSnippets[0].id}`;
+                // 안전한 URL 생성을 위해 encodeURIComponent 사용
+                link.href = `/snippets/${encodeURIComponent(matchingSnippets[0].id)}`;
                 link.className = 'snippet-link';
                 link.dataset.snippetId = matchingSnippets[0].id;
                 link.textContent = title;
@@ -90,7 +91,8 @@ export const renderMarkdownWithSnippetLinks = (
                 // 중복 스니펫인 경우 스판 사용
                 const span = document.createElement('span');
                 span.className = 'snippet-modal-trigger';
-                span.dataset.snippetIds = snippetIds;
+                // 쉼표가 포함된 ID들을 적절히 인코딩
+                span.dataset.snippetIds = snippetIds.split(',').map(id => encodeURIComponent(id)).join(',');
                 span.dataset.snippetTitle = title;
                 span.textContent = title;
                 fragment.appendChild(span);
