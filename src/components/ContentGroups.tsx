@@ -22,6 +22,7 @@ import SnippetSelectionModal from './SnippetSelectionModal';
 import { Markmap } from 'markmap-view';
 import { Transformer } from 'markmap-lib';
 import * as markmap from 'markmap-view';
+import { toPng } from 'html-to-image';
 
 type Content = {
     id: string
@@ -109,8 +110,10 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
     const markdownContainerRef = useRef<HTMLDivElement>(null)
     const [showVisualMapModal, setShowVisualMapModal] = useState(false);
     const markmapRef = useRef<SVGSVGElement>(null);
+    const markmapContainerRef = useRef<HTMLDivElement>(null);
     const markmapInstance = useRef<Markmap | null>(null);
     const transformer = useRef(new Transformer());
+    const [isDownloading, setIsDownloading] = useState(false);
 
     // 선택 영역 초기화 함수
     const clearSelection = useCallback(() => {
@@ -827,6 +830,49 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
         }
     }, [showVisualMapModal, initMarkmap, content?.markdown_text]);
 
+    // PNG 다운로드 함수
+    const handleDownloadPng = useCallback(async () => {
+        if (!markmapRef.current || !markmapInstance.current || !markmapContainerRef.current) return;
+
+        try {
+            setIsDownloading(true);
+
+            // 현재 날짜와 시간을 파일명에 포함
+            const date = new Date();
+            const fileName = `LoopaVisualmap-${content.title.slice(0, 20).replace(/\s+/g, '-')}-${date.getTime()}.png`;
+
+            // 현재 마크맵 상태 저장
+            const originalSvgWidth = markmapRef.current.width.baseVal.value;
+            const originalSvgHeight = markmapRef.current.height.baseVal.value;
+
+            // 마크맵을 전체 뷰로 조정
+            markmapInstance.current.fit();
+
+            // 약간의 지연 후 캡처 (애니메이션 완료 기다림)
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            // SVG를 PNG로 변환
+            const dataUrl = await toPng(markmapContainerRef.current, {
+                quality: 0.95,
+                backgroundColor: '#ffffff',
+                pixelRatio: 4
+            });
+
+            // 다운로드 링크 생성
+            const link = document.createElement('a');
+            link.download = fileName;
+            link.href = dataUrl;
+            link.click();
+
+            toast.success('마인드맵이 저장되었습니다!');
+        } catch (error) {
+            console.error('이미지 다운로드 중 오류:', error);
+            toast.error('이미지 저장 중 오류가 발생했습니다.');
+        } finally {
+            setIsDownloading(false);
+        }
+    }, [content.title]);
+
     return (
         <main className="flex min-h-screen flex-col bg-[#F3F5FD] pb-12 p-4">
             {/* 일반 로딩 오버레이 */}
@@ -962,6 +1008,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                             bg-white/80 text-[#7969F7] hover:bg-gray-50"
                     >
                         <span className="flex items-center text-lg">🗺️ Visual map</span>
+
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M9 18l6-6-6-6" />
                         </svg>
@@ -1600,27 +1647,63 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                                     damping: 25,
                                     stiffness: 300
                                 }}
-                                className="bg-[#F3F5FD] backdrop-blur-md rounded-2xl shadow-xl w-full max-w-6xl h-[90vh] overflow-hidden"
+                                className="bg-white rounded-2xl shadow-xl w-full max-w-6xl h-[90vh] overflow-hidden"
                                 onClick={(e) => e.stopPropagation()}
                             >
                                 {/* Modal Header */}
-                                <div className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-gray-200 bg-[#F3F5FD] backdrop-blur-md">
+                                <div className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-gray-200 bg-white">
                                     <h2 className="text-lg font-bold text-gray-800">Visual Map</h2>
-                                    <button
-                                        onClick={() => setShowVisualMapModal(false)}
-                                        className="p-2 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-100 transition-colors"
-                                    >
-                                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                        </svg>
-                                    </button>
+
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={handleDownloadPng}
+                                            disabled={isDownloading}
+                                            className={`
+                                                flex items-center justify-center px-3 py-1.5 rounded-lg text-sm font-medium
+                                                ${isDownloading
+                                                    ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                                                    : 'bg-[#7969F7] text-white hover:bg-[#6959E7] active:bg-[#5949D7]'}
+                                                transition-colors duration-200
+                                            `}
+                                        >
+                                            {isDownloading ? (
+                                                <>
+                                                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                    </svg>
+                                                    저장 중...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                                    </svg>
+                                                    Download
+                                                </>
+                                            )}
+                                        </button>
+                                        <button
+                                            onClick={() => setShowVisualMapModal(false)}
+                                            className="p-2 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-100 transition-colors"
+                                        >
+                                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
+                                    </div>
                                 </div>
 
-                                {/* Markmap Container - div를 svg로 변경 */}
-                                <svg
-                                    ref={markmapRef}
-                                    className="w-full h-[calc(90vh-4rem)]"
-                                />
+                                {/* Markmap Container */}
+                                <div
+                                    ref={markmapContainerRef}
+                                    className="w-full h-[calc(90vh-4rem)] bg-white"
+                                >
+                                    <svg
+                                        ref={markmapRef}
+                                        className="w-full h-full"
+                                    />
+                                </div>
                             </motion.div>
                         </motion.div>
                     )}
