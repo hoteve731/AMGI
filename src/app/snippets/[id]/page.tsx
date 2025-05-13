@@ -337,7 +337,7 @@ export default function SnippetDetailPage() {
 
     // 스켈레톤 로딩 컴포넌트
     const SkeletonLoading = () => (
-        <div className="max-w-3xl mx-auto p-4">
+        <div className="max-w-3xl mx-auto p-4 animate-pulse">
             {/* 네비게이션 바 */}
             <div className="flex items-center justify-between mb-6">
                 <button
@@ -346,42 +346,42 @@ export default function SnippetDetailPage() {
                     <ArrowLeft size={20} />
                 </button>
                 <div className="flex space-x-2">
-                    <div className="w-10 h-10 rounded-full bg-gray-200"></div>
-                    <div className="w-10 h-10 rounded-full bg-gray-200"></div>
+                    <div className="w-10 h-10 rounded-full bg-gray-300"></div>
+                    <div className="w-10 h-10 rounded-full bg-gray-300"></div>
                 </div>
             </div>
 
             {/* 헤더 섹션 스켈레톤 */}
             <div className="mb-6">
-                <div className="h-8 bg-gray-200 rounded w-3/4 mb-2"></div>
-                <div className="h-5 bg-gray-200 rounded w-1/3 mb-3"></div>
+                <div className="h-8 bg-gray-300 rounded w-3/4 mb-2"></div>
+                <div className="h-5 bg-gray-300 rounded w-1/3 mb-3"></div>
                 <div className="flex space-x-2 mb-4">
-                    <div className="h-6 bg-gray-200 rounded w-20"></div>
+                    <div className="h-6 bg-gray-300 rounded w-20"></div>
                 </div>
                 <div className="flex flex-wrap gap-2 mb-4">
-                    <div className="h-7 bg-gray-200 rounded-full w-16"></div>
-                    <div className="h-7 bg-gray-200 rounded-full w-24"></div>
+                    <div className="h-7 bg-gray-300 rounded-full w-16"></div>
+                    <div className="h-7 bg-gray-300 rounded-full w-24"></div>
                 </div>
             </div>
 
             {/* 마크다운 콘텐츠 스켈레톤 */}
             <div className="mb-8 space-y-3">
-                <div className="h-5 bg-gray-200 rounded w-full"></div>
-                <div className="h-5 bg-gray-200 rounded w-full"></div>
-                <div className="h-5 bg-gray-200 rounded w-5/6"></div>
-                <div className="h-5 bg-gray-200 rounded w-full"></div>
-                <div className="h-5 bg-gray-200 rounded w-4/5"></div>
+                <div className="h-5 bg-gray-300 rounded w-full"></div>
+                <div className="h-5 bg-gray-300 rounded w-full"></div>
+                <div className="h-5 bg-gray-300 rounded w-5/6"></div>
+                <div className="h-5 bg-gray-300 rounded w-full"></div>
+                <div className="h-5 bg-gray-300 rounded w-4/5"></div>
             </div>
 
             {/* 소스 섹션 스켈레톤 */}
             <div className="mt-8 border-t pt-6">
-                <div className="h-6 bg-gray-200 rounded w-40 mb-3"></div>
+                <div className="h-6 bg-gray-300 rounded w-40 mb-3"></div>
                 <div className="flex justify-between items-center p-4 border border-gray-200 rounded-lg">
                     <div>
                         <p className="font-medium"></p>
                         <p className="text-sm text-gray-500 truncate"></p>
                     </div>
-                    <div className="h-8 bg-gray-200 rounded w-24"></div>
+                    <div className="h-8 bg-gray-300 rounded w-24"></div>
                 </div>
             </div>
         </div>

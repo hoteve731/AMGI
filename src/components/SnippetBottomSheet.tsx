@@ -80,12 +80,9 @@ const SnippetBottomSheet: React.FC<SnippetBottomSheetProps> = ({
                 status: 'pending'
             }))
 
-            // 즉시 임시 ID로 리다이렉트 (API 응답을 기다리지 않음)
-            toast.success('Creating snippet...')
+            // 스니펫 생성 중임을 표시
+            toast.loading('Creating snippet...', { id: 'creating-snippet' })
             onClose()
-
-            // 즉시 리다이렉트 (지연 시간 최소화)
-            router.replace(`/snippets/${tempId}`)
 
             // 백그라운드에서 API 호출 계속 진행
             try {
@@ -112,6 +109,9 @@ const SnippetBottomSheet: React.FC<SnippetBottomSheetProps> = ({
                                 timestamp: new Date().toISOString(),
                                 status: 'success'
                             }))
+                            // 성공 메시지 표시 및 실제 ID로 리다이렉트
+                            toast.success('Snippet created successfully', { id: 'creating-snippet' })
+                            router.replace(`/snippets/${snippetId}`)
                         }
                     } catch (jsonError) {
                         console.error('Response JSON parsing error:', jsonError)
@@ -128,6 +128,9 @@ const SnippetBottomSheet: React.FC<SnippetBottomSheetProps> = ({
                                     timestamp: new Date().toISOString(),
                                     status: 'success'
                                 }))
+                                // 성공 메시지 표시 및 실제 ID로 리다이렉트
+                                toast.success('Snippet created successfully', { id: 'creating-snippet' })
+                                router.replace(`/snippets/${snippetId}`)
                             }
                         } catch (e) {
                             console.error('응답 텍스트 읽기 오류:', e)
@@ -148,6 +151,9 @@ const SnippetBottomSheet: React.FC<SnippetBottomSheetProps> = ({
                                 timestamp: new Date().toISOString(),
                                 status: 'success'
                             }))
+                            // 성공 메시지 표시 및 실제 ID로 리다이렉트
+                            toast.success('Snippet created successfully', { id: 'creating-snippet' })
+                            router.replace(`/snippets/${snippetId}`)
                         }
 
                         // 504 Gateway Timeout 오류인 경우에도 스니펫이 생성되었을 수 있음
@@ -167,6 +173,9 @@ const SnippetBottomSheet: React.FC<SnippetBottomSheetProps> = ({
                     status: 'error',
                     error: apiError instanceof Error ? apiError.message : 'Unknown error'
                 }))
+                // 오류 메시지 표시
+                toast.error('Failed to create snippet. Please try again.', { id: 'creating-snippet' })
+                router.push('/?tab=snippets')
             }
         } catch (error) {
             console.error('스니펫 생성 오류:', error)

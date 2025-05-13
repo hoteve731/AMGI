@@ -4,11 +4,19 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
 import { createPortal } from 'react-dom'
+import useSWR, { mutate } from 'swr'
 import WebLinkModal from './WebLinkModal'
 import UploadTextModal from './UploadTextModal'
 import SubscriptionModal from './SubscriptionModal'
 // import RecordAudioModal from './RecordAudioModal'
 import UploadAudioModal from './UploadAudioModal'
+
+// fetcher 함수 정의
+const fetcher = async (url: string) => {
+  const res = await fetch(url)
+  if (!res.ok) throw new Error('API 요청 실패')
+  return res.json()
+}
 
 interface ShortcutButtonsProps {
   userName?: string
@@ -23,9 +31,18 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false)
   // const [showRecordAudioModal, setShowRecordAudioModal] = useState(false)
   const [showUploadAudioModal, setShowUploadAudioModal] = useState(false)
-  const [contentCount, setContentCount] = useState(0)
   const [isVisible, setIsVisible] = useState(false)
-  const [isCheckingCount, setIsCheckingCount] = useState(false)
+  
+  // SWR을 사용하여 콘텐츠 개수 가져오기
+  const { data, error, isValidating } = useSWR('/api/contents', fetcher, {
+    revalidateOnFocus: false,
+    dedupingInterval: 10000, // 10초 동안 중복 요청 방지
+    revalidateIfStale: false,
+    revalidateOnReconnect: false
+  })
+  
+  // 콘텐츠 개수 계산 (API 응답이 없으면 0)
+  const contentCount = data?.contents?.length || 0
 
   // Animation variants for the container
   const containerVariants = {
@@ -53,31 +70,18 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
     }
   }
 
-  // Fetch content count when component mounts
-  useEffect(() => {
-    fetchContentCount()
-  }, [])
-
-  // Function to fetch content count
-  const fetchContentCount = async () => {
-    try {
-      setIsCheckingCount(true)
-      const response = await fetch('/api/contents')
-      if (response.ok) {
-        const data = await response.json()
-        const count = data.contents?.length || 0
-        setContentCount(count)
-        console.log('Content count:', count)
-        return count
-      }
-      return contentCount
-    } catch (error) {
-      console.error('Error fetching content count:', error)
-      return contentCount // 오류 발생 시 현재 상태 유지
-    } finally {
-      setIsCheckingCount(false)
-    }
+  // 콘텐츠 개수 데이터 갱신 함수
+  const refreshContentCount = () => {
+    console.log('Refreshing content count...')
+    mutate('/api/contents')
   }
+  
+  // 디버깅을 위한 로그
+  useEffect(() => {
+    console.log('Content count:', contentCount)
+    console.log('Is validating:', isValidating)
+    if (error) console.error('Error fetching content count:', error)
+  }, [contentCount, error, isValidating])
 
   // Function to get the image path based on the feature name
   const getFeatureImagePath = (featureName: string): string => {
@@ -108,12 +112,11 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
     }
   }, [])
 
-  // Function to check content limit and return if limit is reached
-  const checkContentLimit = async () => {
-    if (isCheckingCount) return true // 이미 확인 중이면 중복 실행 방지
+  // 콘텐츠 제한 확인 함수 (API 호출 없이 즉시 결과 반환)
+  const checkContentLimit = () => {
+    if (isValidating) return true // 데이터 가져오는 중이면 중복 실행 방지
 
-    const currentCount = await fetchContentCount()
-    if (currentCount >= 3) {
+    if (contentCount >= 3) {
       setShowSubscriptionModal(true)
       return true // 제한 도달
     }
@@ -121,10 +124,9 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
   }
 
   // Function to open the Upload Text modal
-  const handleUploadText = async () => {
-    // 실시간으로 콘텐츠 수 확인
-    const limitReached = await checkContentLimit()
-    if (!limitReached) {
+  const handleUploadText = () => {
+    // 캐시된 데이터로 즉시 확인
+    if (!checkContentLimit()) {
       setShowUploadTextModal(true)
     }
   }
@@ -140,20 +142,18 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
     setShowComingSoonModal(false)
   }
 
-  // Function to open the Web Link modal
-  const handleWebLinkClick = async () => {
-    // 실시간으로 콘텐츠 수 확인
-    const limitReached = await checkContentLimit()
-    if (!limitReached) {
+  // Function to handle web link click
+  const handleWebLinkClick = () => {
+    // 캐시된 데이터로 즉시 확인
+    if (!checkContentLimit()) {
       setShowWebLinkModal(true)
     }
   }
 
-  // Function to open the Upload Audio modal
-  const handleUploadAudioClick = async () => {
-    // 실시간으로 콘텐츠 수 확인
-    const limitReached = await checkContentLimit()
-    if (!limitReached) {
+  // Function to handle upload audio click
+  const handleUploadAudioClick = () => {
+    // 캐시된 데이터로 즉시 확인
+    if (!checkContentLimit()) {
       setShowUploadAudioModal(true)
     }
   }
@@ -184,7 +184,7 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
           className="w-full flex flex-col items-center justify-center transition-transform duration-200 rounded-xl p-4"
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          disabled={isCheckingCount}
+          disabled={isValidating}
         >
           <Image
             src="/images/loopadocs.png"
@@ -203,7 +203,7 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
           className="w-full flex flex-col items-center justify-center transition-transform duration-200 rounded-xl p-4"
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          disabled={isCheckingCount}
+          disabled={isValidating}
         >
           <Image
             src="/images/loopalink.png"
@@ -222,7 +222,7 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
           className="w-full flex flex-col items-center justify-center transition-transform duration-200 rounded-xl p-4"
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          disabled={isCheckingCount}
+          disabled={isValidating}
         >
           <Image
             src="/images/loopaaudio.png"
@@ -288,7 +288,7 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
         isOpen={showWebLinkModal}
         onClose={() => {
           setShowWebLinkModal(false)
-          fetchContentCount() // 모달 닫힐 때 콘텐츠 수 갱신
+          refreshContentCount() // 모달 닫힐 때 콘텐츠 수 갱신
         }}
       />
 
@@ -297,7 +297,7 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
         isOpen={showUploadTextModal}
         onClose={() => {
           setShowUploadTextModal(false)
-          fetchContentCount() // 모달 닫힐 때 콘텐츠 수 갱신
+          refreshContentCount() // 모달 닫힐 때 콘텐츠 수 갱신
         }}
       />
 
@@ -313,7 +313,7 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
         isOpen={showUploadAudioModal}
         onClose={() => {
           setShowUploadAudioModal(false)
-          fetchContentCount() // 모달 닫힐 때 콘텐츠 수 갱신
+          refreshContentCount() // 모달 닫힐 때 콘텐츠 수 갱신
         }}
       />
 
