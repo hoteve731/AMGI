@@ -19,6 +19,9 @@ import toast from 'react-hot-toast';
 import { Tag as TagIcon } from 'lucide-react';
 import { fetchAllSnippets, Snippet } from '@/utils/snippetUtils';
 import SnippetSelectionModal from './SnippetSelectionModal';
+import { Markmap } from 'markmap-view';
+import { Transformer } from 'markmap-lib';
+import * as markmap from 'markmap-view';
 
 type Content = {
     id: string
@@ -104,7 +107,11 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
     const [selectionPosition, setSelectionPosition] = useState<{ x: number; y: number } | null>(null)
     const [editingChunkId, setEditingChunkId] = useState<string | null>(null)
     const markdownContainerRef = useRef<HTMLDivElement>(null)
-    
+    const [showVisualMapModal, setShowVisualMapModal] = useState(false);
+    const markmapRef = useRef<SVGSVGElement>(null);
+    const markmapInstance = useRef<Markmap | null>(null);
+    const transformer = useRef(new Transformer());
+
     // 선택 영역 초기화 함수
     const clearSelection = useCallback(() => {
         setHighlightRects([]);
@@ -329,7 +336,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
             // 연결된 스니펫이 있어서 삭제 실패한 경우
             if (!response.ok && response.status === 400) {
                 const errorData = await response.json();
-                
+
                 // 스니펫이 있어서 삭제할 수 없는 경우
                 if (errorData.error === 'Cannot delete content with associated snippets.') {
                     // 사용자에게 스니펫을 유지하면서 콘텐츠를 삭제할지 확인
@@ -337,7 +344,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                         `This content has ${errorData.snippetsCount} associated snippets. ` +
                         `Only content will be deleted and snippets will be kept. Do you want to continue?`
                     );
-                    
+
                     if (keepSnippets) {
                         // 스니펫 유지하면서 콘텐츠만 삭제
                         response = await fetch(`/api/contents?id=${content.id}&keepSnippets=true`, {
@@ -610,7 +617,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
         }));
         setHighlightRects(rects);
         setSelectedText(text);
-        
+
         // 선택한 텍스트가 있고 현재 콘텐츠 ID가 있으면 바로 스니펫 생성 모달 열기
         if (text && currentContentId) {
             const snippetId = `sel-${Date.now()}`;
@@ -773,6 +780,53 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
         })
     }
 
+    // Markmap 초기화 및 업데이트 함수
+    const initMarkmap = useCallback(() => {
+        if (!markmapRef.current || !content.markdown_text) return;
+
+        try {
+            console.log('마크다운 텍스트 길이:', content.markdown_text.length);
+
+            // 1. 먼저 마크맵 인스턴스를 생성 (데이터 없이)
+            if (!markmapInstance.current) {
+                console.log('마크맵 인스턴스 생성 중...');
+                markmapInstance.current = Markmap.create(markmapRef.current);
+                console.log('마크맵 인스턴스 생성됨:', !!markmapInstance.current);
+            }
+
+            // 2. 마크다운 변환
+            const { root, features } = transformer.current.transform(content.markdown_text);
+            console.log('파싱된 루트 노드:', root);
+
+            // 3. 데이터 설정 및 화면에 맞추기
+            if (markmapInstance.current) {
+                console.log('마크맵에 데이터 설정 중...');
+                markmapInstance.current.setData(root)
+                    .then(() => {
+                        console.log('마크맵 데이터 설정 완료, 화면에 맞추는 중...');
+                        markmapInstance.current?.fit();
+                        console.log('마크맵 fit 완료');
+                    });
+            }
+        } catch (error) {
+            console.error('마크맵 생성 중 오류:', error);
+            toast.error('마크맵 생성 중 오류가 발생했습니다.');
+        }
+    }, [content.markdown_text]);
+
+    // 마크맵 모달이 열리고 닫힐 때 처리
+    useEffect(() => {
+        if (showVisualMapModal && content?.markdown_text) {
+            // 모달이 열린 후 약간의 지연을 두고 마크맵 초기화
+            setTimeout(initMarkmap, 300);
+        } else {
+            // 모달이 닫히면 마크맵 인스턴스 정리
+            if (markmapInstance.current) {
+                markmapInstance.current = null;
+            }
+        }
+    }, [showVisualMapModal, initMarkmap, content?.markdown_text]);
+
     return (
         <main className="flex min-h-screen flex-col bg-[#F3F5FD] pb-12 p-4">
             {/* 일반 로딩 오버레이 */}
@@ -887,7 +941,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                     >
                         <span className="flex items-center text-lg">🃏 Flashcards ({allChunks.length})</span>
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M9 18l6-6-6-6"/>
+                            <path d="M9 18l6-6-6-6" />
                         </svg>
                     </button>
 
@@ -898,18 +952,18 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                     >
                         <span className="flex items-center text-lg">💯 Quiz</span>
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M9 18l6-6-6-6"/>
+                            <path d="M9 18l6-6-6-6" />
                         </svg>
                     </button>
 
                     <button
+                        onClick={() => setShowVisualMapModal(true)}
                         className="flex items-center justify-between w-full py-5 px-4 rounded-2xl font-semibold transition-all duration-200
-                            bg-white/80 text-[#7969F7] opacity-50 cursor-not-allowed"
-                        disabled
+                            bg-white/80 text-[#7969F7] hover:bg-gray-50"
                     >
                         <span className="flex items-center text-lg">🗺️ Visual map</span>
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M9 18l6-6-6-6"/>
+                            <path d="M9 18l6-6-6-6" />
                         </svg>
                     </button>
                 </div>
@@ -1400,7 +1454,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                     contentId={content.id}
                 />
             )}
-            
+
             {/* 스니펫 선택 모달 */}
             <SnippetSelectionModal
                 isOpen={isSnippetSelectionModalOpen}
@@ -1518,6 +1572,55 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                                 <div className="p-6">
                                     <p className="whitespace-pre-wrap text-gray-700">{content.original_text}</p>
                                 </div>
+                            </motion.div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>,
+                document.body
+            )}
+
+            {/* Visual Map Modal */}
+            {isMounted && createPortal(
+                <AnimatePresence mode="wait">
+                    {showVisualMapModal && (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 overflow-y-auto"
+                            onClick={() => setShowVisualMapModal(false)}
+                        >
+                            <motion.div
+                                initial={{ scale: 0.9, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                exit={{ scale: 0.9, opacity: 0 }}
+                                transition={{
+                                    type: "spring",
+                                    damping: 25,
+                                    stiffness: 300
+                                }}
+                                className="bg-[#F3F5FD] backdrop-blur-md rounded-2xl shadow-xl w-full max-w-6xl h-[90vh] overflow-hidden"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                {/* Modal Header */}
+                                <div className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-gray-200 bg-[#F3F5FD] backdrop-blur-md">
+                                    <h2 className="text-lg font-bold text-gray-800">Visual Map</h2>
+                                    <button
+                                        onClick={() => setShowVisualMapModal(false)}
+                                        className="p-2 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-100 transition-colors"
+                                    >
+                                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
+
+                                {/* Markmap Container - div를 svg로 변경 */}
+                                <svg
+                                    ref={markmapRef}
+                                    className="w-full h-[calc(90vh-4rem)]"
+                                />
                             </motion.div>
                         </motion.div>
                     )}
