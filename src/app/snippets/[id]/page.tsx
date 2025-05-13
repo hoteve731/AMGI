@@ -82,7 +82,14 @@ export default function SnippetDetailPage() {
 
         console.log(`URL 업데이트: ${id} -> ${newId}`)
         setIsUrlUpdated(true)
-        router.replace(`/snippets/${newId}`, { scroll: false })
+        
+        // 브라우저 히스토리 API를 사용하여 URL을 조용히 업데이트
+        if (window.history && typeof window.history.replaceState === 'function') {
+            window.history.replaceState(null, '', `/snippets/${newId}`)
+        } else {
+            // 폴백: Next.js router를 사용
+            router.replace(`/snippets/${newId}`, { scroll: false })
+        }
     }
 
     // 폴링 시작 함수
@@ -337,7 +344,26 @@ export default function SnippetDetailPage() {
 
     // 스켈레톤 로딩 컴포넌트
     const SkeletonLoading = () => (
-        <div className="max-w-3xl mx-auto p-4 animate-pulse">
+        <div className="max-w-3xl mx-auto p-4">
+            {/* Custom animation style for smoother pulse effect */}
+            <style jsx>{`
+                @keyframes smoothPulse {
+                    0%, 100% {
+                        opacity: 0.6;
+                        background-color: rgba(209, 213, 219, 0.8);
+                    }
+                    50% {
+                        opacity: 0.4;
+                        background-color: rgba(209, 213, 219, 0.5);
+                    }
+                }
+                .smooth-pulse {
+                    animation: smoothPulse 2.5s ease-in-out infinite;
+                    will-change: opacity, background-color;
+                    background-color: rgba(209, 213, 219, 0.8);
+                }
+            `}</style>
+            
             {/* 네비게이션 바 */}
             <div className="flex items-center justify-between mb-6">
                 <button
@@ -346,42 +372,42 @@ export default function SnippetDetailPage() {
                     <ArrowLeft size={20} />
                 </button>
                 <div className="flex space-x-2">
-                    <div className="w-10 h-10 rounded-full bg-gray-300"></div>
-                    <div className="w-10 h-10 rounded-full bg-gray-300"></div>
+                    <div className="w-10 h-10 rounded-full bg-gray-300 smooth-pulse"></div>
+                    <div className="w-10 h-10 rounded-full bg-gray-300 smooth-pulse"></div>
                 </div>
             </div>
 
             {/* 헤더 섹션 스켈레톤 */}
             <div className="mb-6">
-                <div className="h-8 bg-gray-300 rounded w-3/4 mb-2"></div>
-                <div className="h-5 bg-gray-300 rounded w-1/3 mb-3"></div>
+                <div className="h-8 bg-gray-300 rounded w-3/4 mb-2 smooth-pulse"></div>
+                <div className="h-5 bg-gray-300 rounded w-1/3 mb-3 smooth-pulse"></div>
                 <div className="flex space-x-2 mb-4">
-                    <div className="h-6 bg-gray-300 rounded w-20"></div>
+                    <div className="h-6 bg-gray-300 rounded w-20 smooth-pulse"></div>
                 </div>
                 <div className="flex flex-wrap gap-2 mb-4">
-                    <div className="h-7 bg-gray-300 rounded-full w-16"></div>
-                    <div className="h-7 bg-gray-300 rounded-full w-24"></div>
+                    <div className="h-7 bg-gray-300 rounded-full w-16 smooth-pulse"></div>
+                    <div className="h-7 bg-gray-300 rounded-full w-24 smooth-pulse"></div>
                 </div>
             </div>
 
             {/* 마크다운 콘텐츠 스켈레톤 */}
             <div className="mb-8 space-y-3">
-                <div className="h-5 bg-gray-300 rounded w-full"></div>
-                <div className="h-5 bg-gray-300 rounded w-full"></div>
-                <div className="h-5 bg-gray-300 rounded w-5/6"></div>
-                <div className="h-5 bg-gray-300 rounded w-full"></div>
-                <div className="h-5 bg-gray-300 rounded w-4/5"></div>
+                <div className="h-5 bg-gray-300 rounded w-full smooth-pulse"></div>
+                <div className="h-5 bg-gray-300 rounded w-full smooth-pulse"></div>
+                <div className="h-5 bg-gray-300 rounded w-5/6 smooth-pulse"></div>
+                <div className="h-5 bg-gray-300 rounded w-full smooth-pulse"></div>
+                <div className="h-5 bg-gray-300 rounded w-4/5 smooth-pulse"></div>
             </div>
 
             {/* 소스 섹션 스켈레톤 */}
             <div className="mt-8 border-t pt-6">
-                <div className="h-6 bg-gray-300 rounded w-40 mb-3"></div>
+                <div className="h-6 bg-gray-300 rounded w-40 mb-3 smooth-pulse"></div>
                 <div className="flex justify-between items-center p-4 border border-gray-200 rounded-lg">
                     <div>
                         <p className="font-medium"></p>
                         <p className="text-sm text-gray-500 truncate"></p>
                     </div>
-                    <div className="h-8 bg-gray-300 rounded w-24"></div>
+                    <div className="h-8 bg-gray-300 rounded w-24 smooth-pulse"></div>
                 </div>
             </div>
         </div>
@@ -392,7 +418,14 @@ export default function SnippetDetailPage() {
             <div className="max-w-3xl mx-auto p-4">
                 <div className="flex items-center mb-6">
                     <button
-                        onClick={() => router.push('/?tab=snippets')}
+                        onClick={() => {
+                            // 원본 노트가 있는 경우 해당 노트로 이동, 없는 경우 스니펫 목록으로 이동
+                            if (sourceContent && sourceContent.id) {
+                                router.push(`/content/${sourceContent.id}/groups`)
+                            } else {
+                                router.push('/?tab=snippets')
+                            }
+                        }}
                         className="p-2 text-gray-600 hover:text-gray-900 rounded-full hover:bg-gray-100 transition-colors"
                     >
                         <ArrowLeft size={20} />
@@ -425,7 +458,14 @@ export default function SnippetDetailPage() {
             {/* 네비게이션 바 */}
             <div className="flex items-center justify-between mb-6">
                 <button
-                    onClick={() => router.push('/?tab=snippets')}
+                    onClick={() => {
+                        // 원본 노트가 있는 경우 해당 노트로 이동, 없는 경우 스니펫 목록으로 이동
+                        if (sourceContent && sourceContent.id) {
+                            router.push(`/content/${sourceContent.id}/groups`)
+                        } else {
+                            router.push('/?tab=snippets')
+                        }
+                    }}
                     className="p-2 text-gray-600 hover:text-gray-900 rounded-full hover:bg-gray-100 transition-colors"
                 >
                     <ArrowLeft size={20} />
@@ -470,13 +510,6 @@ export default function SnippetDetailPage() {
                         <div className="mt-1">
                             {getSnippetTypeBadge(snippet?.snippet_type)}
                         </div>
-
-                        {/* 임시 ID인 경우 알림 표시 */}
-                        {isTempId(id) && snippet?.id !== id && (
-                            <div className="mt-2 p-2 bg-yellow-50 text-yellow-700 text-sm rounded border border-yellow-200">
-                                현재 URL이 임시 ID를 사용하고 있습니다. 북마크하시려면 새로고침 후 현재 URL을 사용하세요.
-                            </div>
-                        )}
                     </div>
                 </div>
 
@@ -516,17 +549,7 @@ export default function SnippetDetailPage() {
                 </div>
             )}
 
-            {/* 임시 ID인 경우 새로고침 버튼 */}
-            {isTempId(id) && snippet?.id !== id && (
-                <div className="mt-4">
-                    <button
-                        className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors"
-                        onClick={() => router.replace(`/snippets/${snippet.id}`)}
-                    >
-                        정확한 URL로 업데이트
-                    </button>
-                </div>
-            )}
+
 
             {/* 소스 콘텐츠 정보 */}
             {sourceContent && (
