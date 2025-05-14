@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import useSWR from 'swr';
@@ -11,6 +11,7 @@ import { SparklesIcon, ChatBubbleOvalLeftEllipsisIcon, InformationCircleIcon, Ar
 import FeedbackModal from "./FeedbackModal";
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { getUserSubscriptionStatus } from '@/utils/subscription';
+import { useSubscription } from '@/contexts/SubscriptionContext';
 
 // ContentTabs와 동일한 fetcher 함수 사용
 const fetcher = async (url: string) => {
@@ -82,9 +83,55 @@ const SideMenu: React.FC<SideMenuProps> = ({
   const isLimitReached = contentCount >= MAX_FREE_CONTENTS;
 
   // 구독 상태 관리
-  const [isSubscribed, setIsSubscribed] = useState(false);
-  const [contentLimit, setContentLimit] = useState(MAX_FREE_CONTENTS);
+  const { isSubscribed, contentLimit, isLoading: isLoadingSubscriptionContext, refreshSubscriptionStatus } = useSubscription();
   const [isLoadingSubscription, setIsLoadingSubscription] = useState(true);
+
+  // 구독 상태 확인 함수를 useCallback으로 메모이제이션
+  const checkSubscriptionStatus = useCallback(async () => {
+    try {
+      setIsLoadingSubscription(true);
+
+      // 사용자 정보 직접 가져오기
+      const { data: userData } = await supabase.auth.getUser();
+
+      if (userData?.user) {
+        const userId = userData.user.id;
+        console.log('사이드바 열림: 로그인된 사용자 ID', userId);
+
+        // users 테이블에서 직접 is_premium 값 확인
+        const { data: userDbData, error } = await supabase
+          .from('users')
+          .select('id, is_premium, subscription_status')
+          .eq('id', userId)
+          .single();
+
+        if (error) {
+          console.error('사용자 데이터 조회 오류:', error);
+        } else {
+          console.log('사용자 DB 데이터:', userDbData);
+          console.log('is_premium 값:', userDbData?.is_premium);
+          console.log('is_premium 타입:', typeof userDbData?.is_premium);
+          console.log('subscription_status 값:', userDbData?.subscription_status);
+
+          // 구독 상태 설정 - 컨텍스트 사용
+          await refreshSubscriptionStatus();
+        }
+      } else {
+        console.log('사이드바 열림: 로그인된 사용자 없음');
+      }
+    } catch (error) {
+      console.error('구독 상태 확인 중 오류:', error);
+    } finally {
+      setIsLoadingSubscription(false);
+    }
+  }, [refreshSubscriptionStatus]);
+
+  // 컴포넌트 마운트 시 구독 상태 확인
+  useEffect(() => {
+    if (open) {
+      checkSubscriptionStatus();
+    }
+  }, [open, checkSubscriptionStatus]);
 
   // 디버깅을 위한 로그
   useEffect(() => {
@@ -142,57 +189,6 @@ const SideMenu: React.FC<SideMenuProps> = ({
     }
   }, [open, supabase.auth, userName, userEmail]);
 
-  // 컴포넌트 마운트 시 구독 상태 확인
-  useEffect(() => {
-    const checkSubscriptionStatus = async () => {
-      try {
-        setIsLoadingSubscription(true);
-        const subscriptionData = await getUserSubscriptionStatus();
-        console.log('구독 상태 확인 결과:', subscriptionData); // 디버깅용 로그 추가
-
-        // 구독 상태 설정
-        setIsSubscribed(subscriptionData.isSubscribed);
-        setContentLimit(subscriptionData.contentLimit || MAX_FREE_CONTENTS);
-      } catch (error) {
-        console.error('구독 상태 확인 중 오류:', error);
-      } finally {
-        setIsLoadingSubscription(false);
-      }
-    };
-
-    if (open) {
-      checkSubscriptionStatus();
-    }
-  }, [open]);
-
-  const handleSubscriptionClick = () => {
-    setShowSubscriptionModal(true);
-  };
-
-  // 이메일로 구독 신청 기능 추가
-  const handleSubscriptionEmail = () => {
-    const emailAddress = 'loopa.service@gmail.com';
-    const subject = 'LOOPA Subscription Request';
-    const body = 'Write your subscription request here:\n\n';
-
-    window.location.href = `mailto:${emailAddress}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    setShowSubscriptionModal(false); // 모달 닫기
-  };
-
-  // 1:1 문의 이메일 보내기
-  const handleSendInquiryEmail = () => {
-    const emailAddress = 'loopa.service@gmail.com';
-    const subject = 'LOOPA Inquiry';
-    const body = 'Write your inquiry here:\n\n';
-
-    window.location.href = `mailto:${emailAddress}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-  };
-
-  // 카카오톡 채팅하기
-  const handleKakaoChat = () => {
-    window.open('https://open.kakao.com/me/Loopa', '_blank');
-  };
-
   // 구독 모달 표시 이벤트 리스너
   useEffect(() => {
     const handleShowSubscriptionModal = () => {
@@ -244,8 +240,8 @@ const SideMenu: React.FC<SideMenuProps> = ({
           throw new Error('구독 취소 실패');
         }
 
-        // 구독 상태 업데이트
-        setIsSubscribed(false);
+        // 구독 상태 업데이트 - 컨텍스트의 refreshSubscriptionStatus 함수 사용
+        await refreshSubscriptionStatus();
         alert('구독이 취소되었습니다. 현재 구독 기간이 끝날 때까지는 프리미엄 기능을 계속 사용할 수 있습니다.');
       } catch (error) {
         console.error('구독 취소 중 오류:', error);
@@ -254,6 +250,34 @@ const SideMenu: React.FC<SideMenuProps> = ({
         setIsLoggingOut(false);
       }
     }
+  };
+
+  const handleSubscriptionClick = () => {
+    setShowSubscriptionModal(true);
+  };
+
+  // 이메일로 구독 신청 기능 추가
+  const handleSubscriptionEmail = () => {
+    const emailAddress = 'loopa.service@gmail.com';
+    const subject = 'LOOPA Subscription Request';
+    const body = 'Write your subscription request here:\n\n';
+
+    window.location.href = `mailto:${emailAddress}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    setShowSubscriptionModal(false); // 모달 닫기
+  };
+
+  // 1:1 문의 이메일 보내기
+  const handleSendInquiryEmail = () => {
+    const emailAddress = 'loopa.service@gmail.com';
+    const subject = 'LOOPA Inquiry';
+    const body = 'Write your inquiry here:\n\n';
+
+    window.location.href = `mailto:${emailAddress}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  };
+
+  // 카카오톡 채팅하기
+  const handleKakaoChat = () => {
+    window.open('https://open.kakao.com/me/Loopa', '_blank');
   };
 
   return (
@@ -401,7 +425,7 @@ const SideMenu: React.FC<SideMenuProps> = ({
               {/* 구독 및 프로그레스 바 */}
               <div className="bg-white/80 backdrop-blur-sm rounded-xl p-3">
                 {/* 로딩 중이 아니고 구독하지 않은 경우에만 Unlimited notes 버튼 표시 */}
-                {!isLoadingSubscription && !isSubscribed && (
+                {!isLoadingSubscriptionContext && !isSubscribed && (
                   <button
                     onClick={handleSubscriptionClick}
                     className="w-full flex items-center justify-center gap-1.5 bg-[#6C37F9] hover:bg-[#5C2DE0] text-white py-2.5 px-4 rounded-full font-bold shadow-lg hover:shadow-xl transition-all duration-200 active:scale-[0.98] mb-3"
@@ -412,7 +436,7 @@ const SideMenu: React.FC<SideMenuProps> = ({
                 )}
 
                 {/* 로딩 중이 아니고 구독한 경우에만 Cancel Subscription 버튼 표시 */}
-                {!isLoadingSubscription && isSubscribed && (
+                {!isLoadingSubscriptionContext && isSubscribed && (
                   <button
                     onClick={handleCancelSubscription}
                     className="w-full py-2.5 px-4 border border-red-500 text-red-500 rounded-full font-bold hover:bg-red-50 transition-all duration-200 active:scale-[0.98] mb-3"
@@ -536,7 +560,7 @@ const SideMenu: React.FC<SideMenuProps> = ({
                   setShowSubscriptionModal(false);
                 }}
               >
-                Upgrade to Premium 
+                Upgrade to Premium
               </button>
             </motion.div>
           </motion.div>

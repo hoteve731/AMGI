@@ -2,8 +2,17 @@
 
 import React from 'react';
 import { SparklesIcon } from "@heroicons/react/24/solid";
+import { useSubscription } from '@/contexts/SubscriptionContext';
 
 export default function UnlimitedNotesButton() {
+    // SubscriptionContext에서 구독 상태 가져오기
+    const { isSubscribed, isLoading } = useSubscription();
+
+    // 이미 구독 중이거나 로딩 중인 경우 버튼 숨기기
+    if (isSubscribed || isLoading) {
+        return null;
+    }
+
     // Function to trigger the subscription modal
     const handleShowSubscriptionModal = () => {
         // Dispatch a custom event that the SideMenu component listens for

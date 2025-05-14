@@ -73,20 +73,26 @@ export const useSubscription = () => {
  */
 export async function getUserSubscriptionStatus(userId?: string): Promise<SubscriptionStatus> {
   const supabase = createClientComponentClient();
+  console.log('getUserSubscriptionStatus 호출됨, 전달된 userId:', userId);
 
   // 사용자 ID가 전달되지 않은 경우 세션에서 가져오기
   if (!userId) {
     const { data: { session } } = await supabase.auth.getSession();
+    console.log('세션 정보:', session);
+
     if (!session) {
+      console.log('세션이 없음, 비구독 상태 반환');
       return {
         isSubscribed: false,
         contentLimit: FREE_CONTENT_LIMIT
       };
     }
     userId = session.user.id;
+    console.log('세션에서 가져온 userId:', userId);
   }
 
   // Get user data with subscription info
+  console.log('Supabase 쿼리 실행, userId:', userId);
   const { data: userData, error } = await supabase
     .from('users')
     .select('*, contents(count)')
@@ -111,15 +117,29 @@ export async function getUserSubscriptionStatus(userId?: string): Promise<Subscr
     session_user_id: userId
   });
 
-  // Check if subscription is active - 타입 변환 명시적 처리
-  // Boolean 생성자를 사용하여 명시적으로 불리언으로 변환
-  const isPremium = Boolean(userData.is_premium);
+  // Check if subscription is active - 타입 변환 및 로직 개선
+  // 데이터베이스에서 is_premium이 문자열 'true', 숫자 1, 또는 boolean true 등 다양한 형태로 저장될 수 있음
+  let isPremium = false;
+
+  if (typeof userData.is_premium === 'boolean') {
+    isPremium = userData.is_premium;
+  } else if (typeof userData.is_premium === 'string') {
+    isPremium = userData.is_premium.toLowerCase() === 'true';
+  } else if (typeof userData.is_premium === 'number') {
+    isPremium = userData.is_premium === 1;
+  } else {
+    // 기본적으로 Boolean 생성자 사용
+    isPremium = Boolean(userData.is_premium);
+  }
+
+  // subscription_status가 없거나 'active'가 아닌 경우에도 is_premium만으로 판단할 수 있도록 수정
   const isActiveStatus = userData.subscription_status === 'active';
 
   console.log('구독 상태 계산:', { isPremium, isActiveStatus });
 
-  // 두 조건 모두 충족하는지 확인
-  const isSubscribed = isPremium && isActiveStatus;
+  // 구독 상태 판단 로직 개선 - is_premium이 true이면 구독 중으로 간주
+  // subscription_status는 부가 정보로만 사용
+  const isSubscribed = isPremium;
 
   // Get content count
   const contentCount = userData.contents?.count || 0;

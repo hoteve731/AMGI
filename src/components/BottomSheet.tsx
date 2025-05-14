@@ -8,7 +8,7 @@ import { ContentLimitManager } from '../App'
 import { useSWRConfig } from 'swr';
 import { SparklesIcon } from "@heroicons/react/24/solid";
 import BottomSheetShortcuts from './BottomSheetShortcuts';
-import { checkContentLimit } from '@/utils/subscription';
+import { useSubscription } from '@/utils/subscription';
 import SubscriptionModal from './SubscriptionModal';
 
 // 토스트 타입 정의
@@ -137,6 +137,7 @@ export default function BottomSheet() {
     // 콘텐츠 개수 캐싱을 위한 상태 추가
     const [cachedContentCount, setCachedContentCount] = useState<number | null>(null)
     const { mutate } = useSWRConfig();
+    const { checkContentLimit } = useSubscription();
 
     // 언어 선택 저장을 위한 로컬 스토리지 키
     const LANGUAGE_STORAGE_KEY = 'amgi_selected_language'
@@ -472,16 +473,16 @@ export default function BottomSheet() {
         const checkUserContentLimit = async () => {
             try {
                 const { canCreate, current, limit } = await checkContentLimit();
-                
+
                 // 캐시 업데이트
                 setCachedContentCount(current || 0);
-                
+
                 // 무료 사용자이고 최대 개수에 도달한 경우
                 if (!canCreate) {
                     setShowSubscriptionModal(true);
                     return false;
                 }
-                
+
                 return true;
             } catch (error) {
                 console.error('콘텐츠 제한 확인 오류:', error);
