@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import UpdatePrompt from '@/components/UpdatePrompt'
+import { AuthProvider } from '@/contexts/AuthContext';
 // import PushTest from '@/components/PushTest'
 
 const geistSans = Geist({
@@ -125,7 +126,9 @@ export default function RootLayout({
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-gray-100`}>
         <div className="flex justify-center min-h-screen w-full">
           <div className="w-full max-w-[700px] bg-white min-h-screen shadow-2xl shadow-black/20 rounded-xl">
-            {children}
+            <AuthProvider>
+              {children}
+            </AuthProvider>
           </div>
         </div>
         <UpdatePrompt />

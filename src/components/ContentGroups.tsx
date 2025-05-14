@@ -1141,13 +1141,13 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                                 <div className="w-full">
                                     {isLoadingSnippets ? (
                                         <div className="flex justify-center items-center py-12">
-                                            <div className="w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
+                                            <div className="w-6 h-6 border-2 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
                                             <span className="ml-2 text-gray-600">Loading snippets...</span>
                                         </div>
                                     ) : contentSnippets.length > 0 ? (
                                         <div className="grid grid-cols-1 gap-4 p-4">
                                             {contentSnippets.map(snippet => (
-                                                <div key={snippet.id} className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
+                                                <div key={snippet.id} className="bg-white rounded-2xl p-4 border border-gray-200 cursor-pointer">
                                                     <div className="flex flex-col gap-2">
                                                         <div className="flex justify-between items-start">
                                                             <div className="flex flex-col">
@@ -1164,7 +1164,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                                                         </div>
 
                                                         <div
-                                                            className="text-sm text-gray-700 mt-2 line-clamp-3 markdown-body cursor-pointer opacity-80"
+                                                            className="text-xs text-gray-600 mt-2 line-clamp-2 markdown-body opacity-60"
                                                             dangerouslySetInnerHTML={{ __html: marked(snippet.markdown_content) }}
                                                             onClick={() => router.push(`/snippets/${snippet.id}`)}
                                                         />

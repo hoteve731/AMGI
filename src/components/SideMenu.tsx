@@ -536,7 +536,7 @@ const SideMenu: React.FC<SideMenuProps> = ({
                   setShowSubscriptionModal(false);
                 }}
               >
-                Upgrade to Premium - ₩9,900/월
+                Upgrade to Premium 
               </button>
             </motion.div>
           </motion.div>

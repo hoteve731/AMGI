@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Search, Tag as TagIcon, Filter, X, ChevronDown } from 'lucide-react'
+import { Search, Tag as TagIcon, Filter, X, ChevronDown, Trash2 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { marked } from 'marked'
 
@@ -344,19 +344,22 @@ export default function SnippetList() {
             {/* 스니펫 목록 */}
             {isLoading ? (
                 <div className="flex justify-center items-center py-12">
-                    <div className="w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
+                    <div className="w-4 h-4 border-2 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
                     <span className="ml-2 text-gray-600">Loading snippets...</span>
                 </div>
             ) : filteredSnippets.length > 0 ? (
                 <div className="grid grid-cols-1 gap-4">
                     {filteredSnippets.map(snippet => (
-                        <div key={snippet.id} className="bg-white rounded-lg shadow-sm p-4">
+                        <div
+                            key={snippet.id}
+                            className="bg-white rounded-2xl p-5 cursor-pointer hover:bg-white/70 transition-shadow duration-200"
+                            onClick={() => router.push(`/snippets/${snippet.id}`)}
+                        >
                             <div className="flex flex-col gap-2">
                                 <div className="flex justify-between items-start">
                                     <div className="flex flex-col">
                                         <h3
-                                            className="text-lg font-semibold text-gray-800 hover:text-purple-700 cursor-pointer"
-                                            onClick={() => router.push(`/snippets/${snippet.id}`)}
+                                            className="text-lg font-semibold text-gray-800 hover:text-purple-700"
                                         >
                                             {snippet.header_text}
                                         </h3>
@@ -364,12 +367,28 @@ export default function SnippetList() {
                                             {getSnippetTypeBadge(snippet.snippet_type)}
                                         </div>
                                     </div>
+                                    <button
+                                        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors duration-200"
+                                        onClick={(e) => {
+                                            e.stopPropagation(); // 이벤트 전파 방지
+                                            if (confirm('Are you sure you want to delete this snippet?')) {
+                                                deleteSnippet(snippet.id)
+                                            }
+                                        }}
+                                        disabled={isDeleting[snippet.id]}
+                                        aria-label="스니펫 삭제"
+                                    >
+                                        {isDeleting[snippet.id] ? (
+                                            <div className="w-5 h-5 border-2 border-red-400 border-t-transparent rounded-full animate-spin"></div>
+                                        ) : (
+                                            <Trash2 size={14} />
+                                        )}
+                                    </button>
                                 </div>
 
                                 <div
-                                    className="text-sm text-gray-700 mt-2 line-clamp-3 markdown-body cursor-pointer opacity-80"
+                                    className="text-xs text-gray-600 mt-2 line-clamp-2 markdown-body opacity-60"
                                     dangerouslySetInnerHTML={{ __html: marked(snippet.markdown_content) }}
-                                    onClick={() => router.push(`/snippets/${snippet.id}`)}
                                 />
 
                                 {/* 태그 표시 부분 제거됨 */}

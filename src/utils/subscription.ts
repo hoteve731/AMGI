@@ -1,5 +1,8 @@
+'use client';
+
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { User } from '@supabase/supabase-js';
+import { useAuth } from '@/contexts/AuthContext';
 
 // Define types for subscription-related data
 interface SubscriptionStatus {
@@ -15,25 +18,79 @@ interface SubscriptionStatus {
 const FREE_CONTENT_LIMIT = 5;
 
 /**
+ * 클라이언트 컴포넌트에서 사용할 수 있는 훅
+ * AuthContext를 활용하여 현재 사용자의 구독 상태를 가져옵니다.
+ */
+export const useSubscription = () => {
+  const { user, session, isLoading } = useAuth();
+
+  const getSubscriptionStatus = async (): Promise<SubscriptionStatus> => {
+    if (isLoading) {
+      console.log('useSubscription: 인증 상태 로딩 중...');
+      return { isSubscribed: false, contentLimit: FREE_CONTENT_LIMIT };
+    }
+
+    if (!user) {
+      console.log('useSubscription: 로그인된 사용자 없음');
+      return { isSubscribed: false, contentLimit: FREE_CONTENT_LIMIT };
+    }
+
+    return getUserSubscriptionStatus(user.id);
+  };
+
+  const checkContentLimit = async () => {
+    if (isLoading) {
+      return { canCreate: false };
+    }
+
+    if (!user) {
+      return { canCreate: false };
+    }
+
+    const status = await getSubscriptionStatus();
+
+    if (status.isSubscribed) {
+      return { canCreate: true };
+    }
+
+    return {
+      canCreate: (status.contentCount || 0) < (status.contentLimit || FREE_CONTENT_LIMIT),
+      current: status.contentCount,
+      limit: status.contentLimit || FREE_CONTENT_LIMIT
+    };
+  };
+
+  return {
+    getSubscriptionStatus,
+    checkContentLimit,
+    isLoading,
+    userId: user?.id
+  };
+};
+
+/**
  * Get the current user's subscription status
  */
-export async function getUserSubscriptionStatus(): Promise<SubscriptionStatus> {
+export async function getUserSubscriptionStatus(userId?: string): Promise<SubscriptionStatus> {
   const supabase = createClientComponentClient();
 
-  // Get current user
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) {
-    return {
-      isSubscribed: false,
-      contentLimit: FREE_CONTENT_LIMIT
-    };
+  // 사용자 ID가 전달되지 않은 경우 세션에서 가져오기
+  if (!userId) {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      return {
+        isSubscribed: false,
+        contentLimit: FREE_CONTENT_LIMIT
+      };
+    }
+    userId = session.user.id;
   }
 
   // Get user data with subscription info
   const { data: userData, error } = await supabase
     .from('users')
     .select('*, contents(count)')
-    .eq('id', session.user.id)
+    .eq('id', userId)
     .single();
 
   if (error || !userData) {
@@ -51,7 +108,7 @@ export async function getUserSubscriptionStatus(): Promise<SubscriptionStatus> {
     is_premium_type: typeof userData.is_premium,
     subscription_status: userData.subscription_status,
     id: userData.id,
-    session_user_id: session.user.id
+    session_user_id: userId
   });
 
   // Check if subscription is active - 타입 변환 명시적 처리
@@ -74,29 +131,6 @@ export async function getUserSubscriptionStatus(): Promise<SubscriptionStatus> {
     customerPortalUrl: userData.customer_portal_url,
     contentCount,
     contentLimit: isSubscribed ? Infinity : FREE_CONTENT_LIMIT
-  };
-}
-
-/**
- * Check if a user can create more content
- */
-export async function checkContentLimit(): Promise<{
-  canCreate: boolean;
-  current?: number;
-  limit?: number;
-}> {
-  const { isSubscribed, contentCount, contentLimit } = await getUserSubscriptionStatus();
-
-  // Premium users can create unlimited content
-  if (isSubscribed) {
-    return { canCreate: true };
-  }
-
-  // Free users are limited
-  return {
-    canCreate: (contentCount || 0) < (contentLimit || FREE_CONTENT_LIMIT),
-    current: contentCount,
-    limit: contentLimit
   };
 }
 

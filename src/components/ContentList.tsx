@@ -368,7 +368,7 @@ export default function ContentList({ contents: externalContents, showTabs = fal
             )}
             {!isFetching && !error && displayContents.length === 0 && (
                 <div className="flex flex-col items-center justify-center h-[30vh] text-center">
-                    <div className="relative w-24 h-24 mb-2">
+                    <div className="relative w-24 h-24 mt-4 mb-1">
                         <Image
                             src="/images/doneloopa.png"
                             alt="Create a new note"
@@ -378,14 +378,6 @@ export default function ContentList({ contents: externalContents, showTabs = fal
                     </div>
                     <h3 className="text-xl font-semibold text-gray-700 mb-1">No notes yet</h3>
                     <p className="text-gray-500 mb-6 max-w-xs">Create your first note to get started</p>
-                    <motion.button
-                        onClick={openBottomSheet}
-                        className="px-6 py-3 bg-[#5F4BB6] text-white rounded-full shadow-lg text-base font-semibold flex items-center"
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                    >
-                        New Note
-                    </motion.button>
                 </div>
             )}
 
