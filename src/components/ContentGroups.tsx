@@ -160,8 +160,18 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
     // 스니펫 데이터 로드
     useEffect(() => {
         const loadSnippets = async () => {
-            const snippetsData = await fetchAllSnippets();
-            setSnippets(snippetsData);
+            console.log('스니펫 로드 시작...');
+            setIsLoadingSnippets(true);
+            try {
+                const snippetsData = await fetchAllSnippets();
+                console.log('로드된 스니펫:', snippetsData);
+                setSnippets(snippetsData);
+            } catch (error) {
+                console.error('스니펫 로드 중 오류:', error);
+                setSnippets([]);
+            } finally {
+                setIsLoadingSnippets(false);
+            }
         };
 
         loadSnippets();
@@ -986,7 +996,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                         `}
                     >
                         <span className="flex items-center text-lg">🃏 Flashcards ({allChunks.length})</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                             <path d="M9 18l6-6-6-6" />
                         </svg>
                     </button>
@@ -997,7 +1007,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                         disabled
                     >
                         <span className="flex items-center text-lg">💯 Quiz</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                             <path d="M9 18l6-6-6-6" />
                         </svg>
                     </button>
@@ -1009,7 +1019,7 @@ export default function ContentGroups({ content }: { content: ContentWithGroups 
                     >
                         <span className="flex items-center text-lg">🗺️ Visual map</span>
 
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                             <path d="M9 18l6-6-6-6" />
                         </svg>
                     </button>
