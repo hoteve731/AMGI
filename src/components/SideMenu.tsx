@@ -10,6 +10,7 @@ import { ChevronLeftIcon, ChevronRightIcon, DocumentTextIcon } from "@heroicons/
 import { SparklesIcon, ChatBubbleOvalLeftEllipsisIcon, InformationCircleIcon, ArrowRightOnRectangleIcon } from "@heroicons/react/24/solid";
 import FeedbackModal from "./FeedbackModal";
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { getUserSubscriptionStatus } from '@/utils/subscription';
 
 // ContentTabs와 동일한 fetcher 함수 사용
 const fetcher = async (url: string) => {
@@ -80,6 +81,11 @@ const SideMenu: React.FC<SideMenuProps> = ({
   const percentUsed = (contentCount / MAX_FREE_CONTENTS) * 100;
   const isLimitReached = contentCount >= MAX_FREE_CONTENTS;
 
+  // 구독 상태 관리
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [contentLimit, setContentLimit] = useState(MAX_FREE_CONTENTS);
+  const [isLoadingSubscription, setIsLoadingSubscription] = useState(true);
+
   // 디버깅을 위한 로그
   useEffect(() => {
     if (open) {
@@ -135,6 +141,29 @@ const SideMenu: React.FC<SideMenuProps> = ({
       getUserInfo();
     }
   }, [open, supabase.auth, userName, userEmail]);
+
+  // 컴포넌트 마운트 시 구독 상태 확인
+  useEffect(() => {
+    const checkSubscriptionStatus = async () => {
+      try {
+        setIsLoadingSubscription(true);
+        const subscriptionData = await getUserSubscriptionStatus();
+        console.log('구독 상태 확인 결과:', subscriptionData); // 디버깅용 로그 추가
+
+        // 구독 상태 설정
+        setIsSubscribed(subscriptionData.isSubscribed);
+        setContentLimit(subscriptionData.contentLimit || MAX_FREE_CONTENTS);
+      } catch (error) {
+        console.error('구독 상태 확인 중 오류:', error);
+      } finally {
+        setIsLoadingSubscription(false);
+      }
+    };
+
+    if (open) {
+      checkSubscriptionStatus();
+    }
+  }, [open]);
 
   const handleSubscriptionClick = () => {
     setShowSubscriptionModal(true);
@@ -198,6 +227,33 @@ const SideMenu: React.FC<SideMenuProps> = ({
       setIsLoggingOut(false); // 에러 발생 시에만 로딩 상태 초기화
     }
     // 리다이렉트가 발생하므로 finally에서 isLoading을 false로 설정하지 않음
+  };
+
+  // 구독 취소 처리
+  const handleCancelSubscription = async () => {
+    if (confirm('정말 구독을 취소하시겠습니까? 현재 구독 기간이 끝날 때까지는 프리미엄 기능을 계속 사용할 수 있습니다.')) {
+      try {
+        setIsLoggingOut(true);
+        // 구독 취소 API 호출
+        const response = await fetch('/api/test-subscription?action=deactivate', {
+          method: 'GET',
+          credentials: 'include',
+        });
+
+        if (!response.ok) {
+          throw new Error('구독 취소 실패');
+        }
+
+        // 구독 상태 업데이트
+        setIsSubscribed(false);
+        alert('구독이 취소되었습니다. 현재 구독 기간이 끝날 때까지는 프리미엄 기능을 계속 사용할 수 있습니다.');
+      } catch (error) {
+        console.error('구독 취소 중 오류:', error);
+        alert('구독 취소 중 오류가 발생했습니다. 다시 시도해 주세요.');
+      } finally {
+        setIsLoggingOut(false);
+      }
+    }
   };
 
   return (
@@ -344,13 +400,26 @@ const SideMenu: React.FC<SideMenuProps> = ({
             <div className="p-4 bg-white/0 backdrop-blur-sm space-y-4">
               {/* 구독 및 프로그레스 바 */}
               <div className="bg-white/80 backdrop-blur-sm rounded-xl p-3">
-                <button
-                  onClick={handleSubscriptionClick}
-                  className="w-full flex items-center justify-center gap-1.5 bg-[#6C37F9] hover:bg-[#5C2DE0] text-white py-2.5 px-4 rounded-full font-bold shadow-lg hover:shadow-xl transition-all duration-200 active:scale-[0.98] mb-3"
-                >
-                  <SparklesIcon className="w-5 h-5 text-yellow-300" />
-                  <span className="text-base">Unlimited notes</span>
-                </button>
+                {/* 로딩 중이 아니고 구독하지 않은 경우에만 Unlimited notes 버튼 표시 */}
+                {!isLoadingSubscription && !isSubscribed && (
+                  <button
+                    onClick={handleSubscriptionClick}
+                    className="w-full flex items-center justify-center gap-1.5 bg-[#6C37F9] hover:bg-[#5C2DE0] text-white py-2.5 px-4 rounded-full font-bold shadow-lg hover:shadow-xl transition-all duration-200 active:scale-[0.98] mb-3"
+                  >
+                    <SparklesIcon className="w-5 h-5 text-yellow-300" />
+                    <span className="text-base">Unlimited notes</span>
+                  </button>
+                )}
+
+                {/* 로딩 중이 아니고 구독한 경우에만 Cancel Subscription 버튼 표시 */}
+                {!isLoadingSubscription && isSubscribed && (
+                  <button
+                    onClick={handleCancelSubscription}
+                    className="w-full py-2.5 px-4 border border-red-500 text-red-500 rounded-full font-bold hover:bg-red-50 transition-all duration-200 active:scale-[0.98] mb-3"
+                  >
+                    Cancel Subscription
+                  </button>
+                )}
 
                 <div>
                   <div className="flex items-center gap-1.5 mb-1.5">
@@ -458,9 +527,16 @@ const SideMenu: React.FC<SideMenuProps> = ({
 
               <button
                 className="w-full py-3 bg-gradient-to-r from-[#7969F7] to-[#9F94F8] text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-200 active:scale-[0.98]"
-                onClick={handleSubscriptionEmail}
+                onClick={() => {
+                  // Use the redirectToCheckout function from our subscription utility
+                  import('@/utils/subscription').then(({ redirectToCheckout }) => {
+                    redirectToCheckout();
+                  });
+                  // Close the modal
+                  setShowSubscriptionModal(false);
+                }}
               >
-                Upgrade to Premium
+                Upgrade to Premium - ₩9,900/월
               </button>
             </motion.div>
           </motion.div>

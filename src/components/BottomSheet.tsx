@@ -8,6 +8,8 @@ import { ContentLimitManager } from '../App'
 import { useSWRConfig } from 'swr';
 import { SparklesIcon } from "@heroicons/react/24/solid";
 import BottomSheetShortcuts from './BottomSheetShortcuts';
+import { checkContentLimit } from '@/utils/subscription';
+import SubscriptionModal from './SubscriptionModal';
 
 // 토스트 타입 정의
 type ToastType = 'info' | 'success' | 'error' | 'warning' | 'bg-processing';
@@ -109,8 +111,7 @@ function useToast() {
 
 const MIN_LENGTH = 50;
 const MAX_LENGTH = 20000;
-// 최대 무료 콘텐츠 수 상수 정의
-const MAX_FREE_CONTENTS = 3;
+// 최대 무료 콘텐츠 수는 subscription.ts에서 관리
 
 export default function BottomSheet() {
     const router = useRouter()
@@ -467,31 +468,30 @@ export default function BottomSheet() {
             return;
         }
 
-        // 캐싱된 콘텐츠 개수 확인
-        if (cachedContentCount !== null && cachedContentCount >= MAX_FREE_CONTENTS) {
-            setShowSubscriptionModal(true);
-            return;
-        }
-
-        // 캐싱된 값이 없는 경우에만 API 호출로 확인
-        if (cachedContentCount === null) {
+        // 콘텐츠 개수 확인 및 제한 처리
+        const checkUserContentLimit = async () => {
             try {
-                const response = await fetch('/api/contents');
-                if (response.ok) {
-                    const data = await response.json();
-                    const contentCount = data.contents?.length || 0;
-                    setCachedContentCount(contentCount);
-
-                    // 무료 콘텐츠 제한 초과 시 구독 모달 표시
-                    if (contentCount >= MAX_FREE_CONTENTS) {
-                        setShowSubscriptionModal(true);
-                        return;
-                    }
+                const { canCreate, current, limit } = await checkContentLimit();
+                
+                // 캐시 업데이트
+                setCachedContentCount(current || 0);
+                
+                // 무료 사용자이고 최대 개수에 도달한 경우
+                if (!canCreate) {
+                    setShowSubscriptionModal(true);
+                    return false;
                 }
+                
+                return true;
             } catch (error) {
-                console.error('콘텐츠 개수 확인 중 오류:', error);
-                // 오류 발생 시 계속 진행 (제한 체크 실패 시 사용자 경험 방해 방지)
+                console.error('콘텐츠 제한 확인 오류:', error);
+                return true; // 오류 발생 시 제한 없음으로 처리
             }
+        };
+
+        // 콘텐츠 제한 확인
+        if (!(await checkUserContentLimit())) {
+            return;
         }
 
         // 로딩 상태 설정

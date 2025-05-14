@@ -10,6 +10,7 @@ import UploadTextModal from './UploadTextModal'
 import SubscriptionModal from './SubscriptionModal'
 // import RecordAudioModal from './RecordAudioModal'
 import UploadAudioModal from './UploadAudioModal'
+import { getUserSubscriptionStatus } from '@/utils/subscription'
 
 // fetcher 함수 정의
 const fetcher = async (url: string) => {
@@ -32,15 +33,19 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
   // const [showRecordAudioModal, setShowRecordAudioModal] = useState(false)
   const [showUploadAudioModal, setShowUploadAudioModal] = useState(false)
   const [isVisible, setIsVisible] = useState(false)
-  
-  // SWR을 사용하여 콘텐츠 개수 가져오기
+  const [userContentCount, setUserContentCount] = useState<number | null>(null)
+  const [isCheckingLimit, setIsCheckingLimit] = useState(false)
+  const [lastCheckedTime, setLastCheckedTime] = useState<number>(0)
+  const CACHE_DURATION = 60000 // 캐시 유효 시간: 1분 (밀리초)
+
+  // SWR을 사용하여 콘텐츠 개수 가져오기 (기존 방식 - 백업용)
   const { data, error, isValidating } = useSWR('/api/contents', fetcher, {
     revalidateOnFocus: false,
     dedupingInterval: 10000, // 10초 동안 중복 요청 방지
     revalidateIfStale: false,
     revalidateOnReconnect: false
   })
-  
+
   // 콘텐츠 개수 계산 (API 응답이 없으면 0)
   const contentCount = data?.contents?.length || 0
 
@@ -74,14 +79,17 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
   const refreshContentCount = () => {
     console.log('Refreshing content count...')
     mutate('/api/contents')
+    // 사용자 구독 상태 및 콘텐츠 카운트 갱신
+    fetchUserContentCount(true)
   }
-  
+
   // 디버깅을 위한 로그
   useEffect(() => {
     console.log('Content count:', contentCount)
+    console.log('User content count:', userContentCount)
     console.log('Is validating:', isValidating)
     if (error) console.error('Error fetching content count:', error)
-  }, [contentCount, error, isValidating])
+  }, [contentCount, userContentCount, error, isValidating])
 
   // Function to get the image path based on the feature name
   const getFeatureImagePath = (featureName: string): string => {
@@ -106,27 +114,72 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
     setMounted(true)
     // Trigger animation after a small delay for better visual effect
     setTimeout(() => setIsVisible(true), 100)
+    // 사용자 콘텐츠 카운트 가져오기
+    fetchUserContentCount()
     return () => {
       setMounted(false)
       setIsVisible(false)
     }
   }, [])
 
-  // 콘텐츠 제한 확인 함수 (API 호출 없이 즉시 결과 반환)
-  const checkContentLimit = () => {
-    if (isValidating) return true // 데이터 가져오는 중이면 중복 실행 방지
+  // 사용자 콘텐츠 카운트 가져오기
+  const fetchUserContentCount = async (forceRefresh = false) => {
+    // 캐시가 유효하고 강제 새로고침이 아닌 경우 요청 건너뛰기
+    const now = Date.now()
+    if (!forceRefresh && userContentCount !== null && now - lastCheckedTime < CACHE_DURATION) {
+      console.log('Using cached content count:', userContentCount)
+      return userContentCount
+    }
 
+    try {
+      setIsCheckingLimit(true)
+      const subscriptionData = await getUserSubscriptionStatus()
+      const count = subscriptionData.contentCount || 0
+      setUserContentCount(count)
+      setLastCheckedTime(now)
+      console.log('User content count fetched:', count)
+      return count
+    } catch (error) {
+      console.error('Error fetching user content count:', error)
+      return userContentCount
+    } finally {
+      setIsCheckingLimit(false)
+    }
+  }
+
+  // 콘텐츠 제한 확인 함수 (users.content_count 사용)
+  const checkContentLimit = async () => {
+    if (isCheckingLimit) return true // 데이터 가져오는 중이면 중복 실행 방지
+
+    // 캐시된 값 또는 새로 가져온 값 사용
+    const count = await fetchUserContentCount()
+    const subscriptionData = await getUserSubscriptionStatus()
+
+    // 프리미엄 사용자는 제한 없음
+    if (subscriptionData.isSubscribed) {
+      return false // 제한 없음
+    }
+
+    // 콘텐츠 제한 확인
+    if (count !== null && count >= 3) {
+      setShowSubscriptionModal(true)
+      return true // 제한 도달
+    }
+
+    // 백업: 기존 방식으로 확인
     if (contentCount >= 3) {
       setShowSubscriptionModal(true)
       return true // 제한 도달
     }
+
     return false // 제한 미도달
   }
 
   // Function to open the Upload Text modal
-  const handleUploadText = () => {
-    // 캐시된 데이터로 즉시 확인
-    if (!checkContentLimit()) {
+  const handleUploadText = async () => {
+    // 콘텐츠 제한 확인
+    const limitReached = await checkContentLimit()
+    if (!limitReached) {
       setShowUploadTextModal(true)
     }
   }
@@ -143,17 +196,19 @@ export default function ShortcutButtons({ userName }: ShortcutButtonsProps) {
   }
 
   // Function to handle web link click
-  const handleWebLinkClick = () => {
-    // 캐시된 데이터로 즉시 확인
-    if (!checkContentLimit()) {
+  const handleWebLinkClick = async () => {
+    // 콘텐츠 제한 확인
+    const limitReached = await checkContentLimit()
+    if (!limitReached) {
       setShowWebLinkModal(true)
     }
   }
 
   // Function to handle upload audio click
-  const handleUploadAudioClick = () => {
-    // 캐시된 데이터로 즉시 확인
-    if (!checkContentLimit()) {
+  const handleUploadAudioClick = async () => {
+    // 콘텐츠 제한 확인
+    const limitReached = await checkContentLimit()
+    if (!limitReached) {
       setShowUploadAudioModal(true)
     }
   }

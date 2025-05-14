@@ -2,6 +2,8 @@
 
 import { motion, AnimatePresence } from 'framer-motion'
 import { SparklesIcon } from "@heroicons/react/24/solid"
+import { useState, useEffect } from 'react'
+import { getUserSubscriptionStatus, redirectToCheckout } from '@/utils/subscription'
 
 interface SubscriptionModalProps {
   isOpen: boolean
@@ -9,14 +11,39 @@ interface SubscriptionModalProps {
 }
 
 export default function SubscriptionModal({ isOpen, onClose }: SubscriptionModalProps) {
-  // Function to handle subscription email
-  const handleSubscriptionEmail = () => {
-    const emailAddress = 'loopa.service@gmail.com'
-    const subject = 'LOOPA Subscription Request'
-    const body = 'Write your subscription request here:\n\n'
+  const [contentCount, setContentCount] = useState<number | undefined>(0)
+  const [contentLimit, setContentLimit] = useState<number | undefined>(5)
+  const [isLoading, setIsLoading] = useState(false)
 
-    window.location.href = `mailto:${emailAddress}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
-    onClose() // Close the modal after sending email
+  // Load subscription data when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      loadSubscriptionData()
+    }
+  }, [isOpen])
+
+  // Function to load subscription data
+  const loadSubscriptionData = async () => {
+    try {
+      const { contentCount, contentLimit } = await getUserSubscriptionStatus()
+      setContentCount(contentCount)
+      setContentLimit(contentLimit)
+    } catch (error) {
+      console.error('Error loading subscription data:', error)
+    }
+  }
+
+  // Function to handle subscription checkout
+  const handleSubscription = async () => {
+    setIsLoading(true)
+    try {
+      await redirectToCheckout()
+      onClose() // Close the modal after opening checkout
+    } catch (error) {
+      console.error('Error redirecting to checkout:', error)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -65,7 +92,9 @@ export default function SubscriptionModal({ isOpen, onClose }: SubscriptionModal
                 </div>
                 <div>
                   <p className="font-semibold text-gray-800">🚀 Unlimited notes</p>
-                  <p className="text-sm text-gray-600">Create as many notes as you want</p>
+                  <p className="text-sm text-gray-600">
+                  Create as many notes as you want
+                  </p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
@@ -93,10 +122,23 @@ export default function SubscriptionModal({ isOpen, onClose }: SubscriptionModal
             </div>
 
             <button
-              className="w-full py-3 bg-gradient-to-r from-[#7969F7] to-[#9F94F8] text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-200 active:scale-[0.98]"
-              onClick={handleSubscriptionEmail}
+              className="w-full py-3 bg-gradient-to-r from-[#7969F7] to-[#9F94F8] text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-200 active:scale-[0.98] relative"
+              onClick={handleSubscription}
+              disabled={isLoading}
             >
-              Upgrade to Premium
+              {isLoading ? (
+                <>
+                  <span className="opacity-0">Upgrade to Premium - ₩9,900/월</span>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  </div>
+                </>
+              ) : (
+                "Upgrade to Premium - ₩9,900/월"
+              )}
             </button>
           </motion.div>
         </motion.div>
