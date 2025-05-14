@@ -41,21 +41,27 @@ export async function GET(request: Request) {
         const { data: authData, error } = await supabase.auth.exchangeCodeForSession(code)
 
         if (authData?.user?.email) {
-            // 이 이메일로 이미 가입된 사용자가 있는지 확인
-            const { count, error: countError } = await supabase
+            // 이 사용자의 생성 시간 확인
+            const { data: userData, error: userError } = await supabase
                 .from('users')
-                .select('*', { count: 'exact', head: true })
-                .eq('email', authData.user.email)
+                .select('created_at')
+                .eq('id', authData.user.id)
+                .single();
+            
+            // 현재 시간과 사용자 생성 시간의 차이 계산 (분 단위)
+            const isNewUser = userData && userData.created_at 
+                ? (new Date().getTime() - new Date(userData.created_at).getTime()) / (1000 * 60) < 5 // 5분 이내 생성된 계정
+                : false;
 
             console.log('사용자 확인 결과:', {
                 email: authData.user.email,
-                count,
-                error: countError?.message,
-                isNewUser: count === 1
+                id: authData.user.id,
+                created_at: userData?.created_at,
+                isNewUser: isNewUser
             });
 
-            // count가 1이면 방금 가입한 신규 사용자
-            if (count === 1 && !countError) {
+            // 신규 사용자인 경우에만 알림 전송 및 기본 콘텐츠 생성
+            if (isNewUser) {
                 console.log('새 사용자 가입 감지:', authData.user.id, authData.user.email);
 
                 // 새 사용자인 경우 Slack 알림 전송
@@ -86,11 +92,22 @@ export async function GET(request: Request) {
 // 기본 콘텐츠 생성 함수
 async function createDefaultContent(supabase: any, userId: string) {
     // 스티브 잡스 인용문
-    const defaultText = `There's lots of ways to be, as a person. And some people express their deep appreciation in different ways. But one of the ways that I believe people express their appreciation to the rest of humanity is to make something wonderful and put it out there.
+    const defaultText = `Welcome to loopa!
 
-And you never meet the people. You never shake their hands. You never hear their story or tell yours. But somehow, in the act of making something with a great deal of care and love, something's transmitted there. And it's a way of expressing to the rest of our species our deep appreciation. So we need to be true to who we are and remember what's really important to us.
+loopa is the perfect space for organizing your thoughts, ideas, and tasks. This clean, intuitive platform allows you to capture anything that comes to mind and organize it efficiently.
 
-—Steve, 2007`;
+With loopa, you can create notes with an easy-to-use interface. Highlight important content and structure it in a way that makes sense to you. Never miss a brilliant idea again - capture it in loopa whenever inspiration strikes.
+
+The flashcards feature, available in the flashcards tab, helps you create learning cards effortlessly. This is particularly useful for exam preparation, language learning, or memorizing important concepts.
+
+loopa excels at knowledge management. You can easily understand and organize complex concepts, connect related information to build a systematic knowledge network, and quickly find what you need with the search function.
+Getting started is simple: write a new note to capture your ideas, use tags and categories to structure your content, create flashcards for important concepts, and regularly review and update your notes.
+
+With loopa, there is nothing you can't understand.
+
+Even the most complex concepts and vast amounts of information can be clearly organized. loopa is always here to support your knowledge management journey.
+
+Start creating your first note today!`;
 
     // 마크다운 형식의 콘텐츠
     const markdownText = `# 📚 Expressing Appreciation Through Creation
@@ -144,10 +161,10 @@ And you never meet the people. You never shake their hands. You never hear their
         .from('contents')
         .insert([{
             user_id: userId,
-            title: "Expressing Appreciation Through Creation",
+            title: "Welcome! Here's how to get the most out of Loopa",
             icon: "🎨",
             original_text: defaultText,
-            additional_memory: "Remember the importance of creating with care and love",
+            additional_memory: "",
             chunks: [],
             masked_chunks: [],
             processing_status: 'completed', // 이미 처리 완료 상태로 설정
