@@ -1,7 +1,23 @@
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { updateSession } from '@/utils/supabase/middleware'
 
 export async function middleware(request: NextRequest) {
+  // Check if the hostname is loopa.my and redirect to turbonote.me
+  const hostname = request.headers.get('host')
+
+  if (hostname?.includes('loopa.my')) {
+    // Create a new URL with the turbonote.me domain
+    const url = request.nextUrl.clone()
+    url.host = 'turbonote.me'
+
+    // Keep the protocol (http/https) the same
+    // Keep the pathname and search params the same
+
+    // Return a redirect response
+    return NextResponse.redirect(url, { status: 301 }) // 301 is permanent redirect
+  }
+
+  // If not loopa.my, continue with the normal session handling
   return await updateSession(request)
 }
 
